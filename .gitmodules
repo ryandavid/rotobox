@@ -4,3 +4,6 @@
 [submodule "dump1090"]
 	path = dump1090
 	url = git@github.com:ryandavid/dump1090.git
+[submodule "librtlsdr"]
+	path = librtlsdr
+	url = git@github.com:ryandavid/librtlsdr.git

@@ -1,4 +1,5 @@
-CFLAGS+=-O2 -g -Wall -Werror -Ifec
+#CFLAGS+=-O2 -g -Wall -Werror -Ifec
+CFLAGS+=-O2 -g -Wall -Ifec
 LDFLAGS=
 LIBS=-lm
 LIBS_RTL=`pkg-config --libs librtlsdr libusb-1.0`
@@ -7,7 +8,7 @@ MAKE=make
 CMAKE=cmake
 ECHO=echo
 UNAME=$(shell uname -s)
-CPPFLAGS= -I./dump978/ -I./dump1090/ -I./librtlsdr
+CPPFLAGS= -I./dump978/ -I./dump1090/ -I./librtlsdr -DMAKE_DUMP_978_LIB
 
 DUMP978_SUBDIR=dump978
 DUMP1090_SUBDIR=dump1090
@@ -23,11 +24,11 @@ all: librtlsdr dump978 dump1090 rotobox
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-dump978/%.o: %.c *.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+#dump978/%.o: %.c *.h
+#	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-dump978/fec/%.o: %.c *.h
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+#dump978/fec/%.o: %.c *.h
+#	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 rotobox: rotobox.o dump978/dump978.o dump978/fec.o dump978/fec/decode_rs_char.o dump978/fec/init_rs_char.o dump978/uat_decode.o
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_RTL)

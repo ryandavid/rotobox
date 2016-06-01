@@ -9,52 +9,60 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <rtl-sdr.h>
+
 #include "rotobox.h"
 #include "dump978.h"
 
 bool exitRequested = false;
 
 void handle_sigint() {
-    dump978_worker_stop();
     exitRequested = true;
 }
 
 int main(int argc, char **argv) {
-    pthread_t thread_978;
+    // Init from dump978
+    make_atan2_table();
+    init_fec();
 
-    signal(SIGINT, handle_sigint);
+    rtlsdr_dev_t *device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
 
-    if (dump978_init("0978") == false) {
-        fprintf(stdout, "ERROR: Could not init dump978\n");
+    rtlsdr_close(device978);
+    fprintf(stdout, "Hello World!\n");
+}
 
-        return 0;
-    }
 
-    int success = pthread_create(&thread_978, NULL, dump978_worker, NULL);
-    if (success != 0) {
-        fprintf(stdout, "ERROR: Could not create reader thread (Return = %d)\n", success);
-    }
+rtlsdr_dev_t *init_SDR(const char *serialNumber, long centerFrequency, int samplingFreq) {
+    rtlsdr_dev_t *device = NULL;
 
-    while (exitRequested == false) {
-        struct uat_mdb mdb;
+    int numDevices = rtlsdr_get_device_count();
 
-        if (dump978_get_mdb(&mdb) == true) {
-            fprintf(stdout, "\nts=%llu, rs=%d\n", mdb.timestamp, mdb.receiveErrors);
+    char manufacturer[256], name[256], serial[256];
+    for (int i = 0; i < numDevices; i++) {
+        if ((rtlsdr_get_device_usb_strings(i, &manufacturer[0], &name[0], &serial[0]) == 0) &
+            (strcmp(&serial[0], serialNumber) == 0)) {
+            fprintf(stdout, "Opening device %d: %s %s, S/N: %s\n", i, manufacturer, name, serial);
 
-            if (mdb.msgType == UAT_MDB_TYPE_ADSB) {
-                uat_display_adsb_mdb(&mdb.u.adsb_mdb, stdout);
+            if (rtlsdr_open(&device, i) == 0) {
+                fprintf(stdout, "Successfully opened device!\n");
+
+                rtlsdr_set_tuner_gain_mode(device, 1);  // 1 indicates manual mode
+                rtlsdr_set_tuner_gain(device, RECEIVER_GAIN_TENTHS_DB);  // Tenths of a dB
+                rtlsdr_set_center_freq(device, centerFrequency);
+                rtlsdr_set_sample_rate(device, samplingFreq);
+                rtlsdr_reset_buffer(device);
             } else {
-                uat_display_uplink_mdb(&mdb.u.uplink_mdb, stdout);
+                fprintf(stdout, "ERROR: Could not open device!\n");
             }
-            fflush(stdout);
+
+            // Since we found a match with serial numbers, break out regardless if successful
+            break;
         }
     }
 
-    pthread_join(thread_978, NULL);
+    if (device == NULL) {
+        fprintf(stdout, "Could not open device with S/N '%s'\n", serialNumber);
+    }
 
-    fprintf(stdout, "Exiting!\n");
-    dump978_cleanup();
-
-    return 0;
+    return device;
 }
-

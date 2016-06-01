@@ -7,6 +7,7 @@ MAKE=make
 CMAKE=cmake
 ECHO=echo
 UNAME=$(shell uname -s)
+CPPFLAGS= -I./dump978/ -I./dump1090/ -I./librtlsdr
 
 DUMP978_SUBDIR=dump978
 DUMP1090_SUBDIR=dump1090
@@ -16,8 +17,20 @@ LIBRTLSDR_MAKEFILE=$(LIBRTLSDR_BUILDDIR)/Makefile
 
 ALL_SUBDIRS=$(LIBRTLSDR_BUILDDIR) $(DUMP978_SUBDIR) $(DUMP1090_SUBDIR)
 
-all: librtlsdr dump978 dump1090
+all: librtlsdr dump978 dump1090 rotobox
 .PHONY: librtlsdr dump978 dump1090
+
+%.o: %.c *.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+dump978/%.o: %.c *.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+dump978/fec/%.o: %.c *.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+rotobox: rotobox.o dump978/dump978.o dump978/fec.o dump978/fec/decode_rs_char.o dump978/fec/init_rs_char.o dump978/uat_decode.o
+	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_RTL)
 
 librtlsdr: $(LIBRTLSDR_MAKEFILE)
 	$(ECHO) "Building librtlsdr"
@@ -43,6 +56,8 @@ clean:
 	done
 
 	rm -rf $(LIBRTLSDR_BUILDDIR)
+
+	rm -rf rotobox
 
 
 install: all

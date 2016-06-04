@@ -13,22 +13,40 @@
 
 #include "rotobox.h"
 #include "dump978.h"
+#include "uat_decode.h"
+#include "fec.h"
 
-bool exitRequested = false;
+volatile bool exitRequested = false;
+rtlsdr_dev_t *device978;
 
 void handle_sigint() {
+    fprintf(stdout, "Caught SIGINT!\n");
     exitRequested = true;
 }
 
 int main(int argc, char **argv) {
+    pthread_t thread_978;
+
+    // Signal Handlers
+    signal(SIGINT, handle_sigint);
+
     // Init from dump978
     make_atan2_table();
     init_fec();
 
-    rtlsdr_dev_t *device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
+    device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
+    if(device978 != NULL) {
+        int success = pthread_create(&thread_978, NULL, dump978_worker, NULL);
+        if(success != 0) {
+            fprintf(stdout, "Failed to create thread (result = %d)\n", success);
+        }
+    }
 
+    while(exitRequested == false);
+
+    pthread_join(thread_978, NULL);
     rtlsdr_close(device978);
-    fprintf(stdout, "Hello World!\n");
+    fprintf(stdout, "Exiting!\n");
 }
 
 
@@ -66,3 +84,53 @@ rtlsdr_dev_t *init_SDR(const char *serialNumber, long centerFrequency, int sampl
 
     return device;
 }
+
+// A clone of the dump978 read_from_stdin function, but using rtlsdr_read_sync instead
+void *dump978_worker() {
+    char dump978_buffer[65536 * 2];
+    int numBytesRead = 0;
+    int bytesUsed = 0;
+    int offset = 0;
+
+    if(device978 != NULL) {
+        while(exitRequested == false) {
+            // Hacky way to get the number of bytes in multiples of LIBRTLSDR_MIN_READ_SIZE
+            int readLength = ((sizeof(dump978_buffer) - bytesUsed) / LIBRTLSDR_MIN_READ_SIZE) * LIBRTLSDR_MIN_READ_SIZE;
+            int readResult = rtlsdr_read_sync(device978, &dump978_buffer[0] + bytesUsed, readLength, &numBytesRead);
+
+            if(readResult != 0){
+                // TODO(rdavid): Do something smart to try and recover
+                fprintf(stdout, "ERROR: Device read returned %d\n", readResult);
+            } else {
+                convert_to_phi((uint16_t*)(dump978_buffer + (bytesUsed & ~1)), ((bytesUsed & 1) + numBytesRead) / 2);
+                bytesUsed += numBytesRead;
+                int processed = process_buffer((uint16_t*)dump978_buffer, bytesUsed / 2, offset, dump978_callback);
+                bytesUsed -= processed * 2;
+                offset += processed;
+                if (bytesUsed > 0) {
+                    memmove(dump978_buffer, dump978_buffer + (processed * 2), bytesUsed);
+                }
+            }
+
+        }
+    }
+
+    pthread_exit(NULL);
+}
+
+void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, int type) {
+    fprintf(stdout, "\nts=%llu, rs=%d\n", timestamp, receiveErrors);
+    if(type == 0) {  // ADS-B
+        struct uat_adsb_mdb mdb;
+        uat_decode_adsb_mdb(buffer, &mdb);
+        uat_display_adsb_mdb(&mdb, stdout);
+    } else if(type == 1) {  // UAT
+        struct uat_uplink_mdb mdb;
+        uat_decode_uplink_mdb(buffer, &mdb);
+        uat_display_uplink_mdb(&mdb, stdout);
+    } else {
+        fprintf(stdout, "ERROR: Received unknown message type %d!\n", type);
+    }
+}
+
+

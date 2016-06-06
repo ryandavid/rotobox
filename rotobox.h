@@ -5,10 +5,17 @@
 #define RECEIVER_CENTER_FREQ_HZ_978 (978UL * 1000000UL)
 #define RECEIVER_SAMPLING_HZ_978    (2083334)
 
+#define RECEIVER_CENTER_FREQ_HZ_1090 (1090UL * 1000000UL)
+#define RECEIVER_SAMPLING_HZ_1090    (2400000)
+
 #define LIBRTLSDR_MIN_READ_SIZE     512  // At minimum, the read size in bytes
 
 rtlsdr_dev_t *init_SDR(const char *serialNumber, long centerFrequency, int samplingFreq);
 void *dump978_worker();
+void *dump1090_worker();
+void init_dump1090();
+void cleanup_dump1090();
 void dump978_callback(uint64_t, uint8_t *, int, int);
+void dump1090_callback(struct modesMessage *mm);
 
 #endif  // ROTOBOX_H_

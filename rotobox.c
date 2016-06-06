@@ -11,13 +11,14 @@
 
 #include <rtl-sdr.h>
 
-#include "rotobox.h"
 #include "dump978.h"
-#include "uat_decode.h"
+#include "dump1090.h"
 #include "fec.h"
+#include "uat_decode.h"
+#include "rotobox.h"
 
 volatile bool exitRequested = false;
-rtlsdr_dev_t *device978;
+rtlsdr_dev_t *device978, *device1090;
 
 void handle_sigint() {
     fprintf(stdout, "Caught SIGINT!\n");
@@ -25,10 +26,13 @@ void handle_sigint() {
 }
 
 int main(int argc, char **argv) {
-    pthread_t thread_978;
+    pthread_t thread_978 = NULL, thread_1090 = NULL;
 
     // Signal Handlers
     signal(SIGINT, handle_sigint);
+
+    // Init from dump1090
+    init_dump1090();
 
     // Init from dump978
     make_atan2_table();
@@ -38,14 +42,28 @@ int main(int argc, char **argv) {
     if(device978 != NULL) {
         int success = pthread_create(&thread_978, NULL, dump978_worker, NULL);
         if(success != 0) {
-            fprintf(stdout, "Failed to create thread (result = %d)\n", success);
+            fprintf(stdout, "Failed to create 978MHz thread (result = %d)\n", success);
         }
     }
 
-    while(exitRequested == false);
+    device1090 = init_SDR("1090", RECEIVER_CENTER_FREQ_HZ_1090, RECEIVER_SAMPLING_HZ_1090);
+    if(device1090 != NULL) {
+        int success = pthread_create(&thread_1090, NULL, dump1090_worker, NULL);
+        if(success != 0) {
+            fprintf(stdout, "Failed to create 1090MHz thread (result = %d)\n", success);
+        }
+    }
+
+    //while(exitRequested == false);
 
     pthread_join(thread_978, NULL);
+    pthread_join(thread_1090, NULL);
+
+    cleanup_dump1090();
+
     rtlsdr_close(device978);
+    rtlsdr_close(device1090);
+    
     fprintf(stdout, "Exiting!\n");
 }
 
@@ -92,27 +110,25 @@ void *dump978_worker() {
     int bytesUsed = 0;
     int offset = 0;
 
-    if(device978 != NULL) {
-        while(exitRequested == false) {
-            // Hacky way to get the number of bytes in multiples of LIBRTLSDR_MIN_READ_SIZE
-            int readLength = ((sizeof(dump978_buffer) - bytesUsed) / LIBRTLSDR_MIN_READ_SIZE) * LIBRTLSDR_MIN_READ_SIZE;
-            int readResult = rtlsdr_read_sync(device978, &dump978_buffer[0] + bytesUsed, readLength, &numBytesRead);
+    while((device978 != NULL) & (exitRequested == false)){
+        // Hacky way to get the number of bytes in multiples of LIBRTLSDR_MIN_READ_SIZE
+        int readLength = ((sizeof(dump978_buffer) - bytesUsed) / LIBRTLSDR_MIN_READ_SIZE) * LIBRTLSDR_MIN_READ_SIZE;
+        int readResult = rtlsdr_read_sync(device978, &dump978_buffer[0] + bytesUsed, readLength, &numBytesRead);
 
-            if(readResult != 0){
-                // TODO(rdavid): Do something smart to try and recover
-                fprintf(stdout, "ERROR: Device read returned %d\n", readResult);
-            } else {
-                convert_to_phi((uint16_t*)(dump978_buffer + (bytesUsed & ~1)), ((bytesUsed & 1) + numBytesRead) / 2);
-                bytesUsed += numBytesRead;
-                int processed = process_buffer((uint16_t*)dump978_buffer, bytesUsed / 2, offset, dump978_callback);
-                bytesUsed -= processed * 2;
-                offset += processed;
-                if (bytesUsed > 0) {
-                    memmove(dump978_buffer, dump978_buffer + (processed * 2), bytesUsed);
-                }
+        if(readResult != 0){
+            // TODO(rdavid): Do something smart to try and recover
+            fprintf(stdout, "ERROR: 978MHz SDR read returned %d\n", readResult);
+        } else {
+            convert_to_phi((uint16_t*)(dump978_buffer + (bytesUsed & ~1)), ((bytesUsed & 1) + numBytesRead) / 2);
+            bytesUsed += numBytesRead;
+            int processed = process_buffer((uint16_t*)dump978_buffer, bytesUsed / 2, offset, dump978_callback);
+            bytesUsed -= processed * 2;
+            offset += processed;
+            if (bytesUsed > 0) {
+                memmove(dump978_buffer, dump978_buffer + (processed * 2), bytesUsed);
             }
-
         }
+
     }
 
     pthread_exit(NULL);
@@ -133,4 +149,112 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, in
     }
 }
 
+// A mashup of dump1090
+void *dump1090_worker() {
+    char dump1090_buffer[16*16384];
+    int numBytesRead = 0;
+    int bytesUsed = 0;
+    //int offset = 0;
+    struct mag_buf *outbuf;
 
+    outbuf = &Modes.mag_buffers[0];
+
+    while((device1090 != NULL) & (exitRequested == false)){
+        int readLength = ((sizeof(dump1090_buffer) - bytesUsed) / LIBRTLSDR_MIN_READ_SIZE) * LIBRTLSDR_MIN_READ_SIZE;
+        int readResult = rtlsdr_read_sync(device1090, &dump1090_buffer[0] + bytesUsed, readLength, &numBytesRead);
+
+        if(readResult != 0){
+            // TODO(rdavid): Do something smart to try and recover
+            fprintf(stdout, "ERROR: 1090MHz SDR read returned %d\n", readResult);
+        } else {
+            outbuf->length = numBytesRead/2;
+            Modes.converter_function(&dump1090_buffer[0], &outbuf->data[0], outbuf->length, Modes.converter_state, 0);
+
+            demodulate2400(outbuf, dump1090_callback);
+        }
+    }
+    pthread_exit(NULL);
+}
+
+void dump1090_callback(struct modesMessage *mm) {
+    displayModesMessage(mm);
+}
+
+// Rip off of dump1090's Modes init, but more hardcoded to what we want for rotobox
+void init_dump1090() {
+    // Default everything to zero/NULL
+    memset(&Modes, 0, sizeof(Modes));
+
+    // Now initialise things that should not be 0/NULL to their defaults
+    Modes.gain                    = MODES_MAX_GAIN;
+    Modes.freq                    = RECEIVER_CENTER_FREQ_HZ_1090;
+    Modes.ppm_error               = MODES_DEFAULT_PPM;
+    Modes.check_crc               = 1;
+    Modes.net_heartbeat_interval  = MODES_NET_HEARTBEAT_INTERVAL;
+    Modes.interactive_display_ttl = MODES_INTERACTIVE_DISPLAY_TTL;
+    Modes.html_dir                = HTMLPATH;
+    Modes.json_interval           = 1000;
+    Modes.json_location_accuracy  = 1;
+    Modes.maxRange                = 1852 * 300; // 300NM default max range
+    Modes.sample_rate             = RECEIVER_SAMPLING_HZ_1090;
+    Modes.trailing_samples = (MODES_PREAMBLE_US + MODES_LONG_MSG_BITS + 16) * 1e-6 * Modes.sample_rate;
+    Modes.oversample              = 1;
+    Modes.mode_ac                 = 0;
+    Modes.nfix_crc                = MODES_MAX_BITERRORS;
+    Modes.phase_enhance           = 1;
+    Modes.quiet                   = 1;
+
+    Modes.maglut     = (uint16_t *) malloc(sizeof(uint16_t) * 256 * 256);
+    Modes.log10lut   = (uint16_t *) malloc(sizeof(uint16_t) * 256 * 256);
+
+    Modes.fUserLat = 0.0;
+    Modes.fUserLon = 0.0;
+
+    if ((Modes.mag_buffers[0].data = calloc(MODES_MAG_BUF_SAMPLES+Modes.trailing_samples, sizeof(uint16_t))) == NULL) {
+        fprintf(stderr, "Out of memory allocating magnitude buffer.\n");
+        exit(1);
+    }
+
+    Modes.mag_buffers[0].length = 0;
+    Modes.mag_buffers[0].dropped = 0;
+    Modes.mag_buffers[0].sampleTimestamp = 0;
+
+
+    // compute UC8 magnitude lookup table
+    for (int i = 0; i <= 255; i++) {
+        for (int q = 0; q <= 255; q++) {
+            float fI, fQ, magsq;
+
+            fI = (i - 127.5) / 127.5;
+            fQ = (q - 127.5) / 127.5;
+            magsq = fI * fI + fQ * fQ;
+            if (magsq > 1)
+                magsq = 1;
+
+            Modes.maglut[le16toh((i*256)+q)] = (uint16_t) round(sqrtf(magsq) * 65535.0);
+        }
+    }
+
+
+    // Prepare the log10 lookup table: 100log10(x)
+    Modes.log10lut[0] = 0; // poorly defined..
+    for (int i = 1; i <= 65535; i++) {
+        Modes.log10lut[i] = (uint16_t) round(100.0 * log10(i));
+    }
+
+    // Prepare error correction tables
+    modesChecksumInit(Modes.nfix_crc);
+    icaoFilterInit();
+
+    Modes.input_format = INPUT_UC8;
+
+    Modes.converter_function = init_converter(Modes.input_format,
+                                                  Modes.sample_rate,
+                                                  Modes.dc_filter,
+                                                  Modes.measure_noise, /* total power is interesting if we want noise */
+                                                  &Modes.converter_state);
+}
+
+void cleanup_dump1090() {
+    //TODO(rdavid): Actually clean up after modes
+}

@@ -7,3 +7,6 @@
 [submodule "librtlsdr"]
 	path = librtlsdr
 	url = git@github.com:ryandavid/librtlsdr.git
+[submodule "mongoose"]
+	path = mongoose
+	url = git@github.com:cesanta/mongoose.git

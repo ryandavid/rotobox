@@ -11,11 +11,15 @@
 #define LIBRTLSDR_MIN_READ_SIZE     512  // At minimum, the read size in bytes
 
 rtlsdr_dev_t *init_SDR(const char *serialNumber, long centerFrequency, int samplingFreq);
+
+void init_dump978();
 void *dump978_worker();
-void *dump1090_worker();
+void dump978_callback(uint64_t, uint8_t *, int, frame_type_t);
+void cleanup_dump978();
+
 void init_dump1090();
-void cleanup_dump1090();
-void dump978_callback(uint64_t, uint8_t *, int, int);
+void *dump1090_worker();
 void dump1090_callback(struct modesMessage *mm);
+void cleanup_dump1090();
 
 #endif  // ROTOBOX_H_

@@ -14,11 +14,23 @@
 #include "dump978.h"
 #include "dump1090.h"
 #include "fec.h"
+#include "gdl90.h"
+#include "mongoose.h"
 #include "uat_decode.h"
 #include "rotobox.h"
 
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
+
+static const char *s_http_port = "8080";
+static struct mg_serve_http_opts s_http_server_opts;
+
+// Define an event handler function
+static void ev_handler(struct mg_connection *nc, int ev, void *p) {
+  if (ev == MG_EV_HTTP_REQUEST) {
+    mg_serve_http(nc, (struct http_message *) p, s_http_server_opts);
+  }
+}
 
 void handle_sigint() {
     fprintf(stdout, "Caught SIGINT!\n");
@@ -27,38 +39,52 @@ void handle_sigint() {
 
 int main(int argc, char **argv) {
     pthread_t thread_978 = NULL, thread_1090 = NULL;
+    struct mg_mgr mgr;
+    struct mg_connection *nc;
 
     // Signal Handlers
     signal(SIGINT, handle_sigint);
+    gdl90_crcInit();
 
-    // Init from dump1090
-    init_dump1090();
+    // Init Mongoose
+    mg_mgr_init(&mgr, NULL);  // Initialize event manager object
+    nc = mg_bind(&mgr, s_http_port, ev_handler);
 
-    // Init from dump978
-    make_atan2_table();
-    init_fec();
+    // Set up HTTP server parameters
+    mg_set_protocol_http_websocket(nc);
+    s_http_server_opts.document_root = "./wwwroot";  // Serve current directory
+    s_http_server_opts.dav_document_root = ".";  // Allow access via WebDav
+    s_http_server_opts.enable_directory_listing = "yes";
 
+    // Init 978MHz receiver
     device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
     if(device978 != NULL) {
-        int success = pthread_create(&thread_978, NULL, dump978_worker, NULL);
-        if(success != 0) {
-            fprintf(stdout, "Failed to create 978MHz thread (result = %d)\n", success);
+        init_dump978();
+        if(pthread_create(&thread_978, NULL, dump978_worker, NULL) != 0) {
+            fprintf(stdout, "Failed to create 978MHz thread!\n");
         }
     }
 
+    // Init 1090MHz receiver
     device1090 = init_SDR("1090", RECEIVER_CENTER_FREQ_HZ_1090, RECEIVER_SAMPLING_HZ_1090);
     if(device1090 != NULL) {
-        int success = pthread_create(&thread_1090, NULL, dump1090_worker, NULL);
-        if(success != 0) {
-            fprintf(stdout, "Failed to create 1090MHz thread (result = %d)\n", success);
+        init_dump1090();
+        if(pthread_create(&thread_1090, NULL, dump1090_worker, NULL) != 0) {
+            fprintf(stdout, "Failed to create 1090MHz thread!\n");
         }
     }
 
-    //while(exitRequested == false);
+    // Wait until SIGINT
+    while(exitRequested == false) {
+        mg_mgr_poll(&mgr, 1000);
+    }
 
     pthread_join(thread_978, NULL);
     pthread_join(thread_1090, NULL);
 
+    mg_mgr_free(&mgr);
+
+    cleanup_dump978();
     cleanup_dump1090();
 
     rtlsdr_close(device978);
@@ -70,34 +96,32 @@ int main(int argc, char **argv) {
 
 rtlsdr_dev_t *init_SDR(const char *serialNumber, long centerFrequency, int samplingFreq) {
     rtlsdr_dev_t *device = NULL;
-
-    int numDevices = rtlsdr_get_device_count();
-
     char manufacturer[256], name[256], serial[256];
-    for (int i = 0; i < numDevices; i++) {
-        if ((rtlsdr_get_device_usb_strings(i, &manufacturer[0], &name[0], &serial[0]) == 0) &
-            (strcmp(&serial[0], serialNumber) == 0)) {
-            fprintf(stdout, "Opening device %d: %s %s, S/N: %s\n", i, manufacturer, name, serial);
 
-            if (rtlsdr_open(&device, i) == 0) {
-                fprintf(stdout, "Successfully opened device!\n");
+    int index = rtlsdr_get_index_by_serial(serialNumber);
+    if(index >= 0) {
+        rtlsdr_get_device_usb_strings(index, &manufacturer[0], &name[0], &serial[0]);
+        fprintf(stdout, "Opening device %d: %s %s, S/N: %s\n", index, manufacturer, name, serial);
 
-                rtlsdr_set_tuner_gain_mode(device, 1);  // 1 indicates manual mode
-                rtlsdr_set_tuner_gain(device, RECEIVER_GAIN_TENTHS_DB);  // Tenths of a dB
-                rtlsdr_set_center_freq(device, centerFrequency);
-                rtlsdr_set_sample_rate(device, samplingFreq);
-                rtlsdr_reset_buffer(device);
-            } else {
-                fprintf(stdout, "ERROR: Could not open device!\n");
-            }
+        if (rtlsdr_open(&device, index) == 0) {
+            fprintf(stdout, "Successfully opened device!\n");
 
-            // Since we found a match with serial numbers, break out regardless if successful
-            break;
+            rtlsdr_set_tuner_gain_mode(device, 1);  // 1 indicates manual mode
+            rtlsdr_set_tuner_gain(device, RECEIVER_GAIN_TENTHS_DB);  // Tenths of a dB
+            rtlsdr_set_center_freq(device, centerFrequency);
+            rtlsdr_set_sample_rate(device, samplingFreq);
+            rtlsdr_reset_buffer(device);
+        } else {
+            fprintf(stdout, "ERROR: Found device index %d but could not open it!\n", index);
         }
-    }
-
-    if (device == NULL) {
-        fprintf(stdout, "Could not open device with S/N '%s'\n", serialNumber);
+    } else if(index == -1) {
+        fprintf(stdout, "ERROR: Invalid serial number '%s' given!\n", serialNumber);
+    } else if(index == -2) {
+        fprintf(stdout, "ERROR: No RTL-SDR devices available!\n");
+    } else if(index == -3) {
+        fprintf(stdout, "ERROR: Could not find device with serial '%s'!\n", serialNumber);
+    } else {
+        fprintf(stdout, "ERROR: Unknown error occurred when opening RTL-SDR device!\n");
     }
 
     return device;
@@ -134,19 +158,30 @@ void *dump978_worker() {
     pthread_exit(NULL);
 }
 
-void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, int type) {
+void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, frame_type_t type) {
     fprintf(stdout, "\nts=%llu, rs=%d\n", timestamp, receiveErrors);
-    if(type == 0) {  // ADS-B
+
+    if(type == FRAME_TYPE_ADSB) {
         struct uat_adsb_mdb mdb;
         uat_decode_adsb_mdb(buffer, &mdb);
-        uat_display_adsb_mdb(&mdb, stdout);
-    } else if(type == 1) {  // UAT
+        //uat_display_adsb_mdb(&mdb, stdout);
+    } else if(type == FRAME_TYPE_UAT) {
         struct uat_uplink_mdb mdb;
         uat_decode_uplink_mdb(buffer, &mdb);
-        uat_display_uplink_mdb(&mdb, stdout);
+        //uat_display_uplink_mdb(&mdb, stdout);
     } else {
         fprintf(stdout, "ERROR: Received unknown message type %d!\n", type);
     }
+}
+
+void init_dump978() {
+    // Init from dump978
+    make_atan2_table();
+    init_fec();
+}
+
+void cleanup_dump978() {
+    //TODO(rdavid): Actually clean up after dump978
 }
 
 // A mashup of dump1090
@@ -177,7 +212,7 @@ void *dump1090_worker() {
 }
 
 void dump1090_callback(struct modesMessage *mm) {
-    displayModesMessage(mm);
+    //displayModesMessage(mm);
 }
 
 // Rip off of dump1090's Modes init, but more hardcoded to what we want for rotobox

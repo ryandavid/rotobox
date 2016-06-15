@@ -16,6 +16,7 @@
 #define retrieve_8bits(data, start_idx) (data[start_idx])
 #define retrieve_12bits_upper(data, start_idx) ((data[start_idx]<<4)+(data[start_idx+1]>>4))
 #define retrieve_12bits_lower(data, start_idx) (((data[start_idx] & 0x0F)<<8)+data[start_idx+1])
+#define retrieve_12bits_lower_s(data, start_idx) (((int16_t)(retrieve_12bits_lower(data, start_idx)<<4))>>4)
 #define retrieve_24bits(data, start_idx) ((data[start_idx]<<16) + (data[start_idx+1]<<8) + (data[start_idx+2]))
 #define retrieve_24bits_s(data, start_idx) (((int32_t)(retrieve_24bits(data, start_idx)<<8))>>8)
 
@@ -35,13 +36,13 @@
 #define GDL90_DECODE_ALTITUDE(msg)          ((retrieve_12bits_upper(msg, 10)*GDL90_ALTITUDE_FACTOR)+GDL90_ALTITUDE_OFFSET)
 #define GDL90_DECODE_LATITUDE(msg)          (retrieve_24bits_s(msg, 4)*GDL90_COUNTS_TO_DEGREES)
 #define GDL90_DECODE_LONGITUDE(msg)         (retrieve_24bits_s(msg, 7)*GDL90_COUNTS_TO_DEGREES)
-#define GDL90_DECODE_AIRBORNE(msg)          (retrieve_4bits_lower(msg, 11) & 0b00001000)
-#define GDL90_DECODE_REPORT_TYPE(msg)       (retrieve_4bits_lower(msg, 11) & 0b00000100)
+#define GDL90_DECODE_AIRBORNE(msg)          ((retrieve_4bits_lower(msg, 11) & 0b00001000) >> 3)
+#define GDL90_DECODE_REPORT_TYPE(msg)       ((retrieve_4bits_lower(msg, 11) & 0b00000100) >> 2)
 #define GDL90_DECODE_HEADING_TRACK_TYPE(msg) (retrieve_4bits_lower(msg, 11) & 0b00000011)
 #define GDL90_DECODE_NIC(msg)               (retrieve_4bits_upper(msg, 12))
 #define GDL90_DECODE_NACP(msg)              (retrieve_4bits_lower(msg, 12))
 #define GDL90_DECODE_HORZ_VELOCITY(msg)     ((float)retrieve_12bits_upper(msg, 13)*GDL90_HORZ_VELOCITY_FACTOR)
-#define GDL90_DECODE_VERT_VELOCITY(msg)     ((float)retrieve_12bits_lower(msg, 14)*GDL90_VERT_VELOCITY_FACTOR)  // Vert velocity factor of 64fpm/count
+#define GDL90_DECODE_VERT_VELOCITY(msg)     ((float)retrieve_12bits_lower_s(msg, 14)*GDL90_VERT_VELOCITY_FACTOR)  // Vert velocity factor of 64fpm/count
 #define GDL90_DECODE_HEADING(msg)           ((float)retrieve_8bits(msg, 16)*GDL90_COUNTS_TO_HEADING)
 #define GDL90_DECODE_EMITTER_CATEGORY(msg)  (retrieve_8bits(msg, 17))
 #define GDL90_DECODE_EMERGENCY_CODE(msg)    (retrieve_4bits_upper(msg, 26))

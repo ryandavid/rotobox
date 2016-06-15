@@ -17,23 +17,23 @@ void process_gdl90_message() {
     message.messageId = MSG_ID_TRAFFIC_REPORT;
 
     traffic_report_msg.trafficAlertStatus = TRAFFIC_ALERT;
-    traffic_report_msg.addressType = TIS_B_WITH_TRACK_ID;
+    traffic_report_msg.addressType = ADS_B_WITH_ICAO_ADDRESS;
 
     traffic_report_msg.address = 0x29CBB8;  // Should end up with octal 12345670
-    traffic_report_msg.latitude = 11.11111f;
-    traffic_report_msg.longitude = -22.2222f;
-    traffic_report_msg.altitude = 15454.0f;
+    traffic_report_msg.latitude = 10.90708f;
+    traffic_report_msg.longitude = -148.99488f;
+    traffic_report_msg.altitude = -500.0f;
 
     traffic_report_msg.airborne = false;
-    traffic_report_msg.reportType = REPORT_EXTRAPOLATED;
+    traffic_report_msg.reportType = REPORT_UPDATED;
     traffic_report_msg.ttType = TT_TYPE_MAG_HEADING;
 
-    traffic_report_msg.nic = 6;
-    traffic_report_msg.nacp = 7;
+    traffic_report_msg.nic = 7;
+    traffic_report_msg.nacp = 5;
 
-    traffic_report_msg.horizontalVelocity = 96.0f;
-    traffic_report_msg.verticalVelocity = 128.0f;
-    traffic_report_msg.trackOrHeading = 320.0f;
+    traffic_report_msg.horizontalVelocity = 98.0f;
+    traffic_report_msg.verticalVelocity = -128.0f;
+    traffic_report_msg.trackOrHeading = 123.0f;
     traffic_report_msg.emitterCategory = EMITTER_ROTORCRAFT;
     traffic_report_msg.callsign[0] = 'N';
     traffic_report_msg.callsign[1] = '1';
@@ -46,7 +46,6 @@ void process_gdl90_message() {
     traffic_report_msg.emergencyCode = EMERGENCY_MEDICAL;
 
     encode_gdl90_traffic_report(&message.data[0], &traffic_report_msg);
-    
 
     switch(message.messageId) {
         case(MSG_ID_TRAFFIC_REPORT):
@@ -280,35 +279,35 @@ void print_gdl90_traffic_report(gdl90_msg_traffic_report_t *decodedMsg) {
 
     switch(decodedMsg->emergencyCode) {
         case(EMERGENCY_NONE):
-        fprintf(stdout, "Emitter/Priority Code: None\n");
+        fprintf(stdout, "Emergency Code: None\n");
         break;
 
         case(EMERGENCY_GENERAL):
-        fprintf(stdout, "Emitter/Priority Code: General\n");
+        fprintf(stdout, "Emergency Code: General\n");
         break;
 
         case(EMERGENCY_MEDICAL):
-        fprintf(stdout, "Emitter/Priority Code: Medical\n");
+        fprintf(stdout, "Emergency Code: Medical\n");
         break;
 
         case(EMERGENCY_MIN_FUEL):
-        fprintf(stdout, "Emitter/Priority Code: Min Fuel\n");
+        fprintf(stdout, "Emergency Code: Min Fuel\n");
         break;
 
         case(EMERGENCY_NO_COMM):
-        fprintf(stdout, "Emitter/Priority Code: No Comm\n");
+        fprintf(stdout, "Emergency Code: No Comm\n");
         break;
 
         case(EMERGENCY_UNLAWFUL_INT):
-        fprintf(stdout, "Emitter/Priority Code: Unlawful Interference\n");
+        fprintf(stdout, "Emergency Code: Unlawful Interference\n");
         break;
 
         case(EMERGENCY_DOWNED):
-        fprintf(stdout, "Emitter/Priority Code: Downed\n");
+        fprintf(stdout, "Emergency Code: Downed\n");
         break;
 
         default:
-        fprintf(stdout, "Emitter/Priority Code: Invalid\n");
+        fprintf(stdout, "Emergency Code: Invalid\n");
         break;
     }
 
@@ -482,8 +481,8 @@ void encode_gdl90_traffic_report(uint8_t *data, gdl90_msg_traffic_report_t *deco
     int32_t convertedAltitude = (int)((decodedMsg->altitude - GDL90_ALTITUDE_OFFSET) / GDL90_ALTITUDE_FACTOR);
     data[10]    = (convertedAltitude >> 4) & 0xFF;
 
-    // Altitude and Misc
-    uint8_t misc = ((decodedMsg->airborne << 3) & 0x01) + ((decodedMsg->reportType << 2) & 0x01) + (decodedMsg->ttType & 0x03);
+    // Altitude, Misc
+    uint8_t misc = ((decodedMsg->airborne & 0x01) << 3) + ((decodedMsg->reportType & 0x01) << 2) + (decodedMsg->ttType & 0x03);
     data[11]    = ((convertedAltitude & 0x0F) << 4) + misc;
 
     // NIC, NACp
@@ -511,7 +510,8 @@ void encode_gdl90_traffic_report(uint8_t *data, gdl90_msg_traffic_report_t *deco
         data[18+i] = decodedMsg->callsign[i];
     }
 
-    data[26]    = (uint8_t)decodedMsg->emergencyCode;
+    // Emergency
+    data[26]    = (uint8_t)(decodedMsg->emergencyCode << 4);
 }
 
 // Copied from the GDL90 ICD

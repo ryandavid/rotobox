@@ -27,8 +27,8 @@
 #define GDL90_VERT_VELOCITY_FACTOR          (64.0f)
 #define GDL90_COUNTS_TO_HEADING             (360.0f/256.0f)
 
-// Ownship report, traffic report
-#define GDL90_MSG_LEN_TRAFFIC_REPORT        (28)
+#define GDL90_GEO_ALTITUDE_FACTOR           (5.0f)
+
 
 #define GDL90_DECODE_TRAFFIC_ALERT(msg)     (retrieve_4bits_upper(msg, 0))
 #define GDL90_DECODE_ADDRESS_TYPE(msg)      (retrieve_4bits_lower(msg, 0))
@@ -49,10 +49,22 @@
 #define GDL90_DECODE_CALLSIGN_START_IDX     (18)
 #define GDL90_TRAFFICREPORT_MSG_CALLSIGN_SIZE (8)
 
+// These are the lengths of the payloads, so doesn't include frame, message ID, or CRC
+#define GDL90_MSG_LEN_HEARTBEAT             (6)
+#define GDL90_MSG_LEN_OWNSHIP_REPORT        (27)
+#define GDL90_MSG_LEN_TRAFFIC_REPORT        GDL90_MSG_LEN_OWNSHIP_REPORT
+#define GDL90_MSG_LEN_OWNSHIP_GEOMETRIC     (4)
+#define GDL90_MSG_LEN_SHORT_UAT             (21)
+#define GDL90_MSG_LEN_LONG_UAT              (37)
+#define GDL90_MSG_LEN_UPLINK_DATA           (435)
 
-#define GDL90_MSG_LEN_HEARTBEAT             (7)
+#define GDL90_FLAG_BYTE         0x7E
+#define GDL90_CONTROL_ESCAPE    0x7D
+#define GDL90_ESCAPE_BYTE       0x20
 
-
+#define GDL90_UPLINK_PAYLOAD_SIZE           (432)
+#define GDL90_SHORT_UAT_PAYLOAD_SIZE        (18)
+#define GDL90_LONG_UAT_PAYLOAD_SIZE         (34)
 
 typedef enum {
     NO_ALERT        = 0,
@@ -178,6 +190,29 @@ typedef struct {
     emergency_code_t emergencyCode;
 } gdl90_msg_traffic_report_t;
 
+typedef struct {
+    float ownshipGeoAltitude;
+    bool verticalWarningIndicator;
+    float verticalFigureOfMerit;
+} gdl90_msg_ownship_geo_altitude;
+
+typedef struct {
+    bool gpsPosValid;
+    bool maintReq;
+    bool ident;
+    bool addrType;
+    bool gpsBattLow;
+    bool ratcs;
+    bool uatInitialized;
+
+    bool csaRequested;
+    bool csaNotAvailable;
+    bool utcOK;
+
+    uint32_t timestamp;
+    uint16_t messageCounts;
+} gdl90_msg_heartbeat;
+
 typedef enum {
     MSG_ID_HEARTBEAT            = 0,
     MSG_ID_INIT                 = 2,
@@ -194,16 +229,34 @@ typedef enum {
 typedef struct {
     uint8_t flag0;          // Fixed, 0x7E
     uint8_t messageId;
-    
-    uint8_t data[432+3];    // Max data size is 432 bytes, Uplink Data Message, plus CRC and flag
+
+    uint8_t data[GDL90_MSG_LEN_UPLINK_DATA + 3];  // Max data size is Uplink Data Message, plus CRC and flags
 } gdl_message_t;
 #pragma pack(pop)
 
+typedef struct {
+    uint16_t length;
+    uint8_t data[GDL90_MSG_LEN_UPLINK_DATA*2];  // Give ourselves lots of breathing room for padding
+} gdl_message_escaped_t;
+
 void gdl90_crcInit();
 uint16_t gdl90_crcCompute(uint8_t *block, uint32_t length);
-void process_gdl90_message();
+bool gdl90_verifyCrc(gdl_message_t *rawMsg, uint32_t length);
+void gdl90_insertCrc(gdl_message_t *rawMsg, uint32_t length);
+
+void decode_gdl90_message(gdl_message_t *rawMsg);
 void print_gdl90_traffic_report(gdl90_msg_traffic_report_t *decodedMsg);
-void decode_gdl90_traffic_report(uint8_t *data, gdl90_msg_traffic_report_t *decodedMsg);
-void encode_gdl90_traffic_report(uint8_t *data, gdl90_msg_traffic_report_t *decodedMsg);
+void decode_gdl90_traffic_report(gdl_message_t *rawMsg, gdl90_msg_traffic_report_t *decodedMsg);
+void encode_gdl90_traffic_report(gdl_message_t *rawMsg, gdl90_msg_traffic_report_t *decodedMsg);
+void decode_gdl90_ownship_geo_altitude(gdl_message_t *rawMsg, gdl90_msg_ownship_geo_altitude *decodedMsg);
+void encode_gdl90_ownship_geo_altitude(gdl_message_t *rawMsg, gdl90_msg_ownship_geo_altitude *decodedMsg);
+void print_gdl90_ownship_geo_altitude(gdl90_msg_ownship_geo_altitude *decodedMsg);
+void decode_gdl90_heartbeat(gdl_message_t *rawMsg, gdl90_msg_heartbeat *decodedMsg);
+void print_gdl90_heartbeat(gdl90_msg_heartbeat *decodedMsg);
+void encode_gdl90_heartbeat(gdl_message_t *rawMsg, gdl90_msg_heartbeat *decodedMsg);
+void encode_gdl90_uplink_data(gdl_message_t *rawMsg, uint8_t *payload, uint16_t payload_size);
+void encode_gdl90_basic_uat_report(gdl_message_t *rawMsg, uint8_t *payload, uint8_t payload_size);
+void encode_gdl90_long_uat_report(gdl_message_t *rawMsg, uint8_t *payload, uint8_t payload_size);
+void gdl90_escape_message_for_tx(gdl_message_t *rawMsg, gdl_message_escaped_t *escapedMsg);
 
 #endif  // GDL90_H_

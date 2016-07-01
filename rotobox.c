@@ -45,7 +45,6 @@ int main(int argc, char **argv) {
     // Signal Handlers
     signal(SIGINT, handle_sigint);
     gdl90_crcInit();
-    process_gdl90_message();
     return 0;
 
     // Init Mongoose

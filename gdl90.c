@@ -3,69 +3,40 @@
 // Copied from the GDL90 ICD
 uint16_t crc16table[256];
 
-void process_gdl90_message() {
-    gdl_message_t message;
-    gdl90_msg_traffic_report_t traffic_report_msg;
-    /*uint8_t rx_traffic_report[30] = { 0x7E, 0x14, 0x00, 0xAB, 0x45, 0x49, 0x1F, 0xEF, 0x15, 0xA8,
-                                      0x89, 0x78, 0x0F, 0x09, 0xA9, 0x07, 0xB0, 0x01, 0x20, 0x01,
-                                      0x4E, 0x38, 0x32, 0x35, 0x56, 0x20, 0x20, 0x20, 0x00, 0x7E };
+void decode_gdl90_message(gdl_message_t *rawMsg) {
+    gdl90_msg_heartbeat heartbeatMsg;
+    gdl90_msg_traffic_report_t trafficReportMsg;
+    gdl90_msg_ownship_geo_altitude ownshipGeoAltitude;
 
-    uint8_t rx_heartbeat_msg[11] = {0x7E, 0x00, 0xA1, 0x81, 0xCC, 0x51, 0x00, 0x00, 0x00, 0x00, 0x7E};
-
-    memcpy(&message, &rx_traffic_report[0], sizeof(rx_traffic_report));*/
-
-    message.messageId = MSG_ID_TRAFFIC_REPORT;
-
-    traffic_report_msg.trafficAlertStatus = TRAFFIC_ALERT;
-    traffic_report_msg.addressType = ADS_B_WITH_ICAO_ADDRESS;
-
-    traffic_report_msg.address = 0x29CBB8;  // Should end up with octal 12345670
-    traffic_report_msg.latitude = 10.90708f;
-    traffic_report_msg.longitude = -148.99488f;
-    traffic_report_msg.altitude = -500.0f;
-
-    traffic_report_msg.airborne = false;
-    traffic_report_msg.reportType = REPORT_UPDATED;
-    traffic_report_msg.ttType = TT_TYPE_MAG_HEADING;
-
-    traffic_report_msg.nic = 7;
-    traffic_report_msg.nacp = 5;
-
-    traffic_report_msg.horizontalVelocity = 98.0f;
-    traffic_report_msg.verticalVelocity = -128.0f;
-    traffic_report_msg.trackOrHeading = 123.0f;
-    traffic_report_msg.emitterCategory = EMITTER_ROTORCRAFT;
-    traffic_report_msg.callsign[0] = 'N';
-    traffic_report_msg.callsign[1] = '1';
-    traffic_report_msg.callsign[2] = '2';
-    traffic_report_msg.callsign[3] = '3';
-    traffic_report_msg.callsign[4] = '4';
-    traffic_report_msg.callsign[5] = '5';
-    traffic_report_msg.callsign[6] = 'W';
-    traffic_report_msg.callsign[7] = 'Y';
-    traffic_report_msg.emergencyCode = EMERGENCY_MEDICAL;
-
-    encode_gdl90_traffic_report(&message.data[0], &traffic_report_msg);
-
-    switch(message.messageId) {
-        case(MSG_ID_TRAFFIC_REPORT):
-            fprintf(stdout, "Processing Traffic Report Message!\n");
-            uint16_t calc_crc = gdl90_crcCompute(&message.messageId, GDL90_MSG_LEN_TRAFFIC_REPORT);
-
-            fprintf(stdout, "calc_crc = %04X\n", calc_crc);
-            decode_gdl90_traffic_report(&message.data[0], &traffic_report_msg);
-            print_gdl90_traffic_report(&traffic_report_msg);
-            break;
-
+    switch (rawMsg->messageId) {
         case(MSG_ID_HEARTBEAT):
             fprintf(stdout, "Processing Heartbeat Message\n");
+            decode_gdl90_heartbeat(rawMsg, &heartbeatMsg);
+            print_gdl90_heartbeat(&heartbeatMsg);
+            break;
+
+        case(MSG_ID_TRAFFIC_REPORT):
+            fprintf(stdout, "Processing Traffic Report Message!\n");
+            decode_gdl90_traffic_report(rawMsg, &trafficReportMsg);
+            print_gdl90_traffic_report(&trafficReportMsg);
+            break;
+
+        case(MSG_ID_OWNSHIP_REPORT):
+            fprintf(stdout, "Processing Ownship Report Message!\n");
+            decode_gdl90_traffic_report(rawMsg, &trafficReportMsg);
+            print_gdl90_traffic_report(&trafficReportMsg);
+            break;
+
+        case(MSG_ID_OWNSHIP_GEOMETRIC):
+            fprintf(stdout, "Processing Ownship Geometric Altitude Message!\n");
+            decode_gdl90_ownship_geo_altitude(rawMsg, &ownshipGeoAltitude);
+            print_gdl90_ownship_geo_altitude(&ownshipGeoAltitude);
             break;
 
         default:
-            fprintf(stdout, "Unknown message ID = %d!\n", message.messageId);
+            fprintf(stdout, "Unknown message ID = %d!\n", rawMsg->messageId);
     }
 }
-
 
 void print_gdl90_traffic_report(gdl90_msg_traffic_report_t *decodedMsg) {
     // Try and replicate the contents in section 3.5.4 of the GDL90 ICD
@@ -400,35 +371,38 @@ void print_gdl90_traffic_report(gdl90_msg_traffic_report_t *decodedMsg) {
     fprintf(stdout, "\n");
 }
 
+void decode_gdl90_traffic_report(gdl_message_t *rawMsg, gdl90_msg_traffic_report_t *decodedMsg) {
+    gdl90_verifyCrc(rawMsg, GDL90_MSG_LEN_TRAFFIC_REPORT);
 
-void decode_gdl90_traffic_report(uint8_t *data, gdl90_msg_traffic_report_t *decodedMsg) {
-    decodedMsg->trafficAlertStatus = GDL90_DECODE_TRAFFIC_ALERT(data);
-    decodedMsg->addressType = GDL90_DECODE_ADDRESS_TYPE(data);
-    decodedMsg->address = GDL90_DECODE_ADDRESS(data);
-    decodedMsg->latitude = GDL90_DECODE_LATITUDE(data);
-    decodedMsg->longitude = GDL90_DECODE_LONGITUDE(data);
-    decodedMsg->altitude = GDL90_DECODE_ALTITUDE(data);
+    decodedMsg->trafficAlertStatus = GDL90_DECODE_TRAFFIC_ALERT(rawMsg->data);
+    decodedMsg->addressType = GDL90_DECODE_ADDRESS_TYPE(rawMsg->data);
+    decodedMsg->address = GDL90_DECODE_ADDRESS(rawMsg->data);
+    decodedMsg->latitude = GDL90_DECODE_LATITUDE(rawMsg->data);
+    decodedMsg->longitude = GDL90_DECODE_LONGITUDE(rawMsg->data);
+    decodedMsg->altitude = GDL90_DECODE_ALTITUDE(rawMsg->data);
 
-    decodedMsg->airborne = GDL90_DECODE_AIRBORNE(data);
-    decodedMsg->reportType = GDL90_DECODE_REPORT_TYPE(data);
-    decodedMsg->ttType = GDL90_DECODE_HEADING_TRACK_TYPE(data);
+    decodedMsg->airborne = GDL90_DECODE_AIRBORNE(rawMsg->data);
+    decodedMsg->reportType = GDL90_DECODE_REPORT_TYPE(rawMsg->data);
+    decodedMsg->ttType = GDL90_DECODE_HEADING_TRACK_TYPE(rawMsg->data);
 
-    decodedMsg->nic = GDL90_DECODE_NIC(data);
-    decodedMsg->nacp = GDL90_DECODE_NACP(data);
+    decodedMsg->nic = GDL90_DECODE_NIC(rawMsg->data);
+    decodedMsg->nacp = GDL90_DECODE_NACP(rawMsg->data);
 
-    decodedMsg->horizontalVelocity = GDL90_DECODE_HORZ_VELOCITY(data);
-    decodedMsg->verticalVelocity = GDL90_DECODE_VERT_VELOCITY(data);
-    decodedMsg->trackOrHeading = GDL90_DECODE_HEADING(data);
-    decodedMsg->emitterCategory = GDL90_DECODE_EMITTER_CATEGORY(data);
+    decodedMsg->horizontalVelocity = GDL90_DECODE_HORZ_VELOCITY(rawMsg->data);
+    decodedMsg->verticalVelocity = GDL90_DECODE_VERT_VELOCITY(rawMsg->data);
+    decodedMsg->trackOrHeading = GDL90_DECODE_HEADING(rawMsg->data);
+    decodedMsg->emitterCategory = GDL90_DECODE_EMITTER_CATEGORY(rawMsg->data);
 
-    for(int i=0; i < GDL90_TRAFFICREPORT_MSG_CALLSIGN_SIZE; i++) {
-        decodedMsg->callsign[i] = data[GDL90_DECODE_CALLSIGN_START_IDX + i];
+    for (int i=0; i < GDL90_TRAFFICREPORT_MSG_CALLSIGN_SIZE; i++) {
+        decodedMsg->callsign[i] = rawMsg->data[GDL90_DECODE_CALLSIGN_START_IDX + i];
     }
 
-    decodedMsg->emergencyCode = GDL90_DECODE_EMERGENCY_CODE(data);
+    decodedMsg->emergencyCode = GDL90_DECODE_EMERGENCY_CODE(rawMsg->data);
 }
 
-void encode_gdl90_traffic_report(uint8_t *data, gdl90_msg_traffic_report_t *decodedMsg) {
+void encode_gdl90_traffic_report(gdl_message_t *rawMsg, gdl90_msg_traffic_report_t *decodedMsg) {
+    rawMsg->flag0 = GDL90_FLAG_BYTE;
+    rawMsg->messageId = MSG_ID_TRAFFIC_REPORT;
     /*0-st  Traffic Alert Status, Address Type
     1-aa    Address
     2-aa    Address
@@ -458,69 +432,243 @@ void encode_gdl90_traffic_report(uint8_t *data, gdl90_msg_traffic_report_t *deco
     26-px   Emergency/Priority Code */
 
     // Traffic Alert Status, Address Type
-    data[0]     = ((decodedMsg->trafficAlertStatus & 0x0F) << 4) + \
-                  (decodedMsg->addressType & 0x0F);
+    rawMsg->data[0]     = ((decodedMsg->trafficAlertStatus & 0x0F) << 4) + \
+                          (decodedMsg->addressType & 0x0F);
     // Address
-    data[1]     = (decodedMsg->address >> 16) & 0xFF;
-    data[2]     = (decodedMsg->address >> 8) & 0xFF;
-    data[3]     = decodedMsg->address & 0xFF;
+    rawMsg->data[1]     = (decodedMsg->address >> 16) & 0xFF;
+    rawMsg->data[2]     = (decodedMsg->address >> 8) & 0xFF;
+    rawMsg->data[3]     = decodedMsg->address & 0xFF;
 
     // Latitude
     int32_t convertedLatitude = (int)(decodedMsg->latitude / GDL90_COUNTS_TO_DEGREES);
-    data[4]     = (convertedLatitude >> 16) & 0xFF;
-    data[5]     = (convertedLatitude >> 8) & 0xFF;
-    data[6]     = convertedLatitude & 0xFF;
+    rawMsg->data[4]     = (convertedLatitude >> 16) & 0xFF;
+    rawMsg->data[5]     = (convertedLatitude >> 8) & 0xFF;
+    rawMsg->data[6]     = convertedLatitude & 0xFF;
 
     // Longitude
     int32_t convertedLongitude = (int)(decodedMsg->longitude / GDL90_COUNTS_TO_DEGREES);
-    data[7]     = (convertedLongitude >> 16) & 0xFF;
-    data[8]     = (convertedLongitude >> 8) & 0xFF;
-    data[9]     = convertedLongitude & 0xFF;
+    rawMsg->data[7]     = (convertedLongitude >> 16) & 0xFF;
+    rawMsg->data[8]     = (convertedLongitude >> 8) & 0xFF;
+    rawMsg->data[9]     = convertedLongitude & 0xFF;
 
     // Altitude
     int32_t convertedAltitude = (int)((decodedMsg->altitude - GDL90_ALTITUDE_OFFSET) / GDL90_ALTITUDE_FACTOR);
-    data[10]    = (convertedAltitude >> 4) & 0xFF;
+    rawMsg->data[10]    = (convertedAltitude >> 4) & 0xFF;
 
     // Altitude, Misc
     uint8_t misc = ((decodedMsg->airborne & 0x01) << 3) + ((decodedMsg->reportType & 0x01) << 2) + (decodedMsg->ttType & 0x03);
-    data[11]    = ((convertedAltitude & 0x0F) << 4) + misc;
+    rawMsg->data[11]    = ((convertedAltitude & 0x0F) << 4) + misc;
 
     // NIC, NACp
-    data[12]    = ((decodedMsg->nic & 0x0F) << 4) + (decodedMsg->nacp & 0x0F);
+    rawMsg->data[12]    = ((decodedMsg->nic & 0x0F) << 4) + (decodedMsg->nacp & 0x0F);
 
     // Horizontal Velocity
     uint16_t convertedHorzVelocity = (int)(decodedMsg->horizontalVelocity / GDL90_HORZ_VELOCITY_FACTOR);
-    data[13]    = (convertedHorzVelocity >> 4) & 0xFF;
+    rawMsg->data[13]    = (convertedHorzVelocity >> 4) & 0xFF;
 
     // Horizontal Velocity, Vertical Velocity
     int16_t convertedVertVelocity = (int)(decodedMsg->verticalVelocity / GDL90_VERT_VELOCITY_FACTOR);
-    data[14]    = ((convertedHorzVelocity & 0x0F) << 4) + ((convertedVertVelocity >> 8) & 0x0F);
+    rawMsg->data[14]    = ((convertedHorzVelocity & 0x0F) << 4) + ((convertedVertVelocity >> 8) & 0x0F);
 
     // Vertical Velocity
-    data[15]    = (convertedVertVelocity & 0xFF);
+    rawMsg->data[15]    = (convertedVertVelocity & 0xFF);
 
     // Track or Heading
-    data[16]    = (uint8_t)(decodedMsg->trackOrHeading / GDL90_COUNTS_TO_HEADING);
+    rawMsg->data[16]    = (uint8_t)(decodedMsg->trackOrHeading / GDL90_COUNTS_TO_HEADING);
 
     // Emitter Type
-    data[17]    = (uint8_t)decodedMsg->emitterCategory;
+    rawMsg->data[17]    = (uint8_t)decodedMsg->emitterCategory;
 
     // Callsign
     for(int i = 0; i < GDL90_TRAFFICREPORT_MSG_CALLSIGN_SIZE; i++) {
-        data[18+i] = decodedMsg->callsign[i];
+        rawMsg->data[18+i] = decodedMsg->callsign[i];
     }
 
     // Emergency
-    data[26]    = (uint8_t)(decodedMsg->emergencyCode << 4);
+    rawMsg->data[26]    = (uint8_t)(decodedMsg->emergencyCode << 4);
+
+    gdl90_insertCrc(rawMsg, GDL90_MSG_LEN_TRAFFIC_REPORT);
+
+    // Stuff the trailing flag byte after the CRC
+    rawMsg->data[GDL90_MSG_LEN_TRAFFIC_REPORT + 2] = GDL90_FLAG_BYTE;
+}
+
+void decode_gdl90_ownship_geo_altitude(gdl_message_t *rawMsg, gdl90_msg_ownship_geo_altitude *decodedMsg) {
+    gdl90_verifyCrc(rawMsg, GDL90_MSG_LEN_OWNSHIP_GEOMETRIC);
+    // pg 34 of GDL90 ICD
+    decodedMsg->ownshipGeoAltitude = ((int16_t)((rawMsg->data[0] << 8) + rawMsg->data[1])) * GDL90_GEO_ALTITUDE_FACTOR;
+    decodedMsg->verticalWarningIndicator = (bool)(rawMsg->data[2] >> 7);
+    decodedMsg->verticalFigureOfMerit = (float)((rawMsg->data[2] << 8) + (rawMsg->data[3]) & 0x7FFF);
+}
+
+void print_gdl90_ownship_geo_altitude(gdl90_msg_ownship_geo_altitude *decodedMsg) {
+    fprintf(stdout, "Geometric Altitude: %f\n", decodedMsg->ownshipGeoAltitude);
+    fprintf(stdout, "Vertical Warning Indicator: %d\n", decodedMsg->verticalWarningIndicator);
+    fprintf(stdout, "Vertial FOM: %f\n", decodedMsg->verticalFigureOfMerit);
+}
+
+void encode_gdl90_ownship_geo_altitude(gdl_message_t *rawMsg, gdl90_msg_ownship_geo_altitude *decodedMsg) {
+    rawMsg->flag0 = GDL90_FLAG_BYTE;
+    rawMsg->messageId = MSG_ID_OWNSHIP_GEOMETRIC;
+
+    int16_t normalizedGoAltitude = (int16_t)(decodedMsg->ownshipGeoAltitude / GDL90_GEO_ALTITUDE_FACTOR);
+    rawMsg->data[0] = (uint8_t)(normalizedGoAltitude >> 8);
+    rawMsg->data[1] = (uint8_t)(normalizedGoAltitude & 0xFF);
+
+    uint16_t normalizedVerticalFOM = (uint16_t)decodedMsg->verticalFigureOfMerit;
+    rawMsg->data[2] = (decodedMsg->verticalWarningIndicator << 7) + (normalizedVerticalFOM >> 8);
+    rawMsg->data[3] = (normalizedVerticalFOM & 0xFF);
+
+    gdl90_insertCrc(rawMsg, GDL90_MSG_LEN_OWNSHIP_GEOMETRIC);
+    // Stuff the trailing flag byte after the CRC
+    rawMsg->data[GDL90_MSG_LEN_OWNSHIP_GEOMETRIC + 2] = GDL90_FLAG_BYTE;
+}
+
+void decode_gdl90_heartbeat(gdl_message_t *rawMsg, gdl90_msg_heartbeat *decodedMsg) {
+    gdl90_verifyCrc(rawMsg, GDL90_MSG_LEN_HEARTBEAT);
+
+    decodedMsg->gpsPosValid = (bool)(rawMsg->data[0] >> 7);
+    decodedMsg->maintReq = (bool)(rawMsg->data[0] >> 6);
+    decodedMsg->ident = (bool)(rawMsg->data[0] >> 5);
+    decodedMsg->addrType = (bool)(rawMsg->data[0] >> 4);
+    decodedMsg->gpsBattLow = (bool)(rawMsg->data[0] >> 3);
+    decodedMsg->ratcs  = (bool)(rawMsg->data[0] >> 2);
+    // Bit 1 is reserved
+    decodedMsg->uatInitialized = (bool)(rawMsg->data[0] >> 0);
+
+    decodedMsg->csaRequested = (bool)(rawMsg->data[1] >> 6);
+    decodedMsg->csaNotAvailable = (bool)(rawMsg->data[1] >> 5);
+    decodedMsg->utcOK = (bool)(rawMsg->data[1] >> 0);
+
+    decodedMsg->timestamp = (uint32_t)(((rawMsg->data[1] >> 7)  << 16) +
+                                        (rawMsg->data[2]        << 8) +
+                                        rawMsg->data[3]);
+    decodedMsg->messageCounts = (uint16_t)((rawMsg->data[4] << 8) + rawMsg->data[5]);
+}
+
+void print_gdl90_heartbeat(gdl90_msg_heartbeat *decodedMsg) {
+    fprintf(stdout, "GPS Pos Valid: %d\n", decodedMsg->gpsPosValid);
+    fprintf(stdout, "Maintenance Req: %d\n", decodedMsg->maintReq);
+    fprintf(stdout, "Ident: %d\n", decodedMsg->ident);
+    fprintf(stdout, "Address Type: %d\n", decodedMsg->addrType);
+    fprintf(stdout, "GPS Battery Low: %d\n", decodedMsg->gpsBattLow);
+    fprintf(stdout, "RATCS: %d\n", decodedMsg->ratcs);
+    fprintf(stdout, "Timestamp: %d\n", decodedMsg->timestamp);
+    fprintf(stdout, "CSA Requested: %d\n", decodedMsg->csaRequested);
+    fprintf(stdout, "CSA Not Available: %d\n", decodedMsg->csaNotAvailable);
+    fprintf(stdout, "UTC OK: %d\n", decodedMsg->utcOK);
+    fprintf(stdout, "Message Counts: %d\n", decodedMsg->messageCounts);
+}
+
+void encode_gdl90_heartbeat(gdl_message_t *rawMsg, gdl90_msg_heartbeat *decodedMsg) {
+    rawMsg->flag0 = GDL90_FLAG_BYTE;
+    rawMsg->messageId = MSG_ID_HEARTBEAT;
+
+    rawMsg->data[0] = (decodedMsg->gpsPosValid   << 7) +
+                      (decodedMsg->maintReq      << 6) +
+                      (decodedMsg->ident         << 5) +
+                      (decodedMsg->addrType      << 4) +
+                      (decodedMsg->gpsBattLow    << 3) +
+                      (decodedMsg->ratcs         << 2) +
+                      // Bit 1 is reserved
+                      (decodedMsg->uatInitialized<< 0);
+
+    rawMsg->data[1] = (((decodedMsg->timestamp >> 16) & 0x01) << 7) +
+                      (decodedMsg->csaRequested      << 6) +
+                      (decodedMsg->csaNotAvailable   << 5) +
+                      // Bits 4-1 are reserved
+                      (decodedMsg->utcOK             << 0);
+
+    rawMsg->data[2] = decodedMsg->timestamp >> 8;
+    rawMsg->data[3] = decodedMsg->timestamp & 0xFF;
+
+    rawMsg->data[4] = decodedMsg->messageCounts >> 8;
+    rawMsg->data[5] = decodedMsg->messageCounts & 0xFF;
+
+    gdl90_insertCrc(rawMsg, GDL90_MSG_LEN_HEARTBEAT);
+    // Stuff the trailing flag byte after the CRC
+    rawMsg->data[GDL90_MSG_LEN_HEARTBEAT+2] = GDL90_FLAG_BYTE;
+}
+
+void encode_gdl90_basic_uat_report(gdl_message_t *rawMsg, uint8_t *payload, uint8_t payload_size) {
+    rawMsg->flag0 = GDL90_FLAG_BYTE;
+    rawMsg->messageId = MSG_ID_BASIC_REPORT;
+
+    // Time of Reception, bytes 0-2
+    // TODO(rdavid): Actually populate with the right timestamp
+    rawMsg->data[0] = 0;
+    rawMsg->data[1] = 0;
+    rawMsg->data[2] = 0;
+
+    // Make sure we clamp the payload size
+    if (payload_size > GDL90_SHORT_UAT_PAYLOAD_SIZE) {
+        payload_size = GDL90_SHORT_UAT_PAYLOAD_SIZE;
+    }
+
+    memcpy(&(rawMsg->data[3]), payload, payload_size);
+
+    // Zero out the rest of the payload, if necessary
+    memset(&(rawMsg->data[3 + payload_size]), 0, GDL90_SHORT_UAT_PAYLOAD_SIZE - payload_size);
+
+    gdl90_insertCrc(rawMsg, GDL90_MSG_LEN_SHORT_UAT);
+    rawMsg->data[GDL90_SHORT_UAT_PAYLOAD_SIZE + 2] = GDL90_FLAG_BYTE;
+}
+
+void encode_gdl90_long_uat_report(gdl_message_t *rawMsg, uint8_t *payload, uint8_t payload_size) {
+    rawMsg->flag0 = GDL90_FLAG_BYTE;
+    rawMsg->messageId = MSG_ID_LONG_REPORT;
+
+    // Time of Reception, bytes 0-2
+    // TODO(rdavid): Actually populate with the right timestamp
+    rawMsg->data[0] = 0;
+    rawMsg->data[1] = 0;
+    rawMsg->data[2] = 0;
+
+    // Make sure we clamp the payload size
+    if (payload_size > GDL90_LONG_UAT_PAYLOAD_SIZE) {
+        payload_size = GDL90_LONG_UAT_PAYLOAD_SIZE;
+    }
+
+    memcpy(&(rawMsg->data[3]), payload, payload_size);
+
+    // Zero out the rest of the payload, if necessary
+    memset(&(rawMsg->data[3 + payload_size]), 0, GDL90_LONG_UAT_PAYLOAD_SIZE - payload_size);
+
+    gdl90_insertCrc(rawMsg, GDL90_MSG_LEN_LONG_UAT);
+    rawMsg->data[GDL90_MSG_LEN_LONG_UAT + 2] = GDL90_FLAG_BYTE;
+}
+
+void encode_gdl90_uplink_data(gdl_message_t *rawMsg, uint8_t *payload, uint16_t payload_size) {
+    rawMsg->flag0 = GDL90_FLAG_BYTE;
+    rawMsg->messageId = MSG_ID_UPLINK_DATA;
+
+    // Time of Reception, bytes 0-2
+    // TODO(rdavid): Actually populate with the right timestamp
+    rawMsg->data[0] = 0;
+    rawMsg->data[1] = 0;
+    rawMsg->data[2] = 0;
+
+    // Make sure we clamp the payload size
+    if (payload_size > GDL90_UPLINK_PAYLOAD_SIZE) {
+        payload_size = GDL90_UPLINK_PAYLOAD_SIZE;
+    }
+
+    memcpy(&(rawMsg->data[3]), payload, payload_size);
+
+    // Zero out the rest of the payload, if necessary
+    memset(&(rawMsg->data[3 + payload_size]), 0, GDL90_UPLINK_PAYLOAD_SIZE - payload_size);
+
+    gdl90_insertCrc(rawMsg, GDL90_MSG_LEN_UPLINK_DATA);
+    rawMsg->data[GDL90_MSG_LEN_UPLINK_DATA + 2] = GDL90_FLAG_BYTE;
 }
 
 // Copied from the GDL90 ICD
 void gdl90_crcInit() {
     uint32_t i, bitctr, crc;
-    for (i = 0; i < 256; i++){
+    for (i = 0; i < 256; i++) {
         crc = (i << 8);
         for (bitctr = 0; bitctr < 8; bitctr++) {
-            crc=(crc<<1)^((crc&0x8000)?0x1021:0);
+            crc = (crc << 1) ^ ((crc & 0x8000) ? 0x1021 : 0);
         }
         crc16table[i] = crc;
     }
@@ -536,4 +684,74 @@ uint16_t gdl90_crcCompute(uint8_t *block, uint32_t length) {
     }
 
     return crc;
+}
+
+bool gdl90_verifyCrc(gdl_message_t *rawMsg, uint32_t length) {
+    bool crcMatch = false;
+    uint16_t calc_crc = gdl90_crcCompute(&(rawMsg->data[0]), length);
+    uint16_t rx_crc = (rawMsg->data[length+1] << 8) + (rawMsg->data[length]);
+
+    if (calc_crc == rx_crc) {
+        crcMatch = true;
+    } else {
+        fprintf(stdout, "CRC Mismatch! (Calc = %04X, Expected = %04X)\n", calc_crc, rx_crc);
+    }
+
+    return crcMatch;
+}
+
+void gdl90_insertCrc(gdl_message_t *rawMsg, uint32_t length) {
+    uint16_t calc_crc = gdl90_crcCompute(&(rawMsg->data[0]), length);
+
+    rawMsg->data[length]        = (uint8_t)(calc_crc & 0xFF);
+    rawMsg->data[length + 1]    = (uint8_t)(calc_crc >> 8);
+}
+
+void gdl90_escape_message_for_tx(gdl_message_t *rawMsg, gdl_message_escaped_t *escapedMsg) {
+    uint16_t originalLen = 0;
+
+    switch(rawMsg->messageId) {
+        case(MSG_ID_HEARTBEAT):
+            originalLen = GDL90_MSG_LEN_HEARTBEAT;
+            break;
+        case(MSG_ID_OWNSHIP_REPORT):
+            originalLen = GDL90_MSG_LEN_OWNSHIP_REPORT;
+            break;
+        case(MSG_ID_TRAFFIC_REPORT):
+            originalLen = GDL90_MSG_LEN_TRAFFIC_REPORT;
+            break;
+        case(MSG_ID_OWNSHIP_GEOMETRIC):
+            originalLen = GDL90_MSG_LEN_OWNSHIP_GEOMETRIC;
+            break;
+        case(MSG_ID_BASIC_REPORT):
+            originalLen = GDL90_MSG_LEN_SHORT_UAT;
+            break;
+        case(MSG_ID_LONG_REPORT):
+            originalLen = GDL90_MSG_LEN_LONG_UAT;
+            break;
+        case(MSG_ID_UPLINK_DATA):
+            originalLen = GDL90_MSG_LEN_UPLINK_DATA;
+            break;
+    }
+
+    originalLen += 5; // Add (2) Frame bytes, (2) CRC bytes, and (1) msg ID byte
+
+    // Init the escaped message
+    escapedMsg->length = 0;
+    memset(&(escapedMsg->data[0]), 0, sizeof(escapedMsg->data));
+    escapedMsg->data[0] = GDL90_FLAG_BYTE;
+
+    // Start escaping! Start at index 1 and stop 1 byte short so we skip the true frame bytes
+    uint16_t paddedIndex = 1;
+    for(size_t i = 1; i < originalLen - 1; i++) {
+        if ((rawMsg->data[i] == GDL90_FLAG_BYTE) || (rawMsg->data[i] == GDL90_CONTROL_ESCAPE)) {
+            escapedMsg->data[paddedIndex++] = GDL90_CONTROL_ESCAPE;
+            escapedMsg->data[paddedIndex++] = rawMsg->data[i] ^ GDL90_ESCAPE_BYTE;
+        } else {
+            escapedMsg->data[paddedIndex++] = rawMsg->data[i];
+        }
+    }
+
+    // Update the length of our now escaped message
+    escapedMsg->length = paddedIndex - 1;
 }

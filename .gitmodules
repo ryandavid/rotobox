@@ -1,15 +1,15 @@
 [submodule "dump978"]
 	path = dump978
-	url = git@github.com:ryandavid/dump978.git
+	url = https://github.com/ryandavid/dump978.git
 [submodule "dump1090"]
 	path = dump1090
-	url = git@github.com:ryandavid/dump1090.git
+	url = https://github.com/ryandavid/dump1090.git
 [submodule "librtlsdr"]
 	path = librtlsdr
-	url = git@github.com:ryandavid/librtlsdr.git
+	url = https://github.com/ryandavid/librtlsdr.git
 [submodule "mongoose"]
 	path = mongoose
-	url = git@github.com:cesanta/mongoose.git
+	url = https://github.com/cesanta/mongoose.git
 [submodule "gpsd"]
 	path = gpsd
-	url = git@github.com:ryandavid/gpsd.git
+	url = https://github.com/ryandavid/gpsd.git

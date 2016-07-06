@@ -10,3 +10,6 @@
 [submodule "mongoose"]
 	path = mongoose
 	url = git@github.com:cesanta/mongoose.git
+[submodule "gpsd"]
+	path = gpsd
+	url = git@github.com:ryandavid/gpsd.git

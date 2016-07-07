@@ -1,7 +1,7 @@
 #CFLAGS+=-O2 -g -Wall -Werror -Ifec
 CFLAGS+=-O2 -g -Wall -Ifec
 LDFLAGS=
-LIBS=-lm
+LIBS=-lm -lpthread -lgps
 LIBS_RTL=`pkg-config --libs librtlsdr libusb-1.0`
 CC=gcc
 MAKE=make

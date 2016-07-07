@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <gps.h>
 #include <rtl-sdr.h>
 
 #include "dump978.h"
@@ -21,8 +22,9 @@
 
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
+struct gps_data_t rx_gps_data;
 
-static const char *s_http_port = "8080";
+static const char *s_http_port = "80";
 static struct mg_serve_http_opts s_http_server_opts;
 
 // Define an event handler function
@@ -32,31 +34,57 @@ static void ev_handler(struct mg_connection *nc, int ev, void *p) {
   }
 }
 
+static void api_location(struct mg_connection *nc, int ev, void *ev_data) {
+    (void) ev; (void) ev_data;
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n" \
+        "{\n" \
+        "    \"status\":%d,\n" \
+        "    \"mode\":%d,\n" \
+        "    \"latitude\":%f,\n" \
+        "    \"longitude\":%f,\n" \
+        "}\n" \
+        , rx_gps_data.status, rx_gps_data.fix.mode, rx_gps_data.fix.latitude, rx_gps_data.fix.longitude);
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
 void handle_sigint() {
     fprintf(stdout, "Caught SIGINT!\n");
     exitRequested = true;
 }
 
 int main(int argc, char **argv) {
+    bool gpsd_available = false;
     pthread_t thread_978 = NULL, thread_1090 = NULL;
     struct mg_mgr mgr;
     struct mg_connection *nc;
+    
 
     // Signal Handlers
     signal(SIGINT, handle_sigint);
     gdl90_crcInit();
-    return 0;
 
-    // Init Mongoose
+    // Init GPSD
+    if(gps_open("localhost", "2947", &rx_gps_data) != 0) {
+        fprintf(stdout, "ERROR: Could not connect to GPSD\n");
+    } else {
+        gps_stream(&rx_gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
+        gpsd_available = true;
+    }
+
+    // Init Webserver
     mg_mgr_init(&mgr, NULL);  // Initialize event manager object
     nc = mg_bind(&mgr, s_http_port, ev_handler);
 
-    // Set up HTTP server parameters
-    mg_set_protocol_http_websocket(nc);
-    s_http_server_opts.document_root = "./wwwroot";  // Serve current directory
-    s_http_server_opts.dav_document_root = ".";  // Allow access via WebDav
-    s_http_server_opts.enable_directory_listing = "yes";
+    if(nc != NULL) {
+        // Set up HTTP server parameters
+        mg_set_protocol_http_websocket(nc);
+        s_http_server_opts.document_root = "./wwwroot";  // Serve current directory
+        mg_register_http_endpoint(nc, "/api_location", api_location);
+    } else {
+        fprintf(stdout, "ERROR: Could not bind to port %s\n", s_http_port);
+    }
 
+    /*
     // Init 978MHz receiver
     device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
     if(device978 != NULL) {
@@ -74,22 +102,40 @@ int main(int argc, char **argv) {
             fprintf(stdout, "Failed to create 1090MHz thread!\n");
         }
     }
+    */
 
     // Wait until SIGINT
     while(exitRequested == false) {
-        mg_mgr_poll(&mgr, 1000);
+        mg_mgr_poll(&mgr, 500);
+        if(gpsd_available == true) {
+            gps_read(&rx_gps_data);
+        }
     }
 
-    pthread_join(thread_978, NULL);
-    pthread_join(thread_1090, NULL);
+    if(thread_978 != NULL) {
+        pthread_join(thread_978, NULL);
+    }
+
+    if(device978 != NULL){
+        rtlsdr_close(device978);
+        cleanup_dump978();
+    }
+    
+    if(thread_1090 != NULL) {
+        pthread_join(thread_1090, NULL);
+    }
+
+    if(device1090 != NULL) {
+        rtlsdr_close(device1090);
+        cleanup_dump1090();
+    }
+
+    if(gpsd_available == true) {
+        gps_stream(&rx_gps_data, WATCH_DISABLE, NULL);
+        gps_close(&rx_gps_data);
+    }
 
     mg_mgr_free(&mgr);
-
-    cleanup_dump978();
-    cleanup_dump1090();
-
-    rtlsdr_close(device978);
-    rtlsdr_close(device1090);
     
     fprintf(stdout, "Exiting!\n");
 }
@@ -165,11 +211,11 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
     if(type == FRAME_TYPE_ADSB) {
         struct uat_adsb_mdb mdb;
         uat_decode_adsb_mdb(buffer, &mdb);
-        //uat_display_adsb_mdb(&mdb, stdout);
+        uat_display_adsb_mdb(&mdb, stdout);
     } else if(type == FRAME_TYPE_UAT) {
         struct uat_uplink_mdb mdb;
         uat_decode_uplink_mdb(buffer, &mdb);
-        //uat_display_uplink_mdb(&mdb, stdout);
+        uat_display_uplink_mdb(&mdb, stdout);
     } else {
         fprintf(stdout, "ERROR: Received unknown message type %d!\n", type);
     }
@@ -213,7 +259,7 @@ void *dump1090_worker() {
 }
 
 void dump1090_callback(struct modesMessage *mm) {
-    //displayModesMessage(mm);
+    displayModesMessage(mm);
 }
 
 // Rip off of dump1090's Modes init, but more hardcoded to what we want for rotobox

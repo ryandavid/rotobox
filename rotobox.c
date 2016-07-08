@@ -38,12 +38,65 @@ static void api_location(struct mg_connection *nc, int ev, void *ev_data) {
     (void) ev; (void) ev_data;
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n" \
         "{\n" \
-        "    \"status\":%d,\n" \
-        "    \"mode\":%d,\n" \
-        "    \"latitude\":%f,\n" \
-        "    \"longitude\":%f,\n" \
-        "}\n" \
-        , rx_gps_data.status, rx_gps_data.fix.mode, rx_gps_data.fix.latitude, rx_gps_data.fix.longitude);
+        "    \"status\": %d,\n" \
+        "    \"timestamp\": %f,\n" \
+        "    \"mode\": %d,\n" \
+        "    \"sats_used\": %d,\n" \
+        "    \"latitude\": %f,\n" \
+        "    \"longitude\": %f,\n" \
+        "    \"altitude\": %f,\n" \
+        "    \"track\": %f,\n" \
+        "    \"speed\": %f,\n" \
+        "    \"climb\": %f,\n" \
+        "    \"uncertainty_pos\": [\n" \
+        "         %f,\n" \
+        "         %f,\n" \
+        "         %f\n" \
+        "     ],\n" \
+        "    \"uncertainty_speed\": %f\n" \
+        "}\n", \
+        rx_gps_data.status,
+        rx_gps_data.fix.time, \
+        rx_gps_data.fix.mode, \
+        rx_gps_data.satellites_used, \
+        rx_gps_data.fix.latitude, \
+        rx_gps_data.fix.longitude, \
+        rx_gps_data.fix.altitude, \
+        rx_gps_data.fix.track, \
+        rx_gps_data.fix.speed, \
+        rx_gps_data.fix.climb, \
+        rx_gps_data.fix.epx, \
+        rx_gps_data.fix.epx, \
+        rx_gps_data.fix.epy, \
+        rx_gps_data.fix.epv, \
+        rx_gps_data.fix.eps);
+
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
+static void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
+    (void) ev; (void) ev_data;
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{\n");
+    for (int i = 0; i < rx_gps_data.satellites_visible; i++) {
+        mg_printf(nc, \
+            "    \"%d\": {\n" \
+            "        \"snr\": %f,\n" \
+            "        \"used\": %d,\n" \
+            "        \"elevation\": %d,\n" \
+            "        \"azimuth\": %d\n" \
+            "    },\n", \
+            rx_gps_data.skyview[i].PRN, \
+            rx_gps_data.skyview[i].ss, \
+            rx_gps_data.skyview[i].used, \
+            rx_gps_data.skyview[i].elevation, \
+            rx_gps_data.skyview[i].azimuth);
+    }
+    mg_printf(nc, "    \"num_satellites\": %d,\n" \
+                  "    \"num_satellites_used\": %d\n", \
+                  rx_gps_data.satellites_visible, \
+                  rx_gps_data.satellites_used);
+    mg_printf(nc, "}\n");
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
@@ -78,8 +131,9 @@ int main(int argc, char **argv) {
     if(nc != NULL) {
         // Set up HTTP server parameters
         mg_set_protocol_http_websocket(nc);
-        s_http_server_opts.document_root = "./wwwroot";  // Serve current directory
-        mg_register_http_endpoint(nc, "/api_location", api_location);
+        s_http_server_opts.document_root = "./wwwroot";
+        mg_register_http_endpoint(nc, "/api/location", api_location);
+        mg_register_http_endpoint(nc, "/api/satellites", api_satellites);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", s_http_port);
     }
@@ -206,7 +260,7 @@ void *dump978_worker() {
 }
 
 void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, frame_type_t type) {
-    fprintf(stdout, "\nts=%llu, rs=%d\n", timestamp, receiveErrors);
+    fprintf(stdout, "\nts=%lu, rs=%d\n", timestamp, receiveErrors);
 
     if(type == FRAME_TYPE_ADSB) {
         struct uat_adsb_mdb mdb;

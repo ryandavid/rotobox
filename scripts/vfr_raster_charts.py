@@ -7,6 +7,7 @@ from lxml import html
 import os
 import requests
 import shutil
+import subprocess
 import sys
 import zipfile
 
@@ -106,14 +107,25 @@ def download_chart(url, target_path):
                 f.write(chunk)
                 f.flush()
 
-        
+# Ensure current working directory is the script's path
+SCRIPT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
+os.chdir(SCRIPT_DIR)
 
-CHART_DIRECTORY = os.path.join(os.path.expanduser("~"), "charts")
+CHART_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "charts")
 CHART_CONFIG = os.path.join(CHART_DIRECTORY, "chart_config.json")
+CHART_PROCESSED_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "wwwroot", "charts")
+
+print "Chart Directory:\t{0}".format(CHART_DIRECTORY)
+print "Chart Configuration:\t{0}".format(CHART_CONFIG)
+print "Chart Output:\t\t{0}".format(CHART_PROCESSED_DIRECTORY)
 
 # Ensure the chart directory exists.
 if(os.path.exists(CHART_DIRECTORY) is False):
     os.makedirs(CHART_DIRECTORY)
+
+# Ensure the chart output directory exists.
+if(os.path.exists(CHART_PROCESSED_DIRECTORY) is False):
+    os.makedirs(CHART_PROCESSED_DIRECTORY)
 
 # Snag a list of all the latest chart versions
 charts = FAA_Charts()
@@ -170,7 +182,7 @@ for chartType in config["offline_charts"]:
             basename += chartList[chartType][chart]["current_edition"]["number"]
             expectedFiles = [os.path.join(CHART_DIRECTORY, basename + ".htm"),
                              os.path.join(CHART_DIRECTORY, basename + ".tfw"),
-                             os.path.join(CHART_DIRECTORY, basename + ".tfw")]
+                             os.path.join(CHART_DIRECTORY, basename + ".tif")]
 
             # Check that all the files we expect are present.
             allFilesExist = True
@@ -197,5 +209,26 @@ for chartType in config["offline_charts"]:
                 # Finally clean up after ourselves.
                 os.remove(downloadFullpath)
 
+                # Tile the maps!
+                mapFilename = os.path.join(CHART_DIRECTORY, basename + ".tif")
+                vrtFilename = os.path.join(CHART_DIRECTORY, basename + ".vrt")
+                print " => Converting {0}".format(basename)
+                command = ["gdal_translate",
+                           "-q",
+                           "-of", "vrt",
+                           "-expand", "rgba",
+                           mapFilename,
+                           vrtFilename]
+                subprocess.call(command)
+
+                print " => Tiling {0} (This will take a while...)".format(basename)
+                command = ["gdal2tiles.py",
+                           "-w", "none",
+                           vrtFilename,
+                           CHART_PROCESSED_DIRECTORY]
+                subprocess.call(command)
+
             else:
                 print " => {0} is up to date locally!".format(chart)
+
+print "\nAll done!\n"

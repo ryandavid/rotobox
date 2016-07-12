@@ -34,3 +34,13 @@
 rotobox
 .DS_Store
 ._*
+
+
+# Downloaded charts
+charts/*.htm
+charts/*.tfw
+charts/*.tif
+
+# Converted charts
+charts/*.vrt
+wwwroot/charts/*

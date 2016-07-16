@@ -1,0 +1,161 @@
+Install dependencies
+	sudo apt-get install build-essential libncurses-dev subversion git cmake libusb-1.0-0-dev socat python-pip libxml2-dev libxslt-dev libproj-dev
+
+Python dependencies
+	sudo pip install lxml requests clint
+
+Modify the boot.ini to select the resolution you want
+	# setenv m "1600x900p60hz"
+	setenv m "1680x1050p60hz"
+	# setenv m "1920x1200p60hz"
+
+Default username/password is odroid:odroid.  Lets change it
+	sudo adduser temporary
+	sudo adduser temporary sudo
+
+Log out and log in as 'temporary'
+	sudo usermod -l roto odroid
+	sudo usermod -d /home/roto -m roto
+
+Log back in as roto and change the password
+	passwd
+
+Delete the temporary user
+	sudo userdel temporary
+
+Finally change the hostname
+	sudo nano /etc/hostname
+	sudo nano /etc/hosts
+	sudo reboot
+
+Add user to dialout group
+	sudo usermod -a -G dialout roto
+
+Resize the root partition
+	fdisk /dev/mmcblk0
+	p
+	d
+	2
+	n
+	p
+	2
+	<Enter>
+	<Enter>
+	p
+	w
+
+	sudo reboot
+
+	resize2fs /dev/mmcblk0p2
+
+Edit /etc/modprobe.d/blacklist.conf, and add:
+	blacklist dvb_usb_rtl28xxu
+
+Make librtlsdr
+	git clone git@github.com:librtlsdr/librtlsdr.git
+	cd librtlsdr
+	makedir build
+	cd build
+	cmake ../ -DINSTALL_UDEV_RULES=ON
+	make -j4
+	sudo make install
+	sudo ldconfig
+
+Make dump1090
+git clone git@github.com:mutability/dump1090.git
+make -j4
+
+
+
+
+building on osx
+sudo port install cmake libusb pkgconfig
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+
+
+Enabling PPS on rotobox
+http://odroid.com/dokuwiki/doku.php?id=en:c2_gpio_pps
+
+	apt-get install pps-tools
+	echo pps-gpio > /etc/modules-load.d/pps-gpio.conf
+	echo options pps-gpio gpio_pin=237 >> /etc/modprobe.d/pps-gpio.conf
+	modprobe pps-gpio
+
+Add udev rules
+	SUBSYSTEM=="pps", MODE="0664" GROUP="dialout"
+
+Testing PPS
+	ppstest /dev/pps0
+
+Change timezone to Zulu
+	sudo dpkg-reconfigure tzdata
+	Scroll down to 'None of the above'
+	Select 'UTC'
+
+Setting up NTP
+	Change User in /etc/init.d/ntp to 'root'
+
+Update /etc/ntp.conf
+	pool us.pool.ntp.org iburst
+
+	driftfile /var/lib/ntp/ntp.drift
+	logfile /var/log/ntp.log
+
+	# Allow large deltas since the default clock is the kernel compile time
+	tinker panic 0
+
+	#restrict default kod nomodify notrap nopeer noquery
+	#restrict -6 default kod nomodify notrap nopeer noquery
+	#restrict 127.0.0.1 mask 255.255.255.0
+	#restrict -6 ::1
+
+	# GPS Serial data reference (NTP0)
+	server 127.127.28.0 minpoll 4 maxpoll 4 prefer
+	fudge 127.127.28.0 time1 0.150 refid GPS
+
+	# GPS PPS reference (NTP1)
+	server 127.127.22.0 prefer true minpoll 4 maxpoll 4
+	fudge 127.127.22.0 refid PPS
+
+
+Install prerequisites on rotobox
+	sudo apt-get install libcap-dev libdbus-1-dev libdbus-glib-1-dev
+
+Clone GPSD
+	cd ~/src
+	git clone git://git.sv.gnu.org/gpsd.git
+	cd gpsd
+	scons pps=False
+	scons install
+
+Add the following to /etc/rc.local
+	gpsd -nG /dev/ttyS1 /dev/pps0
+
+Switch the governor in rc.local
+	cpufreq-set -g performance
+
+Export the following GPIO
+	236		GPS_RESET
+	237		GPS_TIMEPULSE
+	238		KEEP_ALIVE
+	247		USER_LED
+	249		HEATER_ENABLE
+
+	In /etc/rc.local
+	echo 236 > /sys/class/gpio/export
+	echo 238 > /sys/class/gpio/export
+	echo 247 > /sys/class/gpio/export
+	echo 249 > /sys/class/gpio/export
+
+Make gdal
+	git clone https://github.com/OSGeo/gdal.git
+	./configure --with-python --with-static-proj
+	make -j3
+	sudo make install
+
+Download the latest FAA charts, airports, etc
+	Modify charts/chart_config.json to specify which charts you want, and then run:
+	scripts/download_charts.py
+
+
+

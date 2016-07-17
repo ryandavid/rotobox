@@ -35,7 +35,6 @@ rotobox
 .DS_Store
 ._*
 
-
 # Downloaded charts
 charts/*.htm
 charts/*.tfw
@@ -48,3 +47,4 @@ wwwroot/charts/*
 # Downloaded airport info
 airports/*.zip
 airports/*.xml
+airports/*.sqlite

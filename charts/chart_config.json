@@ -1,7 +1,1267 @@
 {
+    "available_charts": {
+        "helicopter": {
+            "Baltimore Washington Heli": {
+                "current_edition": {
+                    "date": "2015-07-23T00:00:00", 
+                    "number": "10", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/Balt_Wash_Heli_10.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "Boston Heli": {
+                "current_edition": {
+                    "date": "2014-11-13T00:00:00", 
+                    "number": "7", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/Boston_Heli_7.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "Chicago Heli": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "8", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/Chicago_Heli_8.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "Dallas Ft. Worth Heli": {
+                "current_edition": {
+                    "date": "2014-03-06T00:00:00", 
+                    "number": "6", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/Dallas-Ft_Worth_Heli_6.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "Detroit Heli": {
+                "current_edition": {
+                    "date": "2014-04-03T00:00:00", 
+                    "number": "2", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/Detroit_Heli_2.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "Houston Heli": {
+                "current_edition": {
+                    "date": "2013-03-07T00:00:00", 
+                    "number": "7", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/Houston_Heli_7.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "8", 
+                    "url": null
+                }
+            }, 
+            "Los Angeles Heli": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "11", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/Los_Angeles_Heli_11.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "New York Heli": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "11", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/New_York_Heli_11.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "U.S Gulf Coast": {
+                "current_edition": {
+                    "date": "2015-12-10T00:00:00", 
+                    "number": "30", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/heli_files/US_Gulf_Coast_Heli_30.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "31", 
+                    "url": null
+                }
+            }
+        }, 
+        "sectional": {
+            "Albuquerque": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "97", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Albuquerque_97.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "98", 
+                    "url": null
+                }
+            }, 
+            "Anchorage": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "98", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Anchorage_98.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "99", 
+                    "url": null
+                }
+            }, 
+            "Atlanta": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Atlanta_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "97", 
+                    "url": null
+                }
+            }, 
+            "Bethel": {
+                "current_edition": {
+                    "date": "2015-07-23T00:00:00", 
+                    "number": "57", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Bethel_57.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "58", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Bethel_58.zip"
+                }
+            }, 
+            "Billings": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "91", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Billings_91.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "92", 
+                    "url": null
+                }
+            }, 
+            "Brownsville": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Brownsville_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "97", 
+                    "url": null
+                }
+            }, 
+            "Cape Lisburne": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "50", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Cape_Lisburne_50.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-06-22T00:00:00", 
+                    "number": "51", 
+                    "url": null
+                }
+            }, 
+            "Charlotte": {
+                "current_edition": {
+                    "date": "2016-01-07T00:00:00", 
+                    "number": "99", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Charlotte_99.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "100", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Charlotte_100.zip"
+                }
+            }, 
+            "Cheyenne": {
+                "current_edition": {
+                    "date": "2016-01-07T00:00:00", 
+                    "number": "93", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Cheyenne_93.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Cheyenne_94.zip"
+                }
+            }, 
+            "Chicago": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "92", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Chicago_92.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "93", 
+                    "url": null
+                }
+            }, 
+            "Cincinnati": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Cincinnati_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "97", 
+                    "url": null
+                }
+            }, 
+            "Cold Bay": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "49", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Cold_Bay_49.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-02-02T00:00:00", 
+                    "number": "50", 
+                    "url": null
+                }
+            }, 
+            "Dallas-Ft Worth": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Dallas-Ft_Worth_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "97", 
+                    "url": null
+                }
+            }, 
+            "Dawson": {
+                "current_edition": {
+                    "date": "2015-10-15T00:00:00", 
+                    "number": "49", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Dawson_49.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "50", 
+                    "url": null
+                }
+            }, 
+            "Denver": {
+                "current_edition": {
+                    "date": "2016-01-07T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Denver_94.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "95", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Denver_95.zip"
+                }
+            }, 
+            "Detroit": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "92", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Detroit_92.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "93", 
+                    "url": null
+                }
+            }, 
+            "Dutch Harbor": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "49", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Dutch_Harbor_49.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-03-02T00:00:00", 
+                    "number": "50", 
+                    "url": null
+                }
+            }, 
+            "El Paso": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/El_Paso_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "97", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/El_Paso_97.zip"
+                }
+            }, 
+            "Fairbanks": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "98", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Fairbanks_98.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "99", 
+                    "url": null
+                }
+            }, 
+            "Great Falls": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "91", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Great_Falls_91.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-01-05T00:00:00", 
+                    "number": "92", 
+                    "url": null
+                }
+            }, 
+            "Green Bay": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "92", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Green_Bay_92.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "93", 
+                    "url": null
+                }
+            }, 
+            "Halifax": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Halifax_94.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "95", 
+                    "url": null
+                }
+            }, 
+            "Hawaiian Islands": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Hawaiian_Islands_94.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "95", 
+                    "url": null
+                }
+            }, 
+            "Houston": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "97", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Houston_97.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "98", 
+                    "url": null
+                }
+            }, 
+            "Jacksonville": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "97", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Jacksonville_97.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "98", 
+                    "url": null
+                }
+            }, 
+            "Juneau": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "56", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Juneau_56.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-03-30T00:00:00", 
+                    "number": "57", 
+                    "url": null
+                }
+            }, 
+            "Kansas City": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Kansas_City_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "97", 
+                    "url": null
+                }
+            }, 
+            "Ketchikan": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "56", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Ketchikan_56.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-04-27T00:00:00", 
+                    "number": "57", 
+                    "url": null
+                }
+            }, 
+            "Klamath Falls": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Klamath_Falls_94.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "95", 
+                    "url": null
+                }
+            }, 
+            "Kodiak": {
+                "current_edition": {
+                    "date": "2015-11-12T00:00:00", 
+                    "number": "56", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Kodiak_56.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "57", 
+                    "url": null
+                }
+            }, 
+            "Lake Huron": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "91", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Lake_Huron_91.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "92", 
+                    "url": null
+                }
+            }, 
+            "Las Vegas": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "95", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Las_Vegas_95.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "96", 
+                    "url": null
+                }
+            }, 
+            "Los Angeles": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "99", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Los_Angeles_99.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "100", 
+                    "url": null
+                }
+            }, 
+            "McGrath": {
+                "current_edition": {
+                    "date": "2015-07-23T00:00:00", 
+                    "number": "57", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/McGrath_57.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "58", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/McGrath_58.zip"
+                }
+            }, 
+            "Memphis": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Memphis_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "97", 
+                    "url": null
+                }
+            }, 
+            "Miami": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "98", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Miami_98.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "99", 
+                    "url": null
+                }
+            }, 
+            "Montreal": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Montreal_94.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "95", 
+                    "url": null
+                }
+            }, 
+            "New Orleans": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "98", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/New_Orleans_98.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "99", 
+                    "url": null
+                }
+            }, 
+            "New York": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "93", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/New_York_93.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "94", 
+                    "url": null
+                }
+            }, 
+            "Nome": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "57", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Nome_57.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-06-22T00:00:00", 
+                    "number": "58", 
+                    "url": null
+                }
+            }, 
+            "Omaha": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "93", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Omaha_93.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Omaha_94.zip"
+                }
+            }, 
+            "Phoenix": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "95", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Phoenix_95.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "96", 
+                    "url": null
+                }
+            }, 
+            "Point Barrow": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "78", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Point_Barrow_78.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-04-27T00:00:00", 
+                    "number": "79", 
+                    "url": null
+                }
+            }, 
+            "Salt Lake City": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "95", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Salt_Lake_City_95.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "96", 
+                    "url": null
+                }
+            }, 
+            "San Antonio": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "97", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/San_Antonio_97.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "98", 
+                    "url": null
+                }
+            }, 
+            "San Francisco": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/San_Francisco_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "97", 
+                    "url": null
+                }
+            }, 
+            "Seattle": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "91", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Seattle_91.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "92", 
+                    "url": null
+                }
+            }, 
+            "Seward": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "98", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Seward_98.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "99", 
+                    "url": null
+                }
+            }, 
+            "St Louis": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "94", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/St_Louis_94.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "95", 
+                    "url": null
+                }
+            }, 
+            "Twin Cities": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "92", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Twin_Cities_92.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-01-05T00:00:00", 
+                    "number": "93", 
+                    "url": null
+                }
+            }, 
+            "Washington": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "99", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Washington_99.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "100", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Washington_100.zip"
+                }
+            }, 
+            "Western Aleutian Islands": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "49", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Western_Aleutian_Islands_49.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-03-02T00:00:00", 
+                    "number": "50", 
+                    "url": null
+                }
+            }, 
+            "Whitehorse": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "56", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Whitehorse_56.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-03-30T00:00:00", 
+                    "number": "57", 
+                    "url": null
+                }
+            }, 
+            "Wichita": {
+                "current_edition": {
+                    "date": "2016-01-07T00:00:00", 
+                    "number": "96", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Wichita_96.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "97", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/sectional_files/Wichita_97.zip"
+                }
+            }
+        }, 
+        "terminalArea": {
+            "Anchorage-Fairbanks": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "77", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Anchorage-Fairbanks_TAC_77.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "78", 
+                    "url": null
+                }
+            }, 
+            "Atlanta": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "93", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Atlanta_TAC_93.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "94", 
+                    "url": null
+                }
+            }, 
+            "Baltimore-Washington": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "92", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Baltimore-Washington_TAC_92.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "93", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Baltimore-Washington_TAC_93.zip"
+                }
+            }, 
+            "Boston": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "88", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Boston_TAC_88.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "89", 
+                    "url": null
+                }
+            }, 
+            "Charlotte": {
+                "current_edition": {
+                    "date": "2016-01-07T00:00:00", 
+                    "number": "54", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Charlotte_TAC_54.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "55", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Charlotte_TAC_55.zip"
+                }
+            }, 
+            "Chicago": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "92", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Chicago_TAC_92.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "93", 
+                    "url": null
+                }
+            }, 
+            "Cincinnati": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "35", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Cincinnati_TAC_35.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "36", 
+                    "url": null
+                }
+            }, 
+            "Cleveland": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "85", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Cleveland_TAC_85.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "86", 
+                    "url": null
+                }
+            }, 
+            "Dallas-Ft Worth": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "87", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Dallas-Ft_Worth_TAC_87.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "88", 
+                    "url": null
+                }
+            }, 
+            "Denver-Colorado Springs": {
+                "current_edition": {
+                    "date": "2016-01-07T00:00:00", 
+                    "number": "85", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Denver_TAC_85.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "86", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Denver_TAC_86.zip"
+                }
+            }, 
+            "Detroit": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "85", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Detroit_TAC_85.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "86", 
+                    "url": null
+                }
+            }, 
+            "Houston": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "85", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Houston_TAC_85.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "86", 
+                    "url": null
+                }
+            }, 
+            "Kansas City": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "83", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Kansas_City_TAC_83.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "84", 
+                    "url": null
+                }
+            }, 
+            "Las Vegas": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "84", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Las_Vegas_TAC_84.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "85", 
+                    "url": null
+                }
+            }, 
+            "Los Angeles": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "73", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Los_Angeles_TAC_73.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "74", 
+                    "url": null
+                }
+            }, 
+            "Memphis": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "54", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Memphis_TAC_54.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "55", 
+                    "url": null
+                }
+            }, 
+            "Miami": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "87", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Miami_TAC_87.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "88", 
+                    "url": null
+                }
+            }, 
+            "Minneapolis-St Paul": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "86", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Minneapolis-St_Paul_TAC_86.zip"
+                }, 
+                "next_edition": {
+                    "date": "2017-01-05T00:00:00", 
+                    "number": "87", 
+                    "url": null
+                }
+            }, 
+            "New Orleans": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "83", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/New_Orleans_TAC_83.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "84", 
+                    "url": null
+                }
+            }, 
+            "New York": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "91", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/New_York_TAC_91.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-11-10T00:00:00", 
+                    "number": "92", 
+                    "url": null
+                }
+            }, 
+            "Philadelphia": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "83", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Philadelphia_TAC_83.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-07-21T00:00:00", 
+                    "number": "84", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Philadelphia_TAC_84.zip"
+                }
+            }, 
+            "Phoenix": {
+                "current_edition": {
+                    "date": "2016-04-28T00:00:00", 
+                    "number": "54", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Phoenix_TAC_54.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "55", 
+                    "url": null
+                }
+            }, 
+            "Pittsburgh": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "85", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Pittsburgh_TAC_85.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-09-15T00:00:00", 
+                    "number": "86", 
+                    "url": null
+                }
+            }, 
+            "Puerto Rico-VI": {
+                "current_edition": {
+                    "date": "2015-10-15T00:00:00", 
+                    "number": "42", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Puerto_Rico-VI_TAC_42.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "43", 
+                    "url": null
+                }
+            }, 
+            "Salt Lake City": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "54", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Salt_Lake_City_TAC_54.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-10-13T00:00:00", 
+                    "number": "55", 
+                    "url": null
+                }
+            }, 
+            "San Diego": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "72", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/San_Diego_TAC_72.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "73", 
+                    "url": null
+                }
+            }, 
+            "San Francisco": {
+                "current_edition": {
+                    "date": "2016-03-03T00:00:00", 
+                    "number": "88", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/San_Francisco_TAC_88.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "89", 
+                    "url": null
+                }
+            }, 
+            "Seattle": {
+                "current_edition": {
+                    "date": "2016-05-26T00:00:00", 
+                    "number": "86", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Seattle_TAC_86.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "87", 
+                    "url": null
+                }
+            }, 
+            "St Louis": {
+                "current_edition": {
+                    "date": "2016-06-23T00:00:00", 
+                    "number": "86", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/St_Louis_TAC_86.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-12-08T00:00:00", 
+                    "number": "87", 
+                    "url": null
+                }
+            }, 
+            "Tampa-Orlando": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "52", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/tac_files/Tampa_TAC_52.zip"
+                }, 
+                "next_edition": {
+                    "date": "2016-08-18T00:00:00", 
+                    "number": "53", 
+                    "url": null
+                }
+            }
+        }, 
+        "world": {
+            "CD-10": {
+                "current_edition": {
+                    "date": "2015-06-25T00:00:00", 
+                    "number": "25", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CD-10_25.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CE-12/13": {
+                "current_edition": {
+                    "date": "2015-04-02T00:00:00", 
+                    "number": "28", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CE-13_28.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CF-17": {
+                "current_edition": {
+                    "date": "2015-07-23T00:00:00", 
+                    "number": "45", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CF-17_45.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CF-18": {
+                "current_edition": {
+                    "date": "2015-10-15T00:00:00", 
+                    "number": "45", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CF-18_45.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CG-21": {
+                "current_edition": {
+                    "date": "2015-09-17T00:00:00", 
+                    "number": "46", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CG-21_46.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CH-22": {
+                "current_edition": {
+                    "date": "2015-09-17T00:00:00", 
+                    "number": "22", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CH-22_22.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CH-23": {
+                "current_edition": {
+                    "date": "2015-10-15T00:00:00", 
+                    "number": "46", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CH-23_46.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CH-24": {
+                "current_edition": {
+                    "date": "2015-08-20T00:00:00", 
+                    "number": "46", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CH-24_46.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CH-25": {
+                "current_edition": {
+                    "date": "2015-12-10T00:00:00", 
+                    "number": "46", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CH-25_46.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CJ-26": {
+                "current_edition": {
+                    "date": "2016-02-04T00:00:00", 
+                    "number": "22", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CJ-26_22.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }, 
+            "CJ-27": {
+                "current_edition": {
+                    "date": "2016-03-31T00:00:00", 
+                    "number": "22", 
+                    "url": "http://aeronav.faa.gov/content/aeronav/wac_files/CJ-27_22.zip"
+                }, 
+                "next_edition": {
+                    "date": null, 
+                    "number": null, 
+                    "url": null
+                }
+            }
+        }
+    }, 
     "offline_charts": {
         "sectional": [
-            "San Francisco",
+            "San Francisco", 
+            "Las Vegas"
         ]
-    }
+    }, 
+    "updated": "2016-07-17T21:58:35.017386"
 }

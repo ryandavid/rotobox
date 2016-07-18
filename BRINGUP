@@ -157,5 +157,8 @@ Download the latest FAA charts, airports, etc
 	Modify charts/chart_config.json to specify which charts you want, and then run:
 	scripts/download_charts.py
 
+Add rotobox scripts dir to path
+	sudo nano ~/.bashrc
+	PATH=/home/roto/src/rotobox/scripts:$PATH
 
 

@@ -18,7 +18,6 @@ class FAA_Charts():
     def __init__(self):
         self.chart_list = {}
 
-
     def update_all_vfr_charts(self):
         self.chart_list = {}
         page = requests.get(self.URL_VFR_RASTER_CHARTS)
@@ -171,13 +170,18 @@ for chartType in config["offline_charts"]:
 
             if(chartType == "sectional"):
                 basename_suffix = "_SEC_"
+                shapefile_suffix = "_SEC.shp"
             elif(chartType == "terminalArea"):
                 basename_suffix = "_TAC_"
+                shapefile_suffix = "_TAC.shp"
             elif(chartType == "world"):
                 basename_suffix = "_WAC_"
+                shapefile_suffix = "_WAC.shp"
             elif(chartType == "helicopter"):
                 basename_suffix = "_HEL_"
+                shapefile_suffix = "_HEL.shp"
 
+            shapefilepath = os.path.join(CHART_DIRECTORY, "shapefiles", chart.replace(" ", "_") + shapefile_suffix)
             basename = chart.replace(" ", "_") + basename_suffix
             basename += chartList[chartType][chart]["current_edition"]["number"]
             expectedFiles = [os.path.join(CHART_DIRECTORY, basename + ".htm"),
@@ -190,43 +194,60 @@ for chartType in config["offline_charts"]:
                 if(os.path.exists(file) is False):
                     allFilesExist = False
                     break
-
+            allFilesExist=False
             # If all the files don't exist, time to grab the chart.
             if(allFilesExist == False):
                 url = chartList[chartType][chart]["current_edition"]["url"]
                 downloadFullpath = os.path.join(CHART_DIRECTORY, os.path.basename(url))
                 print " => Fetching {0}".format(url)
-                download_chart(url, downloadFullpath)
-                
-                # Unzip individually instead of one fell swoop so we can touch up the filenames.
-                with zipfile.ZipFile(downloadFullpath) as zf:
-                    for item in zf.infolist():
-                        filename = zf.extract(item, CHART_DIRECTORY)
-                        new_filename = filename.replace(" ", "_")
-                        shutil.move(filename, new_filename)
-                        print " => Unpacking {0}".format(new_filename)
-
-                # Finally clean up after ourselves.
-                os.remove(downloadFullpath)
+                #download_chart(url, downloadFullpath)
+                #
+                ## Unzip individually instead of one fell swoop so we can touch up the filenames.
+                #with zipfile.ZipFile(downloadFullpath) as zf:
+                #    for item in zf.infolist():
+                #        filename = zf.extract(item, CHART_DIRECTORY)
+                #        new_filename = filename.replace(" ", "_")
+                #        shutil.move(filename, new_filename)
+                #        print " => Unpacking {0}".format(new_filename)
+                #
+                ## Finally clean up after ourselves.
+                #os.remove(downloadFullpath)
 
                 # Tile the maps!
                 mapFilename = os.path.join(CHART_DIRECTORY, basename + ".tif")
+                croppedFilename = os.path.join(CHART_DIRECTORY, basename + "cropped.tif")
+                print " => Cropping legend from chart"
+                command = ["gdalwarp",
+                           "-dstnodata", "0",
+                           "-q",
+                           "-cutline",
+                           shapefilepath,
+                           "-crop_to_cutline",
+                           mapFilename,
+                           croppedFilename]
+                subprocess.call(command)
+
                 vrtFilename = os.path.join(CHART_DIRECTORY, basename + ".vrt")
                 print " => Converting {0}".format(basename)
                 command = ["gdal_translate",
                            "-q",
                            "-of", "vrt",
                            "-expand", "rgba",
-                           mapFilename,
+                           croppedFilename,
                            vrtFilename]
                 subprocess.call(command)
 
                 print " => Tiling {0} (This will take a while...)".format(basename)
                 command = ["gdal2tiles.py",
                            "-w", "none",
+                           "-q",
                            vrtFilename,
                            CHART_PROCESSED_DIRECTORY]
                 subprocess.call(command)
+
+                # Clean up
+                os.remove(croppedFilename)
+                os.remove(vrtFilename)
 
             else:
                 print " => {0} is up to date locally!".format(chart)

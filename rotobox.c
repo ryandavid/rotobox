@@ -19,10 +19,12 @@
 #include "mongoose.h"
 #include "uat_decode.h"
 #include "rotobox.h"
+#include "sqlite3.h"
 
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
 struct gps_data_t rx_gps_data;
+sqlite3 *db;
 
 static const char *s_http_port = "80";
 static struct mg_serve_http_opts s_http_server_opts;
@@ -34,8 +36,44 @@ static void ev_handler(struct mg_connection *nc, int ev, void *p) {
   }
 }
 
+static const char * get_argument_value(struct mg_str *args, const char *name) {
+    char scratch[1024];
+    size_t length = sizeof(scratch);
+
+    // Assume we use the entire buffer, and reduce it if we can.
+    if (args->len < length) {
+        length = args->len;
+    }
+
+    // Copy it over and then null terminate it.
+    memcpy(&scratch[0], args->p, length);
+    scratch[length] = 0x00;
+
+    char *argName = NULL;
+    char *argValue = NULL;
+    char *pos = strtok(&scratch[0], "=");
+    while (pos != NULL) {
+        // Copy over the argument name.
+        argName = pos;
+
+        // Snag the value. TODO make this more robust
+        pos = strtok(NULL, "&");
+
+        // Check this is the argument we are interested in.
+        if(strcmp(name, argName) == 0){
+            argValue = pos;
+            break;
+        }
+        // Set up for the next argument
+        pos = strtok(NULL, "=");
+    }
+
+    return argValue;
+}
+
 static void api_location(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev; (void) ev_data;
+    (void) ev;
+    (void) ev_data;
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n" \
         "{\n" \
         "    \"status\": %d,\n" \
@@ -66,7 +104,6 @@ static void api_location(struct mg_connection *nc, int ev, void *ev_data) {
         rx_gps_data.fix.speed, \
         rx_gps_data.fix.climb, \
         rx_gps_data.fix.epx, \
-        rx_gps_data.fix.epx, \
         rx_gps_data.fix.epy, \
         rx_gps_data.fix.epv, \
         rx_gps_data.fix.eps);
@@ -75,7 +112,8 @@ static void api_location(struct mg_connection *nc, int ev, void *ev_data) {
 }
 
 static void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev; (void) ev_data;
+    (void) ev;
+    (void) ev_data;
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{\n");
     for (int i = 0; i < rx_gps_data.satellites_visible; i++) {
         mg_printf(nc, \
@@ -97,6 +135,35 @@ static void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
                   rx_gps_data.satellites_used);
     mg_printf(nc, "}\n");
 
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
+static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_data) {
+    (void) ev;
+    struct http_message *message = (struct http_message *)ev_data;
+    sqlite3_stmt *stmt;
+    
+    const char *query = "SELECT * FROM airports WHERE icao_name LIKE ?;";
+    const char *name = get_argument_value(&message->query_string, "name");
+
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{\n");
+
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, name, strlen(name), SQLITE_TRANSIENT);
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        size_t numColumns = sqlite3_column_count(stmt);
+        mg_printf(nc, "    [\n");
+        for (size_t i = 0; i < numColumns; i++) {
+            mg_printf(nc,
+                      "        \"%s\" = \"%s\",\n",
+                      sqlite3_column_name(stmt, i),
+                      sqlite3_column_text(stmt, i));
+        }
+        mg_printf(nc, "    ],\n");
+    }
+
+    mg_printf(nc, "}\n");
+    sqlite3_finalize(stmt);
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
@@ -124,6 +191,13 @@ int main(int argc, char **argv) {
         gpsd_available = true;
     }
 
+    // Init sqlite3
+    // TODO: Become more robust in DB filepath
+    if(sqlite3_open("airports/airport_db.sqlite", &db) != SQLITE_OK){
+        fprintf(stdout, "ERROR: Could not open SQLite DB\n");
+    }
+
+
     // Init Webserver
     mg_mgr_init(&mgr, NULL);  // Initialize event manager object
     nc = mg_bind(&mgr, s_http_port, ev_handler);
@@ -134,6 +208,7 @@ int main(int argc, char **argv) {
         s_http_server_opts.document_root = "./wwwroot";
         mg_register_http_endpoint(nc, "/api/location", api_location);
         mg_register_http_endpoint(nc, "/api/satellites", api_satellites);
+        mg_register_http_endpoint(nc, "/api/airports/search", api_airport_name_search);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", s_http_port);
     }
@@ -190,6 +265,8 @@ int main(int argc, char **argv) {
     }
 
     mg_mgr_free(&mgr);
+
+    sqlite3_close(db);
     
     fprintf(stdout, "Exiting!\n");
 }
@@ -260,7 +337,7 @@ void *dump978_worker() {
 }
 
 void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, frame_type_t type) {
-    fprintf(stdout, "\nts=%lu, rs=%d\n", timestamp, receiveErrors);
+    fprintf(stdout, "\nts=%llu, rs=%d\n", timestamp, receiveErrors);
 
     if(type == FRAME_TYPE_ADSB) {
         struct uat_adsb_mdb mdb;

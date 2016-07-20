@@ -25,6 +25,7 @@ volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
 struct gps_data_t rx_gps_data;
 sqlite3 *db;
+char path_to_db[256];
 
 static const char *s_http_port = "80";
 static struct mg_serve_http_opts s_http_server_opts;
@@ -36,7 +37,11 @@ static void ev_handler(struct mg_connection *nc, int ev, void *p) {
   }
 }
 
-static const char * get_argument_value(struct mg_str *args, const char *name) {
+static void sqlite_trace(void *arg1, const char* string) {
+    fprintf(stdout, "[SQL] %s\n", string);
+}
+
+static const bool get_argument_value(struct mg_str *args, const char *name, char *value) {
     char scratch[1024];
     size_t length = sizeof(scratch);
 
@@ -50,7 +55,6 @@ static const char * get_argument_value(struct mg_str *args, const char *name) {
     scratch[length] = 0x00;
 
     char *argName = NULL;
-    char *argValue = NULL;
     char *pos = strtok(&scratch[0], "=");
     while (pos != NULL) {
         // Copy over the argument name.
@@ -61,14 +65,16 @@ static const char * get_argument_value(struct mg_str *args, const char *name) {
 
         // Check this is the argument we are interested in.
         if(strcmp(name, argName) == 0){
-            argValue = pos;
+            // TODO: Check the copy length
+            memcpy(value, pos, strlen(pos));
+            value[strlen(pos)] = 0x00;
             break;
         }
         // Set up for the next argument
         pos = strtok(NULL, "=");
     }
 
-    return argValue;
+    return (value != NULL);
 }
 
 static void api_location(struct mg_connection *nc, int ev, void *ev_data) {
@@ -142,14 +148,16 @@ static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_d
     (void) ev;
     struct http_message *message = (struct http_message *)ev_data;
     sqlite3_stmt *stmt;
+    char airport_name[256];
     
     const char *query = "SELECT * FROM airports WHERE icao_name LIKE ?;";
-    const char *name = get_argument_value(&message->query_string, "name");
+    // TODO: Check for success.
+    get_argument_value(&message->query_string, "name", &airport_name[0]);
 
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{\n");
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_text(stmt, 1, name, strlen(name), SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 1, airport_name, strlen(airport_name), SQLITE_STATIC);
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         size_t numColumns = sqlite3_column_count(stmt);
         mg_printf(nc, "    [\n");
@@ -193,10 +201,10 @@ int main(int argc, char **argv) {
 
     // Init sqlite3
     // TODO: Become more robust in DB filepath
-    if(sqlite3_open("airports/airport_db.sqlite", &db) != SQLITE_OK){
+    if(sqlite3_open("./airports/airport_db.sqlite", &db) != SQLITE_OK){
         fprintf(stdout, "ERROR: Could not open SQLite DB\n");
     }
-
+    sqlite3_trace(db, sqlite_trace, NULL);
 
     // Init Webserver
     mg_mgr_init(&mgr, NULL);  // Initialize event manager object

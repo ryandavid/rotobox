@@ -5,6 +5,7 @@ import datetime
 import json
 from lxml import html
 import os
+import re
 import requests
 import shutil
 import subprocess
@@ -13,21 +14,54 @@ import zipfile
 
 class FAA_Charts():
     URL_VFR_RASTER_CHARTS = "https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/vfr/"
-    CHART_TYPES = ["sectional", "terminalArea", "world", "helicopter"]
+    CHART_TYPES = {
+        "sectional": {
+            "filename_suffix": "SEC"
+        },
+        "terminalArea": {
+            "filename_suffix": "TAC"
+        },
+        "world": {
+            "filename_suffix": "WOR"
+        },
+        "helicopter": {
+            "filename_suffix": "HEL"
+        },
+    }
+    CHART_CONFIG_FILENAME = "chart_config.json"
+    REFRESH_DAYS = 7
 
-    def __init__(self):
-        self.chart_list = {}
+    def __init__(self, chart_directory):
+        self.chart_directory = chart_directory
+        self.chart_config_file = os.path.join(self.chart_directory, self.CHART_CONFIG_FILENAME)
+        self.config = {"offline_charts" : []}
 
-    def update_all_vfr_charts(self):
-        self.chart_list = {}
+        # Read the user's chart configuration file. Defaults to something empty.
+        if(os.path.exists(self.chart_config_file)):
+            with open(self.chart_config_file, "r") as fHandle:
+                self.config = json.load(fHandle)
+        else:
+            print "WARN: No chart configuration found!"
+        
+
+    def flush_configuration_file(self):
+        with open(self.chart_config_file, "w") as fHandle:
+            json.dump(config, fHandle, indent=4, sort_keys=True)
+
+    def update_vfr_chart_list(self):
+        self.config["available_charts"] = {}
+
         page = requests.get(self.URL_VFR_RASTER_CHARTS)
         tree = html.fromstring(page.content)
 
         for chart in self.CHART_TYPES:
-            print "Updating {0} charts.".format(chart)
-            self.chart_list[chart] = self.scrape_html_table(tree, chart)
+            print " => Updating {0} charts.".format(chart)
+            self.config["available_charts"][chart] = self.scrape_html_table(tree, chart)
 
-        return self.chart_list
+        self.config["updated"] = datetime.datetime.now().isoformat()
+        self.flush_configuration_file()
+
+        return self.config["available_charts"]
 
     def scrape_html_table(self, page, chart_type):
         charts = {}
@@ -94,29 +128,86 @@ class FAA_Charts():
             
         return charts
 
+    def update(self, force_download=False):
+        localCharts = {}
+        # Logic to determine if we need to re-download the list of current charts
+        # TODO: Be smarter when we know a subscription cycle is going to expire
+        if(force_download is True):
+            self.update_vfr_chart_list()
+        elif("updated" in self.config):
+            lastUpdated = datetime.datetime.strptime(self.config["updated"], "%Y-%m-%dT%H:%M:%S.%f")
+            if((datetime.datetime.now() - lastUpdated) > datetime.timedelta(self.REFRESH_DAYS)):
+                self.update_vfr_chart_list()
+        elif("available_charts" not in self.config):
+            self.update_vfr_chart_list()
 
-# Download with progress bar
-# http://stackoverflow.com/a/20943461
-def download_chart(url, target_path):
-    r = requests.get(url, stream=True)
-    with open(target_path, 'wb') as f:
-        total_length = int(r.headers.get('content-length'))
-        for chunk in progress.bar(r.iter_content(chunk_size=1024), expected_size=(total_length/1024) + 1): 
-            if chunk:
-                f.write(chunk)
-                f.flush()
+        # Iterate through the desired charts.  Make sure they are real as compared to our index.
+        for chartType in self.config["offline_charts"]:
+            if(chartType in self.CHART_TYPES):
+                for chart in self.config["offline_charts"][chartType]:
+                    if(chart not in self.config["available_charts"][chartType]):
+                        print "ERROR: Unknown {0} chart '{1}'... skipping!".format(chartType, chart)
+                    else:
+                        availableChartInfo = self.config["available_charts"][chartType][chart]
+                        currentNumber = availableChartInfo["current_edition"]["number"]
+
+                        expectedFilename = "{0}_{1}_{2}.tif".format(
+                            self.chart_filename_escape(chart),
+                            self.CHART_TYPES[chartType]["filename_suffix"],
+                            currentNumber)
+                        expectedFilepath = os.path.join(self.chart_directory, expectedFilename)
+
+                        if((os.path.exists(expectedFilepath) is False) or (force_download is True)):
+                            print " => Downloading/Extracting {0} chart!".format(chart)
+                            url = availableChartInfo["current_edition"]["url"]
+                            self.download_chart(url, expectedFilepath)
+                        else:
+                            print " => Current {0} chart is already downloaded!".format(chart)
+
+                        # Finally, append the charts we have locally to a dict.
+                        if(chartType not in localCharts):
+                            localCharts[chartType] = []
+                        localCharts[chartType].append(expectedFilepath)
+
+        return localCharts
+
+
+    # TODO: Cover more naughty characters here
+    def chart_filename_escape(self, chartName):
+        return chartName.replace(" ", "_")
+
+    # Download with progress bar
+    # http://stackoverflow.com/a/20943461
+    def download_chart(self, url, target_path):
+        success = False
+        temp_path = os.path.join(self.chart_directory, "temp.zip")
+
+        r = requests.get(url, stream=True)
+        with open(temp_path, 'wb') as f:
+            total_length = int(r.headers.get('content-length'))
+            for chunk in progress.bar(r.iter_content(chunk_size=1024),
+                                      expected_size=(total_length/1024) + 1): 
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+        
+        with zipfile.ZipFile(temp_path) as zf:
+            for name in zf.namelist():
+                if(".tif" in name):
+                    filename = zf.extract(name)
+                    shutil.move(filename, target_path)
+                    os.remove(temp_path)
+                    success = True
+                    break
+        return success
 
 # Ensure current working directory is the script's path
 SCRIPT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(SCRIPT_DIR)
 
 CHART_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "charts")
-CHART_CONFIG = os.path.join(CHART_DIRECTORY, "chart_config.json")
+SHAPEFILES_DIRECTORY = os.path.join(CHART_DIRECTORY, "shapefiles")
 CHART_PROCESSED_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "wwwroot", "charts")
-
-print "Chart Directory:\t{0}".format(CHART_DIRECTORY)
-print "Chart Configuration:\t{0}".format(CHART_CONFIG)
-print "Chart Output:\t\t{0}".format(CHART_PROCESSED_DIRECTORY)
 
 # Ensure the chart directory exists.
 if(os.path.exists(CHART_DIRECTORY) is False):
@@ -126,130 +217,76 @@ if(os.path.exists(CHART_DIRECTORY) is False):
 if(os.path.exists(CHART_PROCESSED_DIRECTORY) is False):
     os.makedirs(CHART_PROCESSED_DIRECTORY)
 
-# Snag a list of all the latest chart versions
-charts = FAA_Charts()
-chartList = charts.update_all_vfr_charts()
+print "Chart Directory:\t{0}".format(CHART_DIRECTORY)
+print "Chart Output:\t\t{0}".format(CHART_PROCESSED_DIRECTORY)
 
-# Read the user's chart configuration file. Default to something empty.
-if(os.path.exists(CHART_CONFIG)):
-    with open(CHART_CONFIG, "r") as fHandle:
-        config = json.load(fHandle)
-else:
-    print "ERROR: No chart configuration found!"
-    config = {
-        "offline_charts" : []
-    }
+# Make sure our charts are up-to-date.
+charts = FAA_Charts(CHART_DIRECTORY)
+chartsDownloaded = charts.update()
 
-# We want to write out available charts to this file
-config["available_charts"] = chartList
-config["updated"] = datetime.datetime.now().isoformat()
-with open(CHART_CONFIG, "w") as fHandle:
-    json.dump(config, fHandle, indent=4, sort_keys=True)
+croppedCharts = {}
 
 # Iterate over every type (ie, sectional) of chart specified in the configuration
-for chartType in config["offline_charts"]:
-    if(chartType not in chartList):
-        print "ERROR: Unknown chart type '{0}'".format(chartType)
-        continue
+for chartType in chartsDownloaded:
 
     # Iterate over every requested chart name (ie, 'San Francisco') within this type
-    for chart in config["offline_charts"][chartType]:
-        if(chart not in chartList[chartType]):
-            print "ERROR: Unknown {0} chart '{1}'".format(chartType, chart)
+    for chart in chartsDownloaded[chartType]:
+        chartBasename = os.path.splitext(os.path.basename(chart))[0]
+        chartBasenameStripped = re.sub("(_[0-9]+)", "", chartBasename)
+        shapeFilepath = os.path.join(SHAPEFILES_DIRECTORY, chartBasenameStripped + ".shp")
+        croppedFilename = os.path.join(CHART_DIRECTORY, chartBasename + "_cropped.tif")
+        vrtFilename = os.path.join(CHART_DIRECTORY, chartBasename + "_cropped.vrt")
+
+        if(os.path.exists(croppedFilename) is False):
+            # Tile the maps!
+            print " => Cropping legend from chart {0}".format(chartBasename)
+            command = ["gdalwarp",
+                       "-dstnodata", "0",
+                       "-q",
+                       "-cutline",
+                       shapeFilepath,
+                       "-crop_to_cutline",
+                       "-multi",
+                       chart,
+                       croppedFilename]
+            subprocess.call(command)
         else:
-            print "Checking VFR {0} for {1}".format(chartType, chart)
-            print " => Current Edition is #{0} ({1})".format(
-                chartList[chartType][chart]["current_edition"]["number"],
-                chartList[chartType][chart]["current_edition"]["date"])
+            print " => Legend is already cropped on chart {0}".format(chartBasename)
 
-            # TODO(rdavid): Do something smart with the next edition as well
-            if(chartList[chartType][chart]["next_edition"]["url"] is not None):
-                print " => Next Edition is #{0} ({1})".format(
-                    chartList[chartType][chart]["next_edition"]["number"],
-                    chartList[chartType][chart]["next_edition"]["date"])
+        print " => Generating VRT"
+        command = ["gdal_translate",
+                   "-q",
+                   "-of", "vrt",
+                   "-expand", "rgba",
+                   "-co", "COMPRESS=LZW",
+                   "-co", "TILED=YES",
+                   croppedFilename,
+                   vrtFilename]
+        subprocess.call(command)
 
-            if(chartType == "sectional"):
-                basename_suffix = "_SEC_"
-                shapefile_suffix = "_SEC.shp"
-            elif(chartType == "terminalArea"):
-                basename_suffix = "_TAC_"
-                shapefile_suffix = "_TAC.shp"
-            elif(chartType == "world"):
-                basename_suffix = "_WAC_"
-                shapefile_suffix = "_WAC.shp"
-            elif(chartType == "helicopter"):
-                basename_suffix = "_HEL_"
-                shapefile_suffix = "_HEL.shp"
+        if(chartType not in croppedCharts):
+            croppedCharts[chartType] = []
+        croppedCharts[chartType].append(vrtFilename)
 
-            shapefilepath = os.path.join(CHART_DIRECTORY, "shapefiles", chart.replace(" ", "_") + shapefile_suffix)
-            basename = chart.replace(" ", "_") + basename_suffix
-            basename += chartList[chartType][chart]["current_edition"]["number"]
-            expectedFiles = [os.path.join(CHART_DIRECTORY, basename + ".htm"),
-                             os.path.join(CHART_DIRECTORY, basename + ".tfw"),
-                             os.path.join(CHART_DIRECTORY, basename + ".tif")]
+for chartType in croppedCharts:
+    print " => Creating merged GeoTIFF"
+    outputFile = os.path.join(CHART_DIRECTORY, chartType + "_merged.tif")
+    command = ["gdal_merge.py", "-o", outputFile, "-n", "0"] + croppedCharts[chartType]
+    print command
+    #subprocess.call(command)
+sys.exit(0)
 
-            # Check that all the files we expect are present.
-            allFilesExist = True
-            for file in expectedFiles:
-                if(os.path.exists(file) is False):
-                    allFilesExist = False
-                    break
-            allFilesExist=False
-            # If all the files don't exist, time to grab the chart.
-            if(allFilesExist == False):
-                url = chartList[chartType][chart]["current_edition"]["url"]
-                downloadFullpath = os.path.join(CHART_DIRECTORY, os.path.basename(url))
-                print " => Fetching {0}".format(url)
-                #download_chart(url, downloadFullpath)
-                #
-                ## Unzip individually instead of one fell swoop so we can touch up the filenames.
-                #with zipfile.ZipFile(downloadFullpath) as zf:
-                #    for item in zf.infolist():
-                #        filename = zf.extract(item, CHART_DIRECTORY)
-                #        new_filename = filename.replace(" ", "_")
-                #        shutil.move(filename, new_filename)
-                #        print " => Unpacking {0}".format(new_filename)
-                #
-                ## Finally clean up after ourselves.
-                #os.remove(downloadFullpath)
 
-                # Tile the maps!
-                mapFilename = os.path.join(CHART_DIRECTORY, basename + ".tif")
-                croppedFilename = os.path.join(CHART_DIRECTORY, basename + "cropped.tif")
-                print " => Cropping legend from chart"
-                command = ["gdalwarp",
-                           "-dstnodata", "0",
-                           "-q",
-                           "-cutline",
-                           shapefilepath,
-                           "-crop_to_cutline",
-                           mapFilename,
-                           croppedFilename]
-                subprocess.call(command)
+print " => Tiling {0} (This will take a while...)".format(basename)
+command = ["gdal2tiles.py",
+           "-w", "none",
+           "-q",
+           vrtFilename,
+           CHART_PROCESSED_DIRECTORY]
+subprocess.call(command)
 
-                vrtFilename = os.path.join(CHART_DIRECTORY, basename + ".vrt")
-                print " => Converting {0}".format(basename)
-                command = ["gdal_translate",
-                           "-q",
-                           "-of", "vrt",
-                           "-expand", "rgba",
-                           croppedFilename,
-                           vrtFilename]
-                subprocess.call(command)
-
-                print " => Tiling {0} (This will take a while...)".format(basename)
-                command = ["gdal2tiles.py",
-                           "-w", "none",
-                           "-q",
-                           vrtFilename,
-                           CHART_PROCESSED_DIRECTORY]
-                subprocess.call(command)
-
-                # Clean up
-                os.remove(croppedFilename)
-                os.remove(vrtFilename)
-
-            else:
-                print " => {0} is up to date locally!".format(chart)
+# Clean up
+os.remove(croppedFilename)
+os.remove(vrtFilename)
 
 print "\nAll done!\n"

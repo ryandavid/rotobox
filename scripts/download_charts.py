@@ -235,11 +235,10 @@ for chartType in chartsDownloaded:
         chartBasenameStripped = re.sub("(_[0-9]+)", "", chartBasename)
         shapeFilepath = os.path.join(SHAPEFILES_DIRECTORY, chartBasenameStripped + ".shp")
         croppedFilename = os.path.join(CHART_DIRECTORY, chartBasename + "_cropped.tif")
-        vrtFilename = os.path.join(CHART_DIRECTORY, chartBasename + "_cropped.vrt")
 
         if(os.path.exists(croppedFilename) is False):
             # Tile the maps!
-            print " => Cropping legend from chart {0}".format(chartBasename)
+            print " => Cropping legend and reprojecting chart {0}".format(chartBasename)
             command = ["gdalwarp",
                        "-dstnodata", "0",
                        "-q",
@@ -247,46 +246,40 @@ for chartType in chartsDownloaded:
                        shapeFilepath,
                        "-crop_to_cutline",
                        "-multi",
+                       "-t_srs", "EPSG:3857",
                        chart,
                        croppedFilename]
             subprocess.call(command)
+
+            print " => Converting to RGB"
+            command = ["pct2rgb.py", croppedFilename, croppedFilename]
+            subprocess.call(command)
+
         else:
             print " => Legend is already cropped on chart {0}".format(chartBasename)
 
-        print " => Generating VRT"
-        command = ["gdal_translate",
-                   "-q",
-                   "-of", "vrt",
-                   "-expand", "rgba",
-                   "-co", "COMPRESS=LZW",
-                   "-co", "TILED=YES",
-                   croppedFilename,
-                   vrtFilename]
-        subprocess.call(command)
-
         if(chartType not in croppedCharts):
             croppedCharts[chartType] = []
-        croppedCharts[chartType].append(vrtFilename)
+        croppedCharts[chartType].append(croppedFilename)
 
 for chartType in croppedCharts:
-    print " => Creating merged GeoTIFF"
-    outputFile = os.path.join(CHART_DIRECTORY, chartType + "_merged.tif")
-    command = ["gdal_merge.py", "-o", outputFile, "-n", "0"] + croppedCharts[chartType]
-    print command
-    #subprocess.call(command)
-sys.exit(0)
+    print " => Building VRT"
+    outputFile = os.path.join(CHART_DIRECTORY, chartType + "_merged.vrt")
+    command = ["gdalbuildvrt",
+               "-srcnodata", "255 255 255",
+               "-vrtnodata", "255 255 255",
+               "-hidenodata",
+               outputFile] + croppedCharts[chartType]
+    subprocess.call(command)
 
+    print " => Tiling {0} charts (This will take a while...)".format(chartType)
+    command = ["gdal2tiles.py",
+               "-w", "none",
+               outputFile,
+               CHART_PROCESSED_DIRECTORY]
+    subprocess.call(command)
 
-print " => Tiling {0} (This will take a while...)".format(basename)
-command = ["gdal2tiles.py",
-           "-w", "none",
-           "-q",
-           vrtFilename,
-           CHART_PROCESSED_DIRECTORY]
-subprocess.call(command)
-
-# Clean up
-os.remove(croppedFilename)
-os.remove(vrtFilename)
+    # Clean up
+    os.remove(outputFile)
 
 print "\nAll done!\n"

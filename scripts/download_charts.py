@@ -237,6 +237,11 @@ for chartType in chartsDownloaded:
         croppedFilename = os.path.join(CHART_DIRECTORY, chartBasename + "_cropped.tif")
 
         if(os.path.exists(croppedFilename) is False):
+            # Make sure we have the shapefile for cropping off the legend
+            if(os.path.exists(shapeFilepath) is False):
+                print ' => Skipping {0} since there is no matching shapefile'.format(chartBasename)
+                continue
+
             # Tile the maps!
             print " => Cropping legend and reprojecting chart {0}".format(chartBasename)
             command = ["gdalwarp",
@@ -247,6 +252,8 @@ for chartType in chartsDownloaded:
                        "-crop_to_cutline",
                        "-multi",
                        "-t_srs", "EPSG:3857",
+                       "-wo", "OPTIMIZE_SIZE=YES",
+                       "-co", "compress=lzw",
                        chart,
                        croppedFilename]
             subprocess.call(command)

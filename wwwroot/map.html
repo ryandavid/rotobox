@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="css/leaflet.css" />
     <script src="js/leaflet.js"></script>
 
+    <script type="text/javascript" src="js/jquery-2.2.4.min.js"></script>
+    <script type="text/javascript" src="js/rotobox_api.js"></script>
+
     <style>
         body { margin:0; padding:0; }
         body, table, tr, td, th, div, h1, h2, input { font-family: "Calibri", "Trebuchet MS", "Ubuntu", Serif; font-size: 11pt; }
@@ -37,6 +40,7 @@
 <div id="map"></div>
 
 <script>
+    L.Icon.Default.imagePath = 'img';
     /* **** Leaflet **** */
 
     // Base layers
@@ -87,6 +91,13 @@
 
     // Fit to overlay bounds (SW and NE points with (lat, lon))
     map.fitBounds([[35.856909652, -117.633110983], [40.6394529381, -125.94649912]]);
+
+
+    // Rotobox
+    rotobox_api(API_URI_LOCATION, {}, function(data) {
+        console.log(data);
+        var marker = L.marker([data.latitude, data.longitude]).addTo(map);
+    });
 </script>
 
 </body>

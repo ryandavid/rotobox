@@ -121,20 +121,27 @@ static void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
     (void) ev;
     (void) ev_data;
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{\n");
+    mg_printf(nc, "\"satellites\": [\n");
     for (int i = 0; i < rx_gps_data.satellites_visible; i++) {
         mg_printf(nc, \
-            "    \"%d\": {\n" \
+            "    {\n" \
+            "        \"prn\": %d,\n" \
             "        \"snr\": %f,\n" \
             "        \"used\": %d,\n" \
             "        \"elevation\": %d,\n" \
             "        \"azimuth\": %d\n" \
-            "    },\n", \
+            "    }", \
             rx_gps_data.skyview[i].PRN, \
             rx_gps_data.skyview[i].ss, \
             rx_gps_data.skyview[i].used, \
             rx_gps_data.skyview[i].elevation, \
             rx_gps_data.skyview[i].azimuth);
+        if(i != rx_gps_data.satellites_visible - 1){
+            mg_printf(nc, ",");
+        }
+        mg_printf(nc, "\n");
     }
+    mg_printf(nc, "],\n");
     mg_printf(nc, "    \"num_satellites\": %d,\n" \
                   "    \"num_satellites_used\": %d\n", \
                   rx_gps_data.satellites_visible, \

@@ -128,14 +128,52 @@
 
       </div>
 
+      <div class="page-header">
+        <h1>Satellites</h1>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          <table class="table table-condensed" id="satellites-in-view">
+              <thead>
+                <tr>
+                  <th>SV</th>
+                  <th>SNR</th>
+                  <th>Elevation</th>
+                  <th>Azimuth</th>
+                  <th>Used</th>
+                </tr>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col-md-6">
+        </div>
+      </div>
+
 
     </div> <!-- /container -->
+
+    <script id="satelliteItemTemplate" type="text/x-jsrender">
+      <tr>
+        <td>{{:prn}}</td>
+        <td>{{:snr}}</td>
+        <td>{{:elevation}}</td>
+        <td>{{:azimuth}}</td>
+        <td>{{:used}}</td>
+      </tr>
+    </script>
 
 
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="js/jquery-2.2.4.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/jquery-2.2.4.min.js"></script>
+    <script type="text/javascript" src="js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="js/jsrender.min.js"></script>
+
+    <script type="text/javascript" src="js/rotobox_api.js"></script>
+    <script type="text/javascript" src="js/index.js"></script>
   </body>
 </html>

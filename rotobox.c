@@ -156,28 +156,34 @@ static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_d
     struct http_message *message = (struct http_message *)ev_data;
     sqlite3_stmt *stmt;
     char airport_name[256];
+    bool first = true;
     
     const char *query = "SELECT * FROM airports WHERE icao_name LIKE ?;";
     // TODO: Check for success.
     get_argument_value(&message->query_string, "name", &airport_name[0]);
 
-    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{\n");
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, airport_name, strlen(airport_name), SQLITE_STATIC);
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         size_t numColumns = sqlite3_column_count(stmt);
-        mg_printf(nc, "    [\n");
+        if(!first) {
+            mg_printf(nc, ",\n");
+        } else {
+            first = false;
+        }
+        mg_printf(nc, "    {\n");
         for (size_t i = 0; i < numColumns; i++) {
             mg_printf(nc,
-                      "        \"%s\" = \"%s\",\n",
+                      "        \"%s\": \"%s\"%s\n",
                       sqlite3_column_name(stmt, i),
-                      sqlite3_column_text(stmt, i));
+                      sqlite3_column_text(stmt, i),
+                      i < numColumns - 1 ? "," : "");
         }
-        mg_printf(nc, "    ],\n");
+        mg_printf(nc, "    }");
     }
-
-    mg_printf(nc, "}\n");
+    mg_printf(nc, "\n]\n");
     sqlite3_finalize(stmt);
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }

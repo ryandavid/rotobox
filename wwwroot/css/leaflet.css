@@ -399,6 +399,7 @@
 	}
 .leaflet-popup-content p {
 	margin: 18px 0;
+	font-size: 12px;
 	}
 .leaflet-popup-tip-container {
 	margin: 0 auto;

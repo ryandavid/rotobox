@@ -9,7 +9,7 @@ function rotobox_api(uri, args, callback) {
     if (args != {}) {
         argNames = Object.keys(args);
         for (var i = 0; i < argNames.length; i++) {
-            if (i == 1) {
+            if (i == 0) {
                 fullURL += "?";
             } else {
                 fullURL += "&";
@@ -25,8 +25,10 @@ function rotobox_api(uri, args, callback) {
         if (callback != undefined) {
             callback(data);
         }
-    }).fail(function(){
-        console.log("ERROR: Failed fetching " + uri);
-    })
+    }).fail(function(jqXHR, textStatus, errorThrown){
+        console.log("ERROR: Failed fetching " + fullURL);
+        console.log("Text Status: " + textStatus);
+        console.log("Error Thrown: " + errorThrown);
+    });
 }
 

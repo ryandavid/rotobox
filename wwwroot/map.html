@@ -43,19 +43,6 @@
     L.Icon.Default.imagePath = 'img';
     /* **** Leaflet **** */
 
-    // Base layers
-    //  .. OpenStreetMap
-    var osm = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'});
-
-    //  .. CartoDB Positron
-    var cartodb = L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="http://cartodb.com/attributions">CartoDB</a>'});
-
-    //  .. OSM Toner
-    var toner = L.tileLayer('http://{s}.tile.stamen.com/toner/{z}/{x}/{y}.png', {attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://www.openstreetmap.org/copyright">ODbL</a>.'});
-
-    //  .. White background
-    var white = L.tileLayer("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEAAQMAAABmvDolAAAAA1BMVEX///+nxBvIAAAAH0lEQVQYGe3BAQ0AAADCIPunfg43YAAAAAAAAAAA5wIhAAAB9aK9BAAAAABJRU5ErkJggg==");
-
     // Overlay layers (TMS)
     var lyr = L.tileLayer('./charts/{z}/{x}/{y}.png', {tms: true, attribution: ""});
 
@@ -63,13 +50,10 @@
     var map = L.map('map', {
         center: [38.248181295, -121.789805051],
         zoom: 11,
-        minZoom: 5,
+        minZoom: 1,
         maxZoom: 11,
-        layers: [osm]
+        layers: [lyr]
     });
-
-    var basemaps = {"OpenStreetMap": osm, "CartoDB Positron": cartodb, "Stamen Toner": toner, "Without background": white}
-    var overlaymaps = {"VFR Sectional": lyr}
 
     // Title
     var title = L.control();
@@ -86,18 +70,82 @@
         return this._div;
     };
 
-    // Add base layers
-    L.control.layers(basemaps, overlaymaps, {collapsed: false}).addTo(map);
-
     // Fit to overlay bounds (SW and NE points with (lat, lon))
     map.fitBounds([[35.856909652, -117.633110983], [40.6394529381, -125.94649912]]);
+
+    var ownshipIcon = L.icon({
+        iconUrl: 'img/helicopter-top.png',
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+    });
+
+    var nontoweredIcon = L.icon({
+        iconUrl: 'img/nontowered-airport.png',
+        iconSize: [48, 48],
+        iconAnchor: [24, 48],
+        popupAnchor:  [0, -48],
+    });
+
+    var toweredIcon = L.icon({
+        iconUrl: 'img/towered-airport.png',
+        iconSize: [48, 48],
+        iconAnchor: [24, 48],
+        popupAnchor:  [0, -48]
+    });
+
 
 
     // Rotobox
     rotobox_api(API_URI_LOCATION, {}, function(data) {
-        console.log(data);
-        var marker = L.marker([data.latitude, data.longitude]).addTo(map);
+        var marker = L.marker([data.latitude, data.longitude], {icon: ownshipIcon}).addTo(map);
     });
+
+    rotobox_api(API_AIRPORT_SEARCH, {"name": "KP%"}, function(data) {
+        for (var i = 0; i < data.length; i++) {
+            var iconType = nontoweredIcon;
+            if (data[i].traffic_control_tower_on_airport == true) {
+                var iconType = toweredIcon;
+            }
+            var marker = L.marker([data[i].latitude, data[i].longitude], {icon: iconType}).addTo(map);
+            marker.bindPopup("<b>" + data[i].name + "</b> (" + data[i].icao_name + ")" +
+                "<p>" + data[i].remarks + "</p>");
+        }
+        
+    });
+
+    var MyCustomControl = L.Control.extend({
+        options: {
+            // Default control position
+            position: 'topright'
+        },
+        onAdd: function (map) {
+            this.field = L.DomUtil.create('input', 'my-custom-control');
+            // Create a container with classname and return it
+            L.DomEvent.addListener(this.field , 'keyup', this.keyEvent, this);
+            return this.field;
+        },
+        setContent: function (content) {
+            // Set the innerHTML of the container
+            this.getContainer().innerHTML = content;
+        },
+        keyEvent: function(e) {
+            if(e.keyCode == 13) {
+                searchName = this.field.value;
+                rotobox_api(API_AIRPORT_SEARCH, {"name":searchName}, function(data){
+                    if(data.length > 0) {
+                        map.setView([data[0].latitude, data[0].longitude], 10);
+                    } else {
+                        console.log("No results found!");
+                    }
+                });
+                this.field.value = "";
+            }
+        }
+    });
+
+    // Assign to a variable so you can use it later and add it to your map
+    var myCustomControl =  new MyCustomControl().addTo(map);
+    console.log(myCustomControl);
 </script>
 
 </body>

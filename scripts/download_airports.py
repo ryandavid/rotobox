@@ -223,6 +223,8 @@ class FAA_AirportParser(FAA_GenericParser):
             else:
                 # TODO: Stop being so lazy and actually drill down to the child node
                 allText = "".join(item.itertext()).strip()
+                # Replace all double-quotes with single quotes.
+                allText = allText.replace("\"", "'")
                 content = {"remarks": allText}
 
         return content

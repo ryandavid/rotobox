@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+    <title>VFR Sectional Map</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="css/leaflet.css" />
+    <script src="js/leaflet.js"></script>
+
+    <script type="text/javascript" src="js/jquery-2.2.4.min.js"></script>
+    <script type="text/javascript" src="js/rotobox_api.js"></script>
+
+    <style>
+        body { margin:0; padding:0; }
+        body, table, tr, td, th, div, h1, h2, input { font-family: "Calibri", "Trebuchet MS", "Ubuntu", Serif; font-size: 11pt; }
+        #map { position:absolute; top:0; bottom:0; width:100%; } /* full size */
+        .ctl {
+            padding: 2px 10px 2px 10px;
+            background: white;
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            text-align: right;
+        }
+        .title {
+            font-size: 18pt;
+            font-weight: bold;
+        }
+        .src {
+            font-size: 10pt;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+    var markerArray = new Array();
+    var markerSizes = 
+
+    L.Icon.Default.imagePath = 'img';
+    /* **** Leaflet **** */
+
+    // Overlay layers (TMS)
+    var lyr = L.tileLayer('./charts/{z}/{x}/{y}.png', {tms: true, attribution: ""});
+
+    // Map
+    var map = L.map('map', {
+        center: [38.248181295, -121.789805051],
+        zoom: 11,
+        minZoom: 1,
+        maxZoom: 11,
+        layers: [lyr]
+    });
+
+    // Title
+    var title = L.control();
+    title.onAdd = function(map) {
+        this._div = L.DomUtil.create('div', 'ctl title');
+        this.update();
+        return this._div;
+    };
+
+    var title = L.control({position: 'bottomleft'});
+    title.onAdd = function(map) {
+        this._div = L.DomUtil.create('div', 'ctl src');
+        this.update();
+        return this._div;
+    };
+
+    // Fit to overlay bounds (SW and NE points with (lat, lon))
+    map.fitBounds([[35.856909652, -117.633110983], [40.6394529381, -125.94649912]]);
+
+    var ownshipIcon = L.icon({
+        iconUrl: 'img/helicopter-top.png',
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+    });
+
+
+
+    // Rotobox
+    rotobox_api(API_URI_LOCATION, {}, function(data) {
+        var marker = L.marker([data.latitude, data.longitude], {icon: ownshipIcon}).addTo(map);
+    });
+
+
+    var searchBox = L.Control.extend({
+        options: {
+            // Default control position
+            position: 'topright'
+        },
+        onAdd: function (map) {
+            this.field = L.DomUtil.create('input', 'my-custom-control');
+            // Create a container with classname and return it
+            L.DomEvent.addListener(this.field , 'keyup', this.keyEvent, this);
+            L.DomEvent.addListener(this.field , 'focus', this.focusEvent, this);
+            return this.field;
+        },
+        setContent: function (content) {
+            // Set the innerHTML of the container
+            this.getContainer().innerHTML = content;
+        },
+        keyEvent: function(e) {
+            if(e.keyCode == 13) {
+                searchName = this.field.value;
+                rotobox_api(API_AIRPORT_SEARCH, {"name":searchName}, function(data){
+                    if(data.length > 0) {
+                        map.setView([data[0].latitude, data[0].longitude], 10);
+                    } else {
+                        console.log("No results found!");
+                    }
+                });
+                this.field.value = "";
+            }
+        },
+        focusEvent: function(e) {
+            console.log("FOCUS");
+        }
+    });
+
+    function show_airport_detail(airport_id){
+        rotobox_api(API_AIRPORT_ID, {"id": airport_id}, function(data){
+            console.log(data[0]);
+            alert(data[0].name);
+        })
+    }
+
+    function update_airport_markers(data){
+        // Clear out the old markers
+        for (var i = 0; i < markerArray.length; i++) {
+            map.removeLayer(markerArray[i]);
+        }
+        markerArray.length = 0;
+
+        // Setup our marker for the airports
+        // Size dynamically based on zoom
+        var dynamicSize = (map.getZoom() - 8) * 15;
+        var airportIcon = L.divIcon({
+            className: 'airport-icon',
+            iconAnchor: [dynamicSize / 2, dynamicSize / 2],
+            iconSize: [dynamicSize, dynamicSize]
+        });
+
+        // Add the markers in this viewport
+        for (var i = 0; i < data.length; i++) {
+            var marker = L.marker([data[i].latitude, data[i].longitude],
+                {
+                    icon: airportIcon,
+                    title: data[i].name,
+                    airport_id: data[i].id
+                });
+            marker.on("click", function(){
+                show_airport_detail(this.options.airport_id);
+            })
+            markerArray.push(marker);
+            map.addLayer(markerArray[i]);
+        }
+    }
+
+    // Assign to a variable so you can use it later and add it to your map
+    var search =  new searchBox().addTo(map);
+
+    map.on('moveend', function(){
+        ROUND_DECIMAL_PLACES = 1000;
+        if(map.getZoom() >= 9) {
+            bounds = map.getBounds();
+            zoom = map.getZoom();
+
+            lonMin = Math.round(bounds.getWest() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
+            lonMax = Math.round(bounds.getEast() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
+            latMin = Math.round(bounds.getSouth() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
+            latMax = Math.round(bounds.getNorth() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
+
+            rotobox_api(API_AIRPORT_WINDOW,
+                {
+                    "latMin": latMin,
+                    "latMax": latMax,
+                    "lonMin": lonMin,
+                    "lonMax": lonMax
+                },
+                update_airport_markers);
+        }
+    });
+</script>
+
+</body>
+</html>
+
+        

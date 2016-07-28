@@ -1,23 +1,10 @@
-# rotobox
+# ![rotobox-maps](screenshots/maps-screenshot.png)
 
-## Compiling on OS X
-````
-# Install dependencies via MacPorts
-sudo port install cmake libusb pkgconfig
+Standalone module that integrates ADS-B reception via SDR's (dump978, dump1090), plus offline maps
+and an airport database.  The hardware is based on an odroid-C2 board, with a
+[daughterboard](https://github.com/ryandavid/redline-hw/tree/master/odroid-c2-daughterboard/ads-b_)
+that adds a u-blox GNSS receiver, CO sensor, and a 9DOF IMU.
 
-# Need to add /opt/local/lib to dylib
-nano ~/.profile
-export DYLD_FALLBACK_LIBRARY_PATH=$DYLD_FALLBACK_LIBRARY_PATH:/opt/local/lib
-
-# If you want to use rotobox's GPS but develop on OS X, you can set up a reverse tunnel for the port
-# that GPSD uses
-# On rotobox:
-ssh -NR 2947:localhost:2947 <username>@<mac_ip>
-# Fill in your username and IP for your Mac.  Now you should be able to open cgps on you Mac and see
-# live data from the GPS on rotobox
-````
-
-Build it!
-````
-make install
-````
+## Disclaimer
+The accuracy of any information produced or reported by this project is not guaranteed.  This does
+not replace any navigation or planning using official data products and services.

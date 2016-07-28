@@ -1,6 +1,10 @@
+html {
+  height: 100%;
+}
+
 body {
-  padding-top: 70px;
-  padding-bottom: 30px;
+  padding-top: 50px;
+  height: 100%;
 }
 
 .theme-dropdown .dropdown-menu {
@@ -24,4 +28,39 @@ body {
 
 .navbar-brand > img {
     width: 50px;
+}
+
+.container-fluid {
+  height: 100%;
+}
+
+.map-row {
+  height: 100%;
+}
+
+.map-sidebar {
+  height: 100%;
+  background-color: #E6E6E6;
+  background: linear-gradient(rgb(251, 252, 255), rgb(236, 247, 255), rgb(208, 212, 216));
+  padding-top: 12px;
+  border-left: 1px solid #999999;
+  box-shadow: 0 0 12px 1px #000000;
+  overflow-y: scroll;
+}
+
+.map-content {
+  height: 100%;
+}
+
+.map-search {
+  width: 100%;
+}
+
+p.airport-name {
+  margin-bottom: 0px;
+}
+
+p.airport-identifiers {
+  font-weight: bold;
+  font-size: small;
 }

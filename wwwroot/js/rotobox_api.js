@@ -4,6 +4,8 @@ var API_URI_SATELLITES = "/satellites";
 var API_AIRPORT_SEARCH = "/airports/search_by_name";
 var API_AIRPORT_WINDOW = "/airports/search_by_window";
 var API_AIRPORT_ID = "/airports/search_by_id";
+var API_AIRPORT_RUNWAYS = "/airports/runways";
+var API_AIRPORT_RADIO = "/airports/radio";
 
 function rotobox_api(uri, args, callback) {
     var fullURL = API_ROOT + uri;

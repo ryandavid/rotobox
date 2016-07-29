@@ -40,16 +40,32 @@ body {
 
 .map-sidebar {
   height: 100%;
+  max-height: 100%;
   background-color: #E6E6E6;
   background: linear-gradient(rgb(251, 252, 255), rgb(236, 247, 255), rgb(208, 212, 216));
   padding-top: 12px;
   border-left: 1px solid #999999;
   box-shadow: 0 0 12px 1px #000000;
-  overflow-y: scroll;
+
+  display: flex;
+  flex-direction: column;
 }
 
 .map-content {
   height: 100%;
+}
+
+.sidebar-top {
+  width: 100%;
+  min-height: 37px;
+  flex-shrink: 1;
+  box-shadow: 0 2px 3px 0px rgb(251, 252, 255);
+  z-index: 10;
+}
+
+.sidebar-hr {
+  margin-top: 10px;
+  margin-bottom: 0px;
 }
 
 .map-search {
@@ -63,4 +79,18 @@ p.airport-name {
 p.airport-identifiers {
   font-weight: bold;
   font-size: small;
+}
+
+div.scrollable {
+  overflow-y: scroll;
+  flex-grow: 1;
+  padding-top: 20px;
+}
+
+h5.airport-tags {
+  line-height: 1.5em;
+}
+
+span.rp-badge {
+  background-color: #aba8ab;
 }

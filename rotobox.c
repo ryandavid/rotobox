@@ -281,6 +281,91 @@ static void api_airport_id_search(struct mg_connection *nc, int ev, void *ev_dat
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
+
+static void api_airport_runway_search(struct mg_connection *nc, int ev, void *ev_data) {
+    (void) ev;
+    struct http_message *message = (struct http_message *)ev_data;
+    sqlite3_stmt *stmt;
+    char idAscii[16];
+    int id;
+    bool first = true;
+    
+    const char *query = "SELECT runways.* FROM runways JOIN airports ON runways.airport_faa_id = airports.faa_id WHERE airports.id = ?;";
+    // TODO: Check for success.
+    get_argument_value(&message->query_string, "id", &idAscii[0]);
+
+    // Convert to int
+    id = atoi(&idAscii[0]);
+
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
+
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, id);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        size_t numColumns = sqlite3_column_count(stmt);
+        if(!first) {
+            mg_printf(nc, ",\n");
+        } else {
+            first = false;
+        }
+        mg_printf(nc, "    {\n");
+        for (size_t i = 0; i < numColumns; i++) {
+            mg_printf(nc,
+                      "        \"%s\": \"%s\"%s\n",
+                      sqlite3_column_name(stmt, i),
+                      sqlite3_column_text(stmt, i),
+                      i < numColumns - 1 ? "," : "");
+        }
+        mg_printf(nc, "    }");
+    }
+    mg_printf(nc, "\n]\n");
+    sqlite3_finalize(stmt);
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
+static void api_airport_radio_search(struct mg_connection *nc, int ev, void *ev_data) {
+    (void) ev;
+    struct http_message *message = (struct http_message *)ev_data;
+    sqlite3_stmt *stmt;
+    char idAscii[16];
+    int id;
+    bool first = true;
+    
+    const char *query = "SELECT radio.* FROM radio JOIN airports ON radio.airport_faa_id = airports.faa_id WHERE airports.id = ?;";
+    // TODO: Check for success.
+    get_argument_value(&message->query_string, "id", &idAscii[0]);
+
+    // Convert to int
+    id = atoi(&idAscii[0]);
+
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
+
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, id);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        size_t numColumns = sqlite3_column_count(stmt);
+        if(!first) {
+            mg_printf(nc, ",\n");
+        } else {
+            first = false;
+        }
+        mg_printf(nc, "    {\n");
+        for (size_t i = 0; i < numColumns; i++) {
+            mg_printf(nc,
+                      "        \"%s\": \"%s\"%s\n",
+                      sqlite3_column_name(stmt, i),
+                      sqlite3_column_text(stmt, i),
+                      i < numColumns - 1 ? "," : "");
+        }
+        mg_printf(nc, "    }");
+    }
+    mg_printf(nc, "\n]\n");
+    sqlite3_finalize(stmt);
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
 void handle_sigint() {
     fprintf(stdout, "Caught SIGINT!\n");
     exitRequested = true;
@@ -325,6 +410,8 @@ int main(int argc, char **argv) {
         mg_register_http_endpoint(nc, "/api/airports/search_by_name", api_airport_name_search);
         mg_register_http_endpoint(nc, "/api/airports/search_by_window", api_airport_window_search);
         mg_register_http_endpoint(nc, "/api/airports/search_by_id", api_airport_id_search);
+        mg_register_http_endpoint(nc, "/api/airports/runways", api_airport_runway_search);
+        mg_register_http_endpoint(nc, "/api/airports/radio", api_airport_radio_search);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", s_http_port);
     }

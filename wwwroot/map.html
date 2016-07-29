@@ -71,16 +71,28 @@
 
     <div class="container-fluid" role="main">
       <div class="row map-row">
-        <div class="col-xs-8 map-content" id="map">Content</div>
+        <div class="col-xs-8 map-content" id="map"></div>
         <div class="col-xs-4 map-sidebar">
-          <input class="map-search" type="text" placeholder="Search..." />
-          <hr/>
-          <p id="airport-name" class="lead text-center airport-name"></span>
-          <p id="airport-identifiers" class="text-center airport-identifiers"></p>
-          <dl>
-            <dt>Remarks</dt>
-            <dd id="airport-remarks"></dd>
-          </dl>
+          <div class="sidebar-top">
+            <input class="map-search" type="text" placeholder="Search..." />
+            <hr class="sidebar-hr"/>
+          </div>
+          <div class="scrollable">
+            <p id="airport-name" class="lead text-center airport-name"></span>
+            <p id="airport-identifiers" class="text-center airport-identifiers"></p>
+            <h5 class="airport-tags text-center"></h5>
+            <ul class="list-group" id="airport-runways"></ul>
+            <dl class="dl-horizontal">
+              <dt>CTAF</dt>
+              <dd class="ctaf-frequency"></dd>
+              <dt>Field Elevation</dt>
+              <dd class="field-elevation"></dd>
+            </dl>
+            <dl>
+              <dt>Remarks</dt>
+              <dd id="airport-remarks"></dd>
+            </dl>
+          </div>
         </div>
       </div>
     </div> <!-- /container -->
@@ -128,9 +140,57 @@
       function show_airport_detail(airport_id){
           rotobox_api(API_AIRPORT_ID, {"id": airport_id}, function(data){
               $("#airport-name").text(data[0].name);
-              $("#airport-identifiers").text(data[0].icao_name + " (" + data[0].designator + ")");
+              if(data[0].icao_name == "(null)") {
+                $("#airport-identifiers").text(data[0].designator);
+              } else {
+                $("#airport-identifiers").text(data[0].icao_name + " (" + data[0].designator + ")");
+              }
+              $("dd.field-elevation").text(data[0].field_elevation + "'");
               $("#airport-remarks").text(data[0].remarks);
-          })
+
+              $("h5.airport-tags").empty();
+              // TODO: Fix bool values having to be strings
+              if(data[0].traffic_control_tower_on_airport == "1") {
+                $("h5.airport-tags").append("<span class='label label-primary'>Towered</span>\n");
+              } else {
+                $("h5.airport-tags").append("<span class='label label-default'>Nontowered</span>\n");
+              }
+
+              if(data[0].segmented_circle_marker_on_airport == "1") {
+                $("h5.airport-tags").append("<span class='label label-info'>Segmented Circle</span>\n");
+              }
+
+              if(data[0].wind_direction_indicator == "1") {
+                $("h5.airport-tags").append("<span class='label label-info'>Windsock</span>\n");
+              }
+
+              if(data[0].private_use == "1") {
+                $("h5.airport-tags").append("<span class='label label-danger'>Private</span>\n");
+              }
+
+          });
+
+          $("ul#airport-runways").empty();
+          rotobox_api(API_AIRPORT_RUNWAYS, {"id": airport_id}, function(data){
+            for (var i = 0; i < data.length; i++) {
+              var item = "<li class='list-group-item'>" + data[i].designator
+              if((data[i].length != "(null)") && (data[i].width != "(null)")){
+                item += "<span class='badge'>" + Math.round(data[i].width) + "' x " + Math.round(data[i].length) + "'</span>\n";
+              }
+              if(data[i].right_traffic_pattern != "1"){
+                item += "<span class='badge rp-badge'>RP</span>\n";
+              }
+              item += "</li>\n";
+
+              $("ul#airport-runways").append(item);
+            }
+          });
+
+          rotobox_api(API_AIRPORT_RADIO, {"id": airport_id}, function(data){
+            $("dd.ctaf-frequency").text(data[0].tx_frequency);
+          });
+
+          $("div.scrollable").scrollTop(0);
       }
 
       function update_airport_markers(data){

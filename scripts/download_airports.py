@@ -38,7 +38,7 @@ TABLES = {
         "marker_lens_color": ["VARCHAR(64)"],
         "traffic_control_tower_on_airport": ["BOOLEAN"],
         "segmented_circle_marker_on_airport": ["BOOLEAN"],
-        "attendance_schedule": ["VARCHAR(64)"]
+        "attendance_schedule": ["VARCHAR(64)"],
     },
     "runways" : {
         "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
@@ -62,6 +62,14 @@ TABLES = {
         "channel_name": ["VARCHAR(32)"],
         "tx_frequency": ["FLOAT"],
         "rx_frequency": ["FLOAT"]
+    },
+    "tpp" : {
+        "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
+        "airport_id": ["INTEGER"],
+        "chart_code": ["VARCHAR(32)"],
+        "chart_name": ["VARCHAR(64)"],
+        "filename": ["VARCHAR(64)"],
+        "url": ["VARCHAR(256)"]
     }
 }
 
@@ -453,21 +461,31 @@ class FAA_NASR_Data():
     URL_AIXM = "https://nfdc.faa.gov/webContent/56DaySub/{0}/aixm5.1.zip"
     CHART_TYPES = ["sectional", "terminalArea", "world", "helicopter"]
 
+    URL_DTPP_LIST = "https://nfdc.faa.gov/webContent/dtpp/current.xml"
+    URL_PROCEDURES = "http://aeronav.faa.gov/d-tpp/{0}/{1}"  # Cycle, chart name
+    PROCEDURES_DEFAULT_CYCLE = 1608
+
     def __init__(self):
         self.cycles = {}
         self.filepath_apt_xml = None
         self.filepath_awos_xml = None
         self.filepath_awy_aixm = None
         self.filepath_nav_aixm = None
+        self.procedures_cycle = self.PROCEDURES_DEFAULT_CYCLE
 
-    # Download with progress bar
-    # http://stackoverflow.com/a/20943461
     def download_aixm(self, cycle, target_path):
         if(cycle in self.cycles):
             url = self.URL_AIXM.format(self.cycles[cycle])
         else:
             url = self.URL_AIXM.format(self.cycles["current"])
+        self.download_with_progress(url, target_path)
 
+    def download_dtpp_list(self, target_path):
+        self.download_with_progress(self.URL_DTPP_LIST, target_path)
+
+    # Download with progress bar
+    # http://stackoverflow.com/a/20943461
+    def download_with_progress(self, url, target):
         r = requests.get(url, stream=True)
         with open(target_path, 'wb') as f:
             total_length = int(r.headers.get('content-length'))
@@ -476,7 +494,6 @@ class FAA_NASR_Data():
                 if chunk:
                     f.write(chunk)
                     f.flush()
-
 
     def update_cycles(self):
         page = requests.get(self.URL_CYCLES_LIST)
@@ -552,18 +569,26 @@ class FAA_NASR_Data():
     def get_filepath_nav(self):
         return self.filepath_nav_xml
 
+    def assemble_procedures_url(self, pdf_name):
+        return self.URL_PROCEDURES.format(self.procedures_cycle, pdf_name)
+
+    def set_procedures_cycle(self, cycle):
+        self.procedures_cycle = cycle
+
+    def get_procedures_cycle(self):
+        return self.procedures_cycle
+
 def reset_tables(dbConn):
     c = dbConn.cursor()
     for table in TABLES:
-        # Create the table if it already doesn't exist
+        # Drop existing table and recreate it
+        query = "DROP {0}".format(table)
+        c.execute(query)
+
         query = "CREATE TABLE IF NOT EXISTS {0}(".format(table)
         for column in TABLES[table]:
             query += "{0} {1}, ".format(column, " ".join(TABLES[table][column]))
         query = query[:-2] + ")"
-        c.execute(query)
-
-        # Make sure the tables are empty:
-        query = "DELETE FROM {0}".format(table)
         c.execute(query)
     c.close()
 
@@ -689,55 +714,113 @@ with open(AIRPORT_CONFIG, "w") as fHandle:
 
 # DO WORK
 nasr = FAA_NASR_Data()
-files = nasr.update_all(AIRPORT_DIRECTORY)
+#files = nasr.update_all(AIRPORT_DIRECTORY)
 
 dbConn = sqlite3.connect(AIRPORT_DB)
-reset_tables(dbConn)
+#reset_tables(dbConn)
 
-print "Parsing '{0}'".format(nasr.get_filepath_apt())
-airportParser = FAA_AirportParser()
-runwayParser = FAA_RunwayParser()
-radioParser = FAA_RadioCommunicationServiceParser()
-touchdownParser = FAA_TouchDownLiftOffParser()
-atcParser = FAA_AirTrafficControlServiceParser()
+# print "Parsing '{0}'".format(nasr.get_filepath_apt())
+# airportParser = FAA_AirportParser()
+# runwayParser = FAA_RunwayParser()
+# radioParser = FAA_RadioCommunicationServiceParser()
+# touchdownParser = FAA_TouchDownLiftOffParser()
+# atcParser = FAA_AirTrafficControlServiceParser()
 
-parsers = {
-    airportParser.SUPPORTED_TAG: {
-        "parser": airportParser.parse,
-        "db_action": insert_into_db_table_airports
-    },
-    runwayParser.SUPPORTED_TAG: {
-        "parser": runwayParser.parse,
-        "db_action": insert_into_db_table_runways
-    },
-    radioParser.SUPPORTED_TAG: {
-        "parser": radioParser.parse,
-        "db_action": update_radio_db_with_frequency
-    },
-    touchdownParser.SUPPORTED_TAG: {
-        "parser": touchdownParser.parse,
-        "db_action": update_runway_db_with_tdlo_info
-    },
-    atcParser.SUPPORTED_TAG: {
-        "parser": atcParser.parse,
-        "db_action": insert_into_db_table_radio
-    }
-}
+# parsers = {
+#     airportParser.SUPPORTED_TAG: {
+#         "parser": airportParser.parse,
+#         "db_action": insert_into_db_table_airports
+#     },
+#     runwayParser.SUPPORTED_TAG: {
+#         "parser": runwayParser.parse,
+#         "db_action": insert_into_db_table_runways
+#     },
+#     radioParser.SUPPORTED_TAG: {
+#         "parser": radioParser.parse,
+#         "db_action": update_radio_db_with_frequency
+#     },
+#     touchdownParser.SUPPORTED_TAG: {
+#         "parser": touchdownParser.parse,
+#         "db_action": update_runway_db_with_tdlo_info
+#     },
+#     atcParser.SUPPORTED_TAG: {
+#         "parser": atcParser.parse,
+#         "db_action": insert_into_db_table_radio
+#     }
+# }
+
+# inhibitClearing = False
+# for event, elem in etree.iterparse(nasr.get_filepath_apt(), events=("start", "end")):
+#     if(elem.tag in parsers):
+#         if(event == "start"):
+#             inhibitClearing = True
+#         else:
+#             inhibitClearing = False
+#             result = parsers[elem.tag]["parser"](elem)
+#             parsers[elem.tag]["db_action"](dbConn, result)
+
+#     if(inhibitClearing == False):
+#         elem.clear()
+
+# print " => Done!"
+
+def insert_terminal_procedure_url(dbConn, chart):
+    c = dbConn.cursor()
+    columns = ""
+    values = ""
+    for item in chart:
+        if(item not in TABLES["tpp"]):
+            "Unknown item '{0}' when inserting row into tpp table".format(item)
+
+    query = "INSERT INTO tpp ({0}) VALUES ({1})".format(", ".join(chart.keys()),
+                                                             ", ".join("?"*len(chart)))
+    c.execute(query, chart.values())
+    c.close()
+
+def download_chart_and_format(chart):
+    basename = os.path.join(AIRPORT_PROCESSED_DIRECTORY, chart["filename"])
+    target_dir = basename + ".pdf"
+    svg_target = basename + ".svg"
+    if(os.path.exists(svg_target) is False):
+        nasr.download_with_progress(chart["url"], target_dir)
+        command = ["pdftocairo", "-svg", target_dir, svg_target]
+        subprocess.call(command)
+        os.remove(target_dir)
+
+# TODO: Check the modified date on the XML to see if it needs refreshed
+target_path = os.path.join(AIRPORT_DIRECTORY, "current_dtpp.xml")
+if(os.path.exists(target_path) is False):
+    nasr.download_dtpp_list(target_path)
 
 inhibitClearing = False
-for event, elem in etree.iterparse(nasr.get_filepath_apt(), events=("start", "end")):
-    if(elem.tag in parsers):
-        if(event == "start"):
-            inhibitClearing = True
-        else:
-            inhibitClearing = False
-            result = parsers[elem.tag]["parser"](elem)
-            parsers[elem.tag]["db_action"](dbConn, result)
+for event, elem in etree.iterparse(target_path, events=("start", "end")):
+    if(event == "start"):
+        inhibitClearing = True
+        if(elem.tag == "digital_tpp"):
+            nasr.set_procedures_cycle(elem.get("cycle"))
+            # TODO: Do something meaningful with these dates
+            #from_date = elem.get("from_edate")
+            #to_date = elem.get("from_edate")
+    else:
+        inhibitClearing = False
 
-    if(inhibitClearing == False):
-        elem.clear()
+        if(elem.tag == "airport_name"):
+            name = elem.get("apt_ident")
+            for record in elem:
+                chart = {
+                    "airport_id": name,
+                    "chart_name": record.find("chart_name").text,
+                    "chart_code": record.find("chart_code").text,
+                    "filename": nasr.get_procedures_cycle() + "_" +
+                        os.path.splitext(record.find("pdf_name").text)[0],
+                    "url": nasr.assemble_procedures_url(record.find("pdf_name").text)
+                }
+                insert_terminal_procedure_url(dbConn, chart)
 
-print " => Done!"
+                if(chart["chart_code"] == "APD"):
+                    download_chart_and_format(chart)
+
+            elem.clear()
 
 dbConn.commit()
 dbConn.close()

@@ -49,6 +49,9 @@ body {
 
   display: flex;
   flex-direction: column;
+
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .map-content {
@@ -79,16 +82,35 @@ p.airport-name {
 p.airport-identifiers {
   font-weight: bold;
   font-size: small;
+  margin-bottom: 6px;
 }
 
 div.scrollable {
   overflow-y: scroll;
   flex-grow: 1;
-  padding-top: 20px;
+  padding-top: 10px;
 }
 
 h5.airport-tags {
-  line-height: 1.5em;
+  line-height: 1em;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+div.airport-diagram {
+  height: 300px;
+}
+
+img.airport-diagram {
+  height: 100%;
+}
+
+img.airport-diagram-large {
+  width: 100%;
+}
+
+div.modal-body-no-padding {
+  padding: 0;
 }
 
 span.rp-badge {

@@ -43,6 +43,7 @@ charts/*.tif
 # Converted charts
 charts/*.vrt
 wwwroot/charts/*
+wwwroot/airports/*
 
 # Downloaded airport info
 airports/*.zip

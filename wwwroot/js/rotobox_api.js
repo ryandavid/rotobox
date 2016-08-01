@@ -6,6 +6,7 @@ var API_AIRPORT_WINDOW = "/airports/search_by_window";
 var API_AIRPORT_ID = "/airports/search_by_id";
 var API_AIRPORT_RUNWAYS = "/airports/runways";
 var API_AIRPORT_RADIO = "/airports/radio";
+var API_AIRPORT_DIAGRAMS = "/airports/diagrams";
 
 function rotobox_api(uri, args, callback) {
     var fullURL = API_ROOT + uri;

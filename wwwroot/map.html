@@ -71,8 +71,8 @@
 
     <div class="container-fluid" role="main">
       <div class="row map-row">
-        <div class="col-xs-8 map-content" id="map"></div>
-        <div class="col-xs-4 map-sidebar">
+        <div class="col-xs-9 map-content" id="map"></div>
+        <div class="col-xs-3 map-sidebar">
           <div class="sidebar-top">
             <input class="map-search" type="text" placeholder="Search..." />
             <hr class="sidebar-hr"/>
@@ -81,6 +81,9 @@
             <p id="airport-name" class="lead text-center airport-name"></span>
             <p id="airport-identifiers" class="text-center airport-identifiers"></p>
             <h5 class="airport-tags text-center"></h5>
+            <div class="airport-diagram text-center" onclick="show_large_AD()">
+              <img src="" class="airport-diagram"/>
+            </div>
             <ul class="list-group" id="airport-runways"></ul>
             <dl class="dl-horizontal">
               <dt>CTAF</dt>
@@ -96,6 +99,17 @@
         </div>
       </div>
     </div> <!-- /container -->
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-body modal-body-no-padding">
+            <img src="airports/06075AD.svg" class="airport-diagram-large"/>
+          </div>
+        </div>
+      </div>
+    </div>
 
 
     <!-- Bootstrap core JavaScript   
@@ -131,11 +145,47 @@
           iconAnchor: [24, 24],
       });
 
-      // Rotobox
-      rotobox_api(API_URI_LOCATION, {}, function(data) {
+      var centerButton =  L.Control.extend({
+        options: {
+          position: 'topleft'
+        },
+
+        onAdd: function (map) {
+          var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+
+          container.style.backgroundColor = 'white';     
+          container.style.backgroundImage = "url(img/center.png)";
+          container.style.backgroundSize = "16px 16px";
+          container.style.backgroundRepeat = "no-repeat";
+          container.style.backgroundPosition = "50% 50%";
+          container.style.width = '26px';
+          container.style.height = '26px';
+
+          container.onclick = function(){
+            recenter_map_on_current_position();
+          }
+
+          return container;
+        }
+      });
+
+      map.addControl(new centerButton());
+
+
+
+      recenter_map_on_current_position();
+
+      function recenter_map_on_current_position(){
+        rotobox_api(API_URI_LOCATION, {}, function(data) {
           var marker = L.marker([data.latitude, data.longitude], {icon: ownshipIcon}).addTo(map);
           map.setView([data.latitude, data.longitude], 10);
-      });
+        });
+      }
+
+      function show_large_AD(){
+        console.log("Clicked!");
+        $('#myModal').modal();
+      }
 
       function show_airport_detail(airport_id){
           rotobox_api(API_AIRPORT_ID, {"id": airport_id}, function(data){
@@ -188,6 +238,16 @@
 
           rotobox_api(API_AIRPORT_RADIO, {"id": airport_id}, function(data){
             $("dd.ctaf-frequency").text(data[0].tx_frequency);
+          });
+
+          rotobox_api(API_AIRPORT_DIAGRAMS, {"id": airport_id}, function(data){
+            for (var i = 0; i < data.length; i++) {
+              if(data[i].chart_name == "AIRPORT DIAGRAM"){
+                $("img.airport-diagram").attr("src", "airports/" + data[i].filename + ".svg");
+                $("img.airport-diagram-large").attr("src", "airports/" + data[i].filename + ".svg");
+                break;
+              }
+            }
           });
 
           $("div.scrollable").scrollTop(0);

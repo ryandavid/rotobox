@@ -714,55 +714,55 @@ with open(AIRPORT_CONFIG, "w") as fHandle:
 
 # DO WORK
 nasr = FAA_NASR_Data()
-#files = nasr.update_all(AIRPORT_DIRECTORY)
+files = nasr.update_all(AIRPORT_DIRECTORY)
 
 dbConn = sqlite3.connect(AIRPORT_DB)
-#reset_tables(dbConn)
+reset_tables(dbConn)
 
-# print "Parsing '{0}'".format(nasr.get_filepath_apt())
-# airportParser = FAA_AirportParser()
-# runwayParser = FAA_RunwayParser()
-# radioParser = FAA_RadioCommunicationServiceParser()
-# touchdownParser = FAA_TouchDownLiftOffParser()
-# atcParser = FAA_AirTrafficControlServiceParser()
+print "Parsing '{0}'".format(nasr.get_filepath_apt())
+airportParser = FAA_AirportParser()
+runwayParser = FAA_RunwayParser()
+radioParser = FAA_RadioCommunicationServiceParser()
+touchdownParser = FAA_TouchDownLiftOffParser()
+atcParser = FAA_AirTrafficControlServiceParser()
 
-# parsers = {
-#     airportParser.SUPPORTED_TAG: {
-#         "parser": airportParser.parse,
-#         "db_action": insert_into_db_table_airports
-#     },
-#     runwayParser.SUPPORTED_TAG: {
-#         "parser": runwayParser.parse,
-#         "db_action": insert_into_db_table_runways
-#     },
-#     radioParser.SUPPORTED_TAG: {
-#         "parser": radioParser.parse,
-#         "db_action": update_radio_db_with_frequency
-#     },
-#     touchdownParser.SUPPORTED_TAG: {
-#         "parser": touchdownParser.parse,
-#         "db_action": update_runway_db_with_tdlo_info
-#     },
-#     atcParser.SUPPORTED_TAG: {
-#         "parser": atcParser.parse,
-#         "db_action": insert_into_db_table_radio
-#     }
-# }
+parsers = {
+    airportParser.SUPPORTED_TAG: {
+        "parser": airportParser.parse,
+        "db_action": insert_into_db_table_airports
+    },
+    runwayParser.SUPPORTED_TAG: {
+        "parser": runwayParser.parse,
+        "db_action": insert_into_db_table_runways
+    },
+    radioParser.SUPPORTED_TAG: {
+        "parser": radioParser.parse,
+        "db_action": update_radio_db_with_frequency
+    },
+    touchdownParser.SUPPORTED_TAG: {
+        "parser": touchdownParser.parse,
+        "db_action": update_runway_db_with_tdlo_info
+    },
+    atcParser.SUPPORTED_TAG: {
+        "parser": atcParser.parse,
+        "db_action": insert_into_db_table_radio
+    }
+}
 
-# inhibitClearing = False
-# for event, elem in etree.iterparse(nasr.get_filepath_apt(), events=("start", "end")):
-#     if(elem.tag in parsers):
-#         if(event == "start"):
-#             inhibitClearing = True
-#         else:
-#             inhibitClearing = False
-#             result = parsers[elem.tag]["parser"](elem)
-#             parsers[elem.tag]["db_action"](dbConn, result)
+inhibitClearing = False
+for event, elem in etree.iterparse(nasr.get_filepath_apt(), events=("start", "end")):
+    if(elem.tag in parsers):
+        if(event == "start"):
+            inhibitClearing = True
+        else:
+            inhibitClearing = False
+            result = parsers[elem.tag]["parser"](elem)
+            parsers[elem.tag]["db_action"](dbConn, result)
 
-#     if(inhibitClearing == False):
-#         elem.clear()
+    if(inhibitClearing == False):
+        elem.clear()
 
-# print " => Done!"
+print " => Done!"
 
 def insert_terminal_procedure_url(dbConn, chart):
     c = dbConn.cursor()

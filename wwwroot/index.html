@@ -13,11 +13,14 @@
 
     <title>Rotobox</title>
 
-    <!-- Bootstrap core CSS -->
+    <!-- Bootstrap -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap theme -->
     <link href="css/bootstrap-theme.min.css" rel="stylesheet">
-    <!-- Custom styles for this template -->
+    
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="css/leaflet.css" />
+
+    <!-- Rotobox -->
     <link href="css/theme.css" rel="stylesheet">
   </head>
 
@@ -37,124 +40,113 @@
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="/">Rotobox</a></li>
-            <li><a href="map.html">Map</a></li>
-            <li><a href="#about">Hardware</a></li>
-            <li><a href="#contact">Config</a></li>
-            <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Status<span class="caret"></span></a>
-              <ul class="dropdown-menu">
-                <li><a href="#">GPS</a></li>
-                <li><a href="#">SDR</a></li>
-                <li><a href="#">Inertial</a></li>
-                <li><a href="#">CO2</a></li>
-                <li><a href="#">Power</a></li>
-              </ul>
-            </li>
+            <li class="active"><a data-tab="home" href="#home" onclick="switchTab($(this));">Rotobox</a></li>
+            <li><a data-tab="map" href="#map" onclick="switchTab($(this));">Map</a></li>
+            <li><a data-tab="hardware" href="#hardware"onclick="switchTab($(this));">Hardware</a></li>
+            <li><a data-tab="config" href="#config" onclick="switchTab($(this));">Config</a></li>
           </ul>
-        </div><!--/.nav-collapse -->
+        </div>
       </div>
     </nav>
 
-    <div class="container theme-showcase" role="main">
+    <script id="mainPageTemplate" type="text/x-jsrender">
+      <div class="container" role="main">
+        <div class="page-header">
+          <h1>Summary</h1>
+        </div>
+        <div class="row">
 
-      <div class="page-header">
-        <h1>Summary</h1>
-      </div>
-      <div class="row">
-
-        <div class="col-sm-4">
-          <div class="panel panel-success">
-            <div class="panel-heading">
-              <h3 class="panel-title">GPS</h3>
-            </div>
-            <div class="panel-body">
-              Fix: 3D<br/>
-              She's choochin' alright.
-            </div>
-          </div>
-          <div class="panel panel-danger">
-            <div class="panel-heading">
-              <h3 class="panel-title">Carbon Monoxide</h3>
-            </div>
-            <div class="panel-body">
-              PPM: >10,000<br/>
-              Oh fuck dude, you're dead.
-            </div>
-          </div>
-        </div><!-- /.col-sm-4 -->
-
-        <div class="col-sm-4">
-          <div class="panel panel-warning">
-            <div class="panel-heading">
-              <h3 class="panel-title">Power</h3>
-            </div>
-            <div class="panel-body">
-              <div class="progress">
-                <div class="progress-bar progress-bar-warning" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" style="width: 20%"><span class="sr-only">60% Complete (warning)</span></div>
+          <div class="col-sm-4">
+            <div class="panel panel-success">
+              <div class="panel-heading">
+                <h3 class="panel-title">GPS</h3>
               </div>
-              1 hour, 5 minutes remaining
+              <div class="panel-body">
+                Fix: 3D<br/>
+                She's choochin' alright.
+              </div>
             </div>
-          </div>
-          <div class="panel panel-success">
-            <div class="panel-heading">
-              <h3 class="panel-title">Inertials</h3>
+            <div class="panel panel-danger">
+              <div class="panel-heading">
+                <h3 class="panel-title">Carbon Monoxide</h3>
+              </div>
+              <div class="panel-body">
+                PPM: >10,000<br/>
+                Oh fuck dude, you're dead.
+              </div>
             </div>
-            <div class="panel-body">
-              Self Test Passed<br/>
-              Receiving Data
-            </div>
-          </div>
-        </div><!-- /.col-sm-4 -->
+          </div><!-- /.col-sm-4 -->
 
-        <div class="col-sm-4">
-          <div class="panel panel-success">
-            <div class="panel-heading">
-              <h3 class="panel-title">ADS-B, UAT</h3>
+          <div class="col-sm-4">
+            <div class="panel panel-warning">
+              <div class="panel-heading">
+                <h3 class="panel-title">Power</h3>
+              </div>
+              <div class="panel-body">
+                <div class="progress">
+                  <div class="progress-bar progress-bar-warning" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" style="width: 20%"><span class="sr-only">60% Complete (warning)</span></div>
+                </div>
+                1 hour, 5 minutes remaining
+              </div>
             </div>
-            <div class="panel-body">
-              Currently listening to 6 aircraft.</br>
-              Last weather received 12 minutes ago.
+            <div class="panel panel-success">
+              <div class="panel-heading">
+                <h3 class="panel-title">Inertials</h3>
+              </div>
+              <div class="panel-body">
+                Self Test Passed<br/>
+                Receiving Data
+              </div>
+            </div>
+          </div><!-- /.col-sm-4 -->
+
+          <div class="col-sm-4">
+            <div class="panel panel-success">
+              <div class="panel-heading">
+                <h3 class="panel-title">ADS-B, UAT</h3>
+              </div>
+              <div class="panel-body">
+                Currently listening to 6 aircraft.</br>
+                Last weather received 12 minutes ago.
+              </div>
+            </div>
+            <div class="panel panel-default">
+              <div class="panel-heading">
+                <h3 class="panel-title">Scripting</h3>
+              </div>
+              <div class="panel-body">
+                No scripts found - disabled!
+              </div>
+            </div>
+          </div><!-- /.col-sm-4 -->
+
+        </div>
+
+        <div class="page-header">
+          <h1>Satellites</h1>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <table class="table table-condensed" id="satellites-in-view">
+                <thead>
+                  <tr>
+                    <th>SV</th>
+                    <th>SNR</th>
+                    <th>Elevation</th>
+                    <th>Azimuth</th>
+                    <th>Used</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
             </div>
           </div>
-          <div class="panel panel-default">
-            <div class="panel-heading">
-              <h3 class="panel-title">Scripting</h3>
-            </div>
-            <div class="panel-body">
-              No scripts found - disabled!
-            </div>
-          </div>
-        </div><!-- /.col-sm-4 -->
-
-      </div>
-
-      <div class="page-header">
-        <h1>Satellites</h1>
-      </div>
-      <div class="row">
-        <div class="col-md-6">
-          <table class="table table-condensed" id="satellites-in-view">
-              <thead>
-                <tr>
-                  <th>SV</th>
-                  <th>SNR</th>
-                  <th>Elevation</th>
-                  <th>Azimuth</th>
-                  <th>Used</th>
-                </tr>
-              </thead>
-              <tbody>
-              </tbody>
-            </table>
+          <div class="col-md-6">
           </div>
         </div>
-        <div class="col-md-6">
-        </div>
       </div>
-
-
-    </div> <!-- /container -->
+    </script>
 
     <script id="satelliteItemTemplate" type="text/x-jsrender">
       <tr>
@@ -166,15 +158,63 @@
       </tr>
     </script>
 
+    <script id="mapTemplate" type="text/x-jsrender">
+      <div class="container-fluid" role="main">
+        <div class="row map-row">
+          <div class="col-xs-9 map-content" id="map"></div>
+          <div class="col-xs-3 map-sidebar">
+            <div class="sidebar-top">
+              <input class="map-search" type="text" placeholder="Search..." />
+              <hr class="sidebar-hr"/>
+            </div>
+            <div class="scrollable">
+              <p id="airport-name" class="lead text-center airport-name"></span>
+              <p id="airport-identifiers" class="text-center airport-identifiers"></p>
+              <h5 class="airport-tags text-center"></h5>
+              <div class="airport-diagram text-center" >
+                <img src="" class="airport-diagram" onclick="show_large_AD()"/>
+              </div>
+              <ul class="list-group" id="airport-runways"></ul>
+              <dl class="dl-horizontal">
+                <dt>CTAF</dt>
+                <dd class="ctaf-frequency"></dd>
+                <dt>Field Elevation</dt>
+                <dd class="field-elevation"></dd>
+              </dl>
+              <dl>
+                <dt>Remarks</dt>
+                <dd id="airport-remarks"></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <!-- Bootstrap core JavaScript
-    ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
+      <!-- Large Airport Diagram Modal -->
+      <div class="modal fade" id="airport-diagram-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+          <div class="modal-content">
+            <div class="modal-body modal-body-no-padding">
+              <img src="" class="airport-diagram-large"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </script>
+
+
+    <!-- Bootstrap -->
     <script type="text/javascript" src="js/jquery-2.2.4.min.js"></script>
     <script type="text/javascript" src="js/bootstrap.min.js"></script>
     <script type="text/javascript" src="js/jsrender.min.js"></script>
 
+    <!-- Bootstrap -->
+    <script type="text/javascript" src="js/leaflet.js"></script>
+
+    <!-- Rotobox -->
     <script type="text/javascript" src="js/rotobox_api.js"></script>
     <script type="text/javascript" src="js/index.js"></script>
+    <script type="text/javascript" src="js/home.js"></script>
+    <script type="text/javascript" src="js/map.js"></script>
   </body>
 </html>

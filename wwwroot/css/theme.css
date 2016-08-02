@@ -49,9 +49,6 @@ body {
 
   display: flex;
   flex-direction: column;
-
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .map-content {
@@ -87,22 +84,19 @@ p.airport-identifiers {
 
 div.scrollable {
   overflow-y: scroll;
+  overflow-x: hidden;
   flex-grow: 1;
   padding-top: 10px;
 }
 
 h5.airport-tags {
-  line-height: 1em;
-  margin-top: 0px;
-  margin-bottom: 0px;
-}
-
-div.airport-diagram {
-  height: 300px;
+  line-height: 1.5em;
+  margin-top: -5px;
 }
 
 img.airport-diagram {
-  height: 100%;
+  margin-top: -12px;
+  width: 100%;
 }
 
 img.airport-diagram-large {

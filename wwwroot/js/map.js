@@ -13,80 +13,6 @@ function show_large_AD(){
   $('#airport-diagram-modal').modal();
 }
 
-function show_airport_detail(airport_id){
-    rotobox_api(API_AIRPORT_ID, {"id": airport_id}, function(data){
-        $("#airport-name").text(data[0].name);
-        if(data[0].icao_name == "(null)") {
-          $("#airport-identifiers").text(data[0].designator);
-        } else {
-          $("#airport-identifiers").text(data[0].icao_name + " (" + data[0].designator + ")");
-        }
-        $("dd.field-elevation").text(data[0].field_elevation + "'");
-        $("#airport-remarks").text(data[0].remarks);
-
-        $("h5.airport-tags").empty();
-        // TODO: Fix bool values having to be strings
-        if(data[0].traffic_control_tower_on_airport == "1") {
-          $("h5.airport-tags").append("<span class='label label-primary'>Towered</span>\n");
-        } else {
-          $("h5.airport-tags").append("<span class='label label-default'>Nontowered</span>\n");
-        }
-
-        if(data[0].segmented_circle_marker_on_airport == "1") {
-          $("h5.airport-tags").append("<span class='label label-info'>Segmented Circle</span>\n");
-        }
-
-        if(data[0].wind_direction_indicator == "1") {
-          $("h5.airport-tags").append("<span class='label label-info'>Windsock</span>\n");
-        }
-
-        if(data[0].private_use == "1") {
-          $("h5.airport-tags").append("<span class='label label-danger'>Private</span>\n");
-        }
-
-    });
-
-    $("ul#airport-runways").empty();
-    rotobox_api(API_AIRPORT_RUNWAYS, {"id": airport_id}, function(data){
-      for (var i = 0; i < data.length; i++) {
-        var item = "<li class='list-group-item'>" + data[i].designator
-        if((data[i].length != "(null)") && (data[i].width != "(null)")){
-          item += "<span class='badge'>" + Math.round(data[i].width) + "' x " + Math.round(data[i].length) + "'</span>\n";
-        }
-        if(data[i].right_traffic_pattern != "1"){
-          item += "<span class='badge rp-badge'>RP</span>\n";
-        }
-        item += "</li>\n";
-
-        $("ul#airport-runways").append(item);
-      }
-    });
-
-    rotobox_api(API_AIRPORT_RADIO, {"id": airport_id}, function(data){
-      $("dd.ctaf-frequency").text(data[0].tx_frequency);
-    });
-
-    rotobox_api(API_AIRPORT_DIAGRAMS, {"id": airport_id}, function(data){
-      var found = false;
-      for (var i = 0; i < data.length; i++) {
-        if(data[i].chart_name == "AIRPORT DIAGRAM"){
-          var svg_url = "airports/" + data[i].filename + ".svg";
-          $("img.airport-diagram").attr("src", svg_url);
-          $("img.airport-diagram-large").attr("src", svg_url);
-          $("div.airport-diagram").show();
-          found = true;
-          break;
-        }
-      }
-
-      if(found == false) {
-        $("div.airport-diagram").hide();
-      }
-    });
-
-    $("div.scrollable").scrollTop(0);
-}
-
 function update_airport_markers(data){
     // Clear out the old markers
     for (var i = 0; i < markerArray.length; i++) {
@@ -112,7 +38,7 @@ function update_airport_markers(data){
                 airport_id: data[i].id
             });
         marker.on("click", function(){
-            show_airport_detail(this.options.airport_id);
+            sidebar_showAirportResult(this.options.airport_id);
         })
         markerArray.push(marker);
         map.addLayer(markerArray[i]);
@@ -126,7 +52,7 @@ function text_search_airports(query){
     } else if(results.length == 1) {
       map.setView([results[0].latitude, results[0].longitude], 10);
       // TODO: Remove this dedup of API call
-      show_airport_detail(results[0].id);
+      sidebar_showAirportResult(results[0].id);
     } else {
       console.log("Found " + results.length + " for '" + searchQuery + "'");
     }
@@ -213,3 +139,88 @@ function map_init(){
   // Start by centering the map on the current location.
   recenter_map_on_current_position();
 }
+
+
+function sidebar_showAirportResult(airport_id){
+  // TODO: Actually use the rendering functionality
+  var html = $("#sidebar-airportResult").render();
+  $("div.sidebar-scrollable").empty().append(html);
+
+  rotobox_api(API_AIRPORT_ID, {"id": airport_id}, function(data){
+    $("#airport-name").text(data[0].name);
+    if(data[0].icao_name == "(null)") {
+      $("#airport-identifiers").text(data[0].designator);
+    } else {
+      $("#airport-identifiers").text(data[0].icao_name + " (" + data[0].designator + ")");
+    }
+    $("dd.field-elevation").text(data[0].field_elevation + "'");
+    $("#airport-remarks").text(data[0].remarks);
+
+    $("h5.airport-tags").empty();
+    // TODO: Fix bool values having to be strings
+    if(data[0].traffic_control_tower_on_airport == "1") {
+      $("h5.airport-tags").append("<span class='label label-primary'>Towered</span>\n");
+    } else {
+      $("h5.airport-tags").append("<span class='label label-default'>Nontowered</span>\n");
+    }
+
+    if(data[0].segmented_circle_marker_on_airport == "1") {
+      $("h5.airport-tags").append("<span class='label label-info'>Segmented Circle</span>\n");
+    }
+
+    if(data[0].wind_direction_indicator == "1") {
+      $("h5.airport-tags").append("<span class='label label-info'>Windsock</span>\n");
+    }
+
+    if(data[0].private_use == "1") {
+      $("h5.airport-tags").append("<span class='label label-danger'>Private</span>\n");
+    }
+
+  });
+
+  $("ul#airport-runways").empty();
+  rotobox_api(API_AIRPORT_RUNWAYS, {"id": airport_id}, function(data){
+    for (var i = 0; i < data.length; i++) {
+      var item = "<li class='list-group-item'>" + data[i].designator
+      if((data[i].length != "(null)") && (data[i].width != "(null)")){
+        item += "<span class='badge'>" + Math.round(data[i].width) + "' x " + Math.round(data[i].length) + "'</span>\n";
+      }
+      if(data[i].right_traffic_pattern != "1"){
+        item += "<span class='badge rp-badge'>RP</span>\n";
+      }
+      item += "</li>\n";
+
+      $("ul#airport-runways").append(item);
+    }
+  });
+
+  rotobox_api(API_AIRPORT_RADIO, {"id": airport_id}, function(data){
+    $("dd.ctaf-frequency").text(data[0].tx_frequency);
+  });
+
+  rotobox_api(API_AIRPORT_DIAGRAMS, {"id": airport_id}, function(data){
+    var found = false;
+    for (var i = 0; i < data.length; i++) {
+      if(data[i].chart_name == "AIRPORT DIAGRAM"){
+        var svg_url = "airports/" + data[i].filename + ".svg";
+        $("img.airport-diagram").attr("src", svg_url);
+        $("img.airport-diagram-large").attr("src", svg_url);
+        $("div.airport-diagram").show();
+        found = true;
+        break;
+      }
+    }
+
+    if(found == false) {
+      $("div.airport-diagram").hide();
+    }
+  });
+
+  $("div.sidebar-scrollable").scrollTop(0);
+}
+
+function sidebar_showSearchResult(){}
+
+$(document).ready(function(){
+
+});

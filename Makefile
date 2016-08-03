@@ -39,7 +39,7 @@ all: librtlsdr dump978 dump1090 rotobox
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-rotobox: rotobox.o gdl90.o sqlite3.o $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
+rotobox: rotobox.o gdl90.o sqlite3.o database.o $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_RTL)
 
 librtlsdr: $(LIBRTLSDR_MAKEFILE)

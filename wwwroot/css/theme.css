@@ -82,7 +82,7 @@ p.airport-identifiers {
   margin-bottom: 6px;
 }
 
-div.scrollable {
+div.sidebar-scrollable {
   overflow-y: scroll;
   overflow-x: hidden;
   flex-grow: 1;

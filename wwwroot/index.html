@@ -167,25 +167,7 @@
               <input class="map-search" type="text" placeholder="Search..." />
               <hr class="sidebar-hr"/>
             </div>
-            <div class="scrollable">
-              <p id="airport-name" class="lead text-center airport-name"></span>
-              <p id="airport-identifiers" class="text-center airport-identifiers"></p>
-              <h5 class="airport-tags text-center"></h5>
-              <div class="airport-diagram text-center" >
-                <img src="" class="airport-diagram" onclick="show_large_AD()"/>
-              </div>
-              <ul class="list-group" id="airport-runways"></ul>
-              <dl class="dl-horizontal">
-                <dt>CTAF</dt>
-                <dd class="ctaf-frequency"></dd>
-                <dt>Field Elevation</dt>
-                <dd class="field-elevation"></dd>
-              </dl>
-              <dl>
-                <dt>Remarks</dt>
-                <dd id="airport-remarks"></dd>
-              </dl>
-            </div>
+            <div class="sidebar-scrollable"></div>
           </div>
         </div>
       </div>
@@ -200,6 +182,26 @@
           </div>
         </div>
       </div>
+    </script>
+
+    <script id="sidebar-airportResult" type="text/x-jsrender">
+      <p id="airport-name" class="lead text-center airport-name"></span>
+      <p id="airport-identifiers" class="text-center airport-identifiers"></p>
+      <h5 class="airport-tags text-center"></h5>
+      <div class="airport-diagram text-center" >
+        <img src="" class="airport-diagram" onclick="show_large_AD()"/>
+      </div>
+      <ul class="list-group" id="airport-runways"></ul>
+      <dl class="dl-horizontal">
+        <dt>CTAF</dt>
+        <dd class="ctaf-frequency"></dd>
+        <dt>Field Elevation</dt>
+        <dd class="field-elevation"></dd>
+      </dl>
+      <dl>
+        <dt>Remarks</dt>
+        <dd id="airport-remarks"></dd>
+      </dl>
     </script>
 
 

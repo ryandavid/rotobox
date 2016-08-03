@@ -12,6 +12,7 @@
 #include <gps.h>
 #include <rtl-sdr.h>
 
+#include "database.h"
 #include "dump978.h"
 #include "dump1090.h"
 #include "fec.h"
@@ -19,12 +20,10 @@
 #include "mongoose.h"
 #include "uat_decode.h"
 #include "rotobox.h"
-#include "sqlite3.h"
 
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
 struct gps_data_t rx_gps_data;
-sqlite3 *db;
 char path_to_db[256];
 
 static const char *s_http_port = "80";
@@ -37,45 +36,34 @@ static void ev_handler(struct mg_connection *nc, int ev, void *p) {
   }
 }
 
-static void sqlite_trace(void *arg1, const char* string) {
-    fprintf(stdout, "[SQL] %s\n", string);
+static bool get_argument_text(struct mg_str *args, const char *name, char *buf, int buflen) {
+    return mg_get_http_var(args, name, buf, buflen) > 0;
 }
 
-static const bool get_argument_value(struct mg_str *args, const char *name, char *value) {
-    char scratch[1024];
-    size_t length = sizeof(scratch);
+static int get_argument_int(struct mg_str *args, const char *name, int *value) {
+    bool success = false;
+    char buffer[64];
 
-    // Assume we use the entire buffer, and reduce it if we can.
-    if (args->len < length) {
-        length = args->len;
+    if(get_argument_text(args, name, &buffer[0], sizeof(buffer)) == true) {
+        *value = atoi(buffer);
+        success = true;
     }
 
-    // Copy it over and then null terminate it.
-    memcpy(&scratch[0], args->p, length);
-    scratch[length] = 0x00;
-
-    char *argName = NULL;
-    char *pos = strtok(&scratch[0], "=");
-    while (pos != NULL) {
-        // Copy over the argument name.
-        argName = pos;
-
-        // Snag the value. TODO make this more robust
-        pos = strtok(NULL, "&");
-
-        // Check this is the argument we are interested in.
-        if(strcmp(name, argName) == 0){
-            // TODO: Check the copy length
-            memcpy(value, pos, strlen(pos));
-            value[strlen(pos)] = 0x00;
-            break;
-        }
-        // Set up for the next argument
-        pos = strtok(NULL, "=");
-    }
-
-    return (value != NULL);
+    return success;
 }
+
+static int get_argument_float(struct mg_str *args, const char *name, float *value) {
+    bool success = false;
+    char buffer[64];
+
+    if(get_argument_text(args, name, &buffer[0], sizeof(buffer)) == true) {
+        *value = atof(buffer);
+        success = true;
+    }
+
+    return success;
+}
+
 
 static void api_location(struct mg_connection *nc, int ev, void *ev_data) {
     (void) ev;
@@ -151,23 +139,12 @@ static void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
-static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev;
-    struct http_message *message = (struct http_message *)ev_data;
-    sqlite3_stmt *stmt;
-    char airport_name[256];
+static void generic_api_db_dump(struct mg_connection *nc){
     bool first = true;
-    
-    const char *query = "SELECT * FROM airports WHERE icao_name LIKE ?;";
-    // TODO: Check for success.
-    get_argument_value(&message->query_string, "name", &airport_name[0]);
+    size_t numColumns = database_num_columns();
 
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
-
-    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_text(stmt, 1, airport_name, strlen(airport_name), SQLITE_STATIC);
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        size_t numColumns = sqlite3_column_count(stmt);
+    while (database_fetch_row() == true) {
         if(!first) {
             mg_printf(nc, ",\n");
         } else {
@@ -175,239 +152,128 @@ static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_d
         }
         mg_printf(nc, "    {\n");
         for (size_t i = 0; i < numColumns; i++) {
-            mg_printf(nc,
-                      "        \"%s\": \"%s\"%s\n",
-                      sqlite3_column_name(stmt, i),
-                      sqlite3_column_text(stmt, i),
-                      i < numColumns - 1 ? "," : "");
+            mg_printf(nc, "        \"%s\": ", database_column_name(i));
+
+            switch (database_column_type(i)) {
+                case(TYPE_INTEGER):
+                    mg_printf(nc, "%d", database_column_int(i));
+                    break;
+
+                case(TYPE_FLOAT):
+                    mg_printf(nc, "%f", database_column_double(i));
+                    break;
+
+                case(TYPE_BLOB):
+                case(TYPE_NULL):
+                case(TYPE_TEXT):
+                default:
+                    mg_printf(nc, "\"%s\"", database_column_text(i));
+            }
+
+            if (i < numColumns - 1) {
+                mg_printf(nc, "%s", ",\n");
+            } else {
+                mg_printf(nc, "%s", "\n");
+            }
         }
         mg_printf(nc, "    }");
     }
     mg_printf(nc, "\n]\n");
-    sqlite3_finalize(stmt);
+}
+
+static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_data) {
+    struct http_message *message = (struct http_message *)ev_data;
+    char name[256];
+
+    if(get_argument_text(&message->query_string, "name", &name[0], sizeof(name)) == true){
+        database_search_airports_by_name(name);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'name'");
+    }
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
 static void api_airport_window_search(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev;
     struct http_message *message = (struct http_message *)ev_data;
-    sqlite3_stmt *stmt;
-    char latMinAscii[16], latMaxAscii[16], lonMinAscii[16], lonMaxAscii[16];
     float latMin, latMax, lonMin, lonMax;
-    bool first = true;
     
-    const char *query = "SELECT * FROM airports WHERE latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?;";
-    // TODO: Check for success.
-    get_argument_value(&message->query_string, "latMin", &latMinAscii[0]);
-    get_argument_value(&message->query_string, "latMax", &latMaxAscii[0]);
-    get_argument_value(&message->query_string, "lonMin", &lonMinAscii[0]);
-    get_argument_value(&message->query_string, "lonMax", &lonMaxAscii[0]);
-
-    // Convert to floats
-    latMin = atof(&latMinAscii[0]);
-    latMax = atof(&latMaxAscii[0]);
-    lonMin = atof(&lonMinAscii[0]);
-    lonMax = atof(&lonMaxAscii[0]);
-
-    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
-
-    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_double(stmt, 1, latMin);
-    sqlite3_bind_double(stmt, 2, latMax);
-    sqlite3_bind_double(stmt, 3, lonMin);
-    sqlite3_bind_double(stmt, 4, lonMax);
-
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        size_t numColumns = sqlite3_column_count(stmt);
-        if(!first) {
-            mg_printf(nc, ",\n");
-        } else {
-            first = false;
-        }
-        mg_printf(nc, "    {\n");
-        for (size_t i = 0; i < numColumns; i++) {
-            mg_printf(nc,
-                      "        \"%s\": \"%s\"%s\n",
-                      sqlite3_column_name(stmt, i),
-                      sqlite3_column_text(stmt, i),
-                      i < numColumns - 1 ? "," : "");
-        }
-        mg_printf(nc, "    }");
+    if(get_argument_float(&message->query_string, "latMin", &latMin) &&
+       get_argument_float(&message->query_string, "latMax", &latMax) &&
+       get_argument_float(&message->query_string, "lonMin", &lonMin) &&
+       get_argument_float(&message->query_string, "lonMax", &lonMax)) {
+        database_search_airports_within_window(latMin, latMax, lonMin, lonMax);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find latMin, latMax, lonMin, or lonMax");
     }
-    mg_printf(nc, "\n]\n");
-    sqlite3_finalize(stmt);
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
 static void api_airport_id_search(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev;
     struct http_message *message = (struct http_message *)ev_data;
-    sqlite3_stmt *stmt;
-    char idAscii[16];
     int id;
-    bool first = true;
-    
-    const char *query = "SELECT * FROM airports WHERE id = ? LIMIT 1;";
-    // TODO: Check for success.
-    get_argument_value(&message->query_string, "id", &idAscii[0]);
 
-    // Convert to int
-    id = atoi(&idAscii[0]);
-
-    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
-
-    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, id);
-
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        size_t numColumns = sqlite3_column_count(stmt);
-        if(!first) {
-            mg_printf(nc, ",\n");
-        } else {
-            first = false;
-        }
-        mg_printf(nc, "    {\n");
-        for (size_t i = 0; i < numColumns; i++) {
-            mg_printf(nc,
-                      "        \"%s\": \"%s\"%s\n",
-                      sqlite3_column_name(stmt, i),
-                      sqlite3_column_text(stmt, i),
-                      i < numColumns - 1 ? "," : "");
-        }
-        mg_printf(nc, "    }");
+    if(get_argument_int(&message->query_string, "id", &id) == true) {
+        database_search_airport_by_id(id);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
     }
-    mg_printf(nc, "\n]\n");
-    sqlite3_finalize(stmt);
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
 
 static void api_airport_runway_search(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev;
     struct http_message *message = (struct http_message *)ev_data;
-    sqlite3_stmt *stmt;
-    char idAscii[16];
     int id;
-    bool first = true;
-    
-    const char *query = "SELECT runways.* FROM runways JOIN airports ON runways.airport_faa_id = airports.faa_id WHERE airports.id = ?;";
-    // TODO: Check for success.
-    get_argument_value(&message->query_string, "id", &idAscii[0]);
 
-    // Convert to int
-    id = atoi(&idAscii[0]);
-
-    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
-
-    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, id);
-
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        size_t numColumns = sqlite3_column_count(stmt);
-        if(!first) {
-            mg_printf(nc, ",\n");
-        } else {
-            first = false;
-        }
-        mg_printf(nc, "    {\n");
-        for (size_t i = 0; i < numColumns; i++) {
-            mg_printf(nc,
-                      "        \"%s\": \"%s\"%s\n",
-                      sqlite3_column_name(stmt, i),
-                      sqlite3_column_text(stmt, i),
-                      i < numColumns - 1 ? "," : "");
-        }
-        mg_printf(nc, "    }");
+    if(get_argument_int(&message->query_string, "id", &id) == true) {
+        database_search_runways_by_airport_id(id);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
     }
-    mg_printf(nc, "\n]\n");
-    sqlite3_finalize(stmt);
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
 static void api_airport_radio_search(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev;
     struct http_message *message = (struct http_message *)ev_data;
-    sqlite3_stmt *stmt;
-    char idAscii[16];
     int id;
-    bool first = true;
     
-    const char *query = "SELECT radio.* FROM radio JOIN airports ON radio.airport_faa_id = airports.faa_id WHERE airports.id = ?;";
-    // TODO: Check for success.
-    get_argument_value(&message->query_string, "id", &idAscii[0]);
-
-    // Convert to int
-    id = atoi(&idAscii[0]);
-
-    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
-
-    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, id);
-
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        size_t numColumns = sqlite3_column_count(stmt);
-        if(!first) {
-            mg_printf(nc, ",\n");
-        } else {
-            first = false;
-        }
-        mg_printf(nc, "    {\n");
-        for (size_t i = 0; i < numColumns; i++) {
-            mg_printf(nc,
-                      "        \"%s\": \"%s\"%s\n",
-                      sqlite3_column_name(stmt, i),
-                      sqlite3_column_text(stmt, i),
-                      i < numColumns - 1 ? "," : "");
-        }
-        mg_printf(nc, "    }");
+    if(get_argument_int(&message->query_string, "id", &id) == true) {
+        database_search_radio_by_airport_id(id);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
     }
-    mg_printf(nc, "\n]\n");
-    sqlite3_finalize(stmt);
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
 static void api_airport_diagram_search(struct mg_connection *nc, int ev, void *ev_data) {
-    (void) ev;
     struct http_message *message = (struct http_message *)ev_data;
-    sqlite3_stmt *stmt;
-    char idAscii[16];
     int id;
-    bool first = true;
-    
-    const char *query = "SELECT tpp.filename, tpp.chart_name FROM tpp JOIN airports ON airports.designator = tpp.airport_id WHERE airports.id = ?;";
-    // TODO: Check for success.
-    get_argument_value(&message->query_string, "id", &idAscii[0]);
 
-    // Convert to int
-    id = atoi(&idAscii[0]);
-
-    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
-
-    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, id);
-
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        size_t numColumns = sqlite3_column_count(stmt);
-        if(!first) {
-            mg_printf(nc, ",\n");
-        } else {
-            first = false;
-        }
-        mg_printf(nc, "    {\n");
-        for (size_t i = 0; i < numColumns; i++) {
-            mg_printf(nc,
-                      "        \"%s\": \"%s\"%s\n",
-                      sqlite3_column_name(stmt, i),
-                      sqlite3_column_text(stmt, i),
-                      i < numColumns - 1 ? "," : "");
-        }
-        mg_printf(nc, "    }");
+    if(get_argument_int(&message->query_string, "id", &id) == true) {
+        database_search_charts_by_airport_id(id);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
     }
-    mg_printf(nc, "\n]\n");
-    sqlite3_finalize(stmt);
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
-
 
 
 void handle_sigint() {
@@ -435,11 +301,9 @@ int main(int argc, char **argv) {
     }
 
     // Init sqlite3
-    // TODO: Become more robust in DB filepath
-    if(sqlite3_open("./airports/airport_db.sqlite", &db) != SQLITE_OK){
+    if(database_init() == false) {
         fprintf(stdout, "ERROR: Could not open SQLite DB\n");
     }
-    sqlite3_trace(db, sqlite_trace, NULL);
 
     // Init Webserver
     mg_mgr_init(&mgr, NULL);  // Initialize event manager object
@@ -514,7 +378,7 @@ int main(int argc, char **argv) {
 
     mg_mgr_free(&mgr);
 
-    sqlite3_close(db);
+    database_close();
     
     fprintf(stdout, "Exiting!\n");
 }

@@ -38,7 +38,7 @@ function update_airport_markers(data){
                 airport_id: data[i].id
             });
         marker.on("click", function(){
-            sidebar_showAirportResult(this.options.airport_id);
+            sidebar_showAirportResult(this.options.airport_id, false);
         })
         markerArray.push(marker);
         map.addLayer(markerArray[i]);
@@ -46,17 +46,29 @@ function update_airport_markers(data){
 }
 
 function text_search_airports(query){
-  rotobox_api(API_AIRPORT_SEARCH, {"name": searchQuery}, function(results){
-    if(results.length == 0){
-      console.log("No results found for '" + searchQuery + "'");
-    } else if(results.length == 1) {
-      map.setView([results[0].latitude, results[0].longitude], 10);
-      // TODO: Remove this dedup of API call
-      sidebar_showAirportResult(results[0].id);
+  rotobox_api(API_AIRPORT_SEARCH, {"name": query}, function(results){
+    if(results.length == 1) {
+      sidebar_showAirportResult(results[0].id, true);
     } else {
-      console.log("Found " + results.length + " for '" + searchQuery + "'");
+      sidebar_showAirportSearchResults(results);
     }
   });
+}
+
+function sidebar_showAirportSearchResults(results) {
+  if((results.length == 0) || (results == {})) {
+    var html = $("#sidebar-airportResultNone").render();
+    $("div.sidebar-scrollable").empty().append(html);
+  } else {
+    var html = $("#sidebar-airportResultList").render();
+    $("div.sidebar-scrollable").empty().append(html);
+    $("p.result-list-num-results").text("Found " + results.length + " results:");
+
+    for (var i = 0; i < results.length; i++) {
+      var html = $("#sidebar-airportResultListItem").render(results[i]);
+      $("div.list-group").append(html);
+    }
+  }
 }
 
 function map_init(){
@@ -130,7 +142,9 @@ function map_init(){
   // Search box on map sidebar.
   $("input.map-search").keyup(function(e){
     if(e.keyCode == 13) {
-      text_search_airports($(this).val());
+      var query = $(this).val();
+      text_search_airports(query);
+
       // Clear the text. TODO: Maybe be smarter about when we do this?
       $(this).val("");
     }
@@ -141,7 +155,7 @@ function map_init(){
 }
 
 
-function sidebar_showAirportResult(airport_id){
+function sidebar_showAirportResult(airport_id, center){
   // TODO: Actually use the rendering functionality
   var html = $("#sidebar-airportResult").render();
   $("div.sidebar-scrollable").empty().append(html);
@@ -176,6 +190,9 @@ function sidebar_showAirportResult(airport_id){
       $("h5.airport-tags").append("<span class='label label-danger'>Private</span>\n");
     }
 
+    if(center == true){
+      map.setView([data[0].latitude, data[0].longitude], 10);
+    }
   });
 
   $("ul#airport-runways").empty();
@@ -219,8 +236,3 @@ function sidebar_showAirportResult(airport_id){
   $("div.sidebar-scrollable").scrollTop(0);
 }
 
-function sidebar_showSearchResult(){}
-
-$(document).ready(function(){
-
-});

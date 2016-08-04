@@ -181,6 +181,10 @@ static void generic_api_db_dump(struct mg_connection *nc){
     mg_printf(nc, "\n]\n");
 }
 
+static void api_send_empty_result(struct mg_connection *nc) {
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{}\n");
+}
+
 static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *message = (struct http_message *)ev_data;
     char name[256];
@@ -191,6 +195,7 @@ static void api_airport_name_search(struct mg_connection *nc, int ev, void *ev_d
         database_finish_query();
     } else {
         fprintf(stdout, "%s\n", "ERROR: Could not find 'name'");
+        api_send_empty_result(nc);
     }
 
     nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -209,6 +214,7 @@ static void api_airport_window_search(struct mg_connection *nc, int ev, void *ev
         database_finish_query();
     } else {
         fprintf(stdout, "%s\n", "ERROR: Could not find latMin, latMax, lonMin, or lonMax");
+        api_send_empty_result(nc);
     }
 
     nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -224,6 +230,7 @@ static void api_airport_id_search(struct mg_connection *nc, int ev, void *ev_dat
         database_finish_query();
     } else {
         fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
+        api_send_empty_result(nc);
     }
 
     nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -240,6 +247,7 @@ static void api_airport_runway_search(struct mg_connection *nc, int ev, void *ev
         database_finish_query();
     } else {
         fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
+        api_send_empty_result(nc);
     }
 
     nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -255,6 +263,7 @@ static void api_airport_radio_search(struct mg_connection *nc, int ev, void *ev_
         database_finish_query();
     } else {
         fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
+        api_send_empty_result(nc);
     }
 
     nc->flags |= MG_F_SEND_AND_CLOSE;
@@ -270,6 +279,7 @@ static void api_airport_diagram_search(struct mg_connection *nc, int ev, void *e
         database_finish_query();
     } else {
         fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
+        api_send_empty_result(nc);
     }
 
     nc->flags |= MG_F_SEND_AND_CLOSE;

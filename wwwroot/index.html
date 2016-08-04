@@ -204,6 +204,29 @@
       </dl>
     </script>
 
+    <script id="sidebar-airportResultNone" type="text/x-jsrender">
+      <p class="text-center no-results-header">No results found...</p>
+      <p class="search-tip">You can search by:</p>
+        <ul class="list-unstyled search-example-list">
+          <li>Name<span class="search-example">eg 'Palo Alto'</span></li>
+          <li>Designator<span class="search-example">eg 'PAO'</span></li>
+          <li>ICAO Designator<span class="search-example">eg 'KPAO'</span></li>
+        </ul>
+      </div>
+    </script>
+
+    <script id="sidebar-airportResultList" type="text/x-jsrender">
+      <p class="result-list-num-results"></p>
+      <div class="list-group">        
+      </div>
+    </script>
+
+    <script id="sidebar-airportResultListItem" type="text/x-jsrender">
+      <a href="#" class="list-group-item" onclick="sidebar_showAirportResult({{:id}}, true)">
+        <h4 class="list-group-item-heading">{{:designator}}</h4>
+        <p class="list-group-item-text">{{:name}}</p>
+      </a>
+    </script>
 
     <!-- Bootstrap -->
     <script type="text/javascript" src="js/jquery-2.2.4.min.js"></script>

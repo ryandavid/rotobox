@@ -11,7 +11,7 @@
 #include "sqlite3.h"
 
 #define DATABASE_FILEPATH       "./airports/airport_db.sqlite"
-
+#define DATABASE_WILDCARD       '%'
 
 enum database_column_type_t {
     TYPE_INTEGER    = SQLITE_INTEGER,

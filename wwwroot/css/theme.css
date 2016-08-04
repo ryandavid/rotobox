@@ -110,3 +110,22 @@ div.modal-body-no-padding {
 span.rp-badge {
   background-color: #aba8ab;
 }
+
+span.search-example {
+  color: #777777;
+  font-size: 0.9em;
+  padding-left: 10px;
+}
+
+ul.search-example-list {
+  padding-left: 10px;
+}
+
+p.search-tip {
+  margin: 0;
+}
+
+p.no-results-header {
+  font-weight: bold;
+  font-style: italic;
+}

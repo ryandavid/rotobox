@@ -34,10 +34,10 @@ const char* database_column_text(int i);
 int database_column_int(int i);
 double database_column_double(int i);
 
-void database_search_airport_by_id(int airport_id);
-void database_search_radio_by_airport_id(int airport_id);
-void database_search_runways_by_airport_id(int airport_id);
-void database_search_charts_by_airport_id(int airport_id);
+void database_search_airport_by_id(const char* airport_id);
+void database_search_radio_by_airport_id(const char* airport_id);
+void database_search_runways_by_airport_id(const char* airport_id);
+void database_search_charts_by_airport_id(const char* airport_id);
 void database_search_airports_within_window(float latMin, float latMax, float lonMin, float lonMax);
 void database_search_airports_by_name(const char* name);
 

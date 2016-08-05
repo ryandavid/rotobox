@@ -58,42 +58,42 @@ double database_column_double(int i) {
     return sqlite3_column_double(stmt, i);
 }
 
-void database_search_radio_by_airport_id(int airport_id) {
+void database_search_radio_by_airport_id(const char* airport_id) {
     const char *query = "SELECT radio.* " \
                         "FROM radio " \
-                        "JOIN airports ON radio.airport_faa_id = airports.faa_id " \
+                        "JOIN airports ON radio.airport_id = airports.id " \
                         "WHERE airports.id = ?;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, airport_id);
+    sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
 }
 
-void database_search_airport_by_id(int airport_id) {
+void database_search_airport_by_id(const char* airport_id) {
     const char *query = "SELECT * " \
                         "FROM airports " \
                         "WHERE id = ? " \
                         "LIMIT 1;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, airport_id);
+    sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
 }
 
-void database_search_runways_by_airport_id(int airport_id) {
+void database_search_runways_by_airport_id(const char* airport_id) {
     const char *query = "SELECT runways.* " \
-                        "FROM runways JOIN airports ON runways.airport_faa_id = airports.faa_id " \
+                        "FROM runways JOIN airports ON runways.airport_id = airports.id " \
                         "WHERE airports.id = ?;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, airport_id);
+    sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
 }
 
-void database_search_charts_by_airport_id(int airport_id) {
+void database_search_charts_by_airport_id(const char* airport_id) {
     const char *query = "SELECT tpp.filename, tpp.chart_name "\
-                        "FROM tpp JOIN airports ON airports.designator = tpp.airport_id "\
+                        "FROM tpp JOIN airports ON airports.id = tpp.airport_id "\
                         "WHERE airports.id = ?;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_int(stmt, 1, airport_id);
+    sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
 }
 
 void database_search_airports_within_window(float latMin, float latMax,
@@ -115,7 +115,6 @@ void database_search_airports_by_name(const char* name) {
                         "WHERE (icao_name LIKE '%' || ? || '%') " \
                         "OR (name LIKE '%' || ? || '%') " \
                         "OR (designator LIKE '%' || ? || '%');";
-    fprintf(stdout, "Name = %s, len = %d\n", wildcardName, strlen(wildcardName));
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, name, strlen(name), SQLITE_STATIC);

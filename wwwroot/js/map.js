@@ -212,7 +212,9 @@ function sidebar_showAirportResult(airport_id, center){
   });
 
   rotobox_api(API_AIRPORT_RADIO, {"id": airport_id}, function(data){
-    $("dd.ctaf-frequency").text(data[0].tx_frequency);
+    if(data.length != 0) {
+      $("dd.ctaf-frequency").text(data[0].tx_frequency);
+    }
   });
 
   rotobox_api(API_AIRPORT_DIAGRAMS, {"id": airport_id}, function(data){

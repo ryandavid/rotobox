@@ -16,8 +16,7 @@ import zipfile
 # Definition of tables to store in sqlite
 TABLES = {
     "airports" : {
-        "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
-        "faa_id": ["VARCHAR(32)", "UNIQUE"],
+        "id": ["VARCHAR(32)", "PRIMARY KEY", "UNIQUE"],
         "designator": ["VARCHAR(8)"],
         "name": ["VARCHAR(64)"],
         "activated": ["VARCHAR(64)"],  # TODO: Datetime
@@ -41,9 +40,8 @@ TABLES = {
         "attendance_schedule": ["VARCHAR(64)"],
     },
     "runways" : {
-        "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
-        "faa_id": ["VARCHAR(32)", "UNIQUE"],
-        "airport_faa_id": ["VARCHAR(32)"],
+        "id": ["VARCHAR(32)", "PRIMARY KEY", "UNIQUE"],
+        "airport_id": ["VARCHAR(32)"],
         "designator": ["VARCHAR(16)"],
         "length": ["FLOAT"],
         "width": ["FLOAT"],
@@ -55,17 +53,15 @@ TABLES = {
         "ils_type": ["VARCHAR(64)"]
     },
     "radio" : {
-        "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
-        "faa_id": ["VARCHAR(32)", "UNIQUE"],
-        "airport_faa_id": ["VARCHAR(32)"],
-        "radio_comm_id": ["VARCHAR(32)"],
+        "id": ["VARCHAR(64)", "PRIMARY KEY", "UNIQUE"],
+        "airport_id": ["VARCHAR(32)"],
         "channel_name": ["VARCHAR(32)"],
         "tx_frequency": ["FLOAT"],
         "rx_frequency": ["FLOAT"]
     },
     "tpp" : {
         "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
-        "airport_id": ["INTEGER"],
+        "airport_id": ["VARCHAR(32)"],
         "chart_code": ["VARCHAR(32)"],
         "chart_name": ["VARCHAR(64)"],
         "filename": ["VARCHAR(64)"],
@@ -239,7 +235,7 @@ class FAA_AirportParser(FAA_GenericParser):
 
     def parse(self, element):
         airport = {
-            "faa_id": element.get(self.make_tag("gml", "id")),
+            "id": element.get(self.make_tag("gml", "id")),
             "remarks": "",
         }
 
@@ -276,7 +272,7 @@ class FAA_RunwayParser(FAA_GenericParser):
         associatedString = element.get(self.make_tag("xlink", "href"))
         startPos = associatedString.find("id='") + len("id='")
         endPos = associatedString.find("'", startPos)
-        return {"airport_faa_id": associatedString[startPos:endPos]}
+        return {"airport_id": associatedString[startPos:endPos]}
 
     def helper_runwayDesignatior(self, element):
         return {"designator": element.text}
@@ -317,7 +313,7 @@ class FAA_RunwayParser(FAA_GenericParser):
 
     def parse(self, element):
         runway = {
-            "faa_id": element.get(self.make_tag("gml", "id")),
+            "id": element.get(self.make_tag("gml", "id")),
         }
 
         for item in element[0][0]:
@@ -357,7 +353,7 @@ class FAA_RadioCommunicationServiceParser(FAA_GenericParser):
 
     def parse(self, element):
         radio = {
-            "radio_comm_id": element.get(self.make_tag("gml", "id"))
+            "id": element.get(self.make_tag("gml", "id"))
         }
 
         for item in element[0][0]:
@@ -406,7 +402,7 @@ class FAA_TouchDownLiftOffParser(FAA_GenericParser):
         associatedString = element.get(self.make_tag("xlink", "href"))
         startPos = associatedString.find("id='") + len("id='")
         endPos = associatedString.find("'", startPos)
-        return {"airport_faa_id": associatedString[startPos:endPos]}
+        return {"airport_id": associatedString[startPos:endPos]}
 
     def parse(self, element):
         tdlo = {}
@@ -436,20 +432,17 @@ class FAA_AirTrafficControlServiceParser(FAA_GenericParser):
         # NOTE the wierd formatting for 'id'
         startPos = radioCommChannel.find("id ='") + len("id ='")
         endPos = radioCommChannel.find("'", startPos)
-        return {"radio_comm_id": radioCommChannel[startPos:endPos]}
+        return {"id": radioCommChannel[startPos:endPos]}
 
     def helper_clientAirport(self, element):
         clientAirport = element.get(self.make_tag("xlink", "href"))
         # NOTE the wierd formatting for 'id'
         startPos = clientAirport.find("id ='") + len("id ='")
         endPos = clientAirport.find("'", startPos)
-        return {"airport_faa_id": clientAirport[startPos:endPos]}
+        return {"airport_id": clientAirport[startPos:endPos]}
 
     def parse(self, element):
-        atc = {
-            "faa_id": element.get(self.make_tag("gml", "id"))
-        }
-
+        atc = {}
         for item in element[0][0]:
             if((item.tag in self.PARSERS) and (self.PARSERS[item.tag] is not None)):
                 result = self.PARSERS[item.tag](item)
@@ -582,7 +575,7 @@ def reset_tables(dbConn):
     c = dbConn.cursor()
     for table in TABLES:
         # Drop existing table and recreate it
-        query = "DROP {0}".format(table)
+        query = "DROP TABLE IF EXISTS {0}".format(table)
         c.execute(query)
 
         query = "CREATE TABLE IF NOT EXISTS {0}(".format(table)
@@ -622,10 +615,10 @@ def update_runway_db_with_tdlo_info(db, tdlo):
     c = dbConn.cursor()
 
     designator = tdlo["designator"]
-    airport_faa_id = tdlo["airport_faa_id"]
+    airport_id = tdlo["airport_id"]
 
     tdlo.pop("designator")
-    tdlo.pop("airport_faa_id")
+    tdlo.pop("airport_id")
 
     queryNames = []
     queryValues = []
@@ -637,9 +630,9 @@ def update_runway_db_with_tdlo_info(db, tdlo):
             queryValues.append(tdlo[item])
 
     if(len(queryNames) != 0):
-        query = "UPDATE runways SET {0} WHERE designator = ? AND airport_faa_id = ?".format(
+        query = "UPDATE runways SET {0} WHERE designator = ? AND airport_id = ?".format(
             ", ".join(queryNames))
-        c.execute(query, queryValues + [designator, airport_faa_id])
+        c.execute(query, queryValues + [designator, airport_id])
     return
 
 def insert_into_db_table_radio(dbConn, radio):
@@ -657,9 +650,8 @@ def insert_into_db_table_radio(dbConn, radio):
 
 def update_radio_db_with_frequency(dbConn, radio):
     c = dbConn.cursor()
-
-    radio_comm_id = radio["radio_comm_id"]
-    radio.pop("radio_comm_id")
+    radio_comm_id = radio["id"]
+    radio.pop("id")
 
     queryNames = []
     queryValues = []
@@ -673,9 +665,35 @@ def update_radio_db_with_frequency(dbConn, radio):
     queryValues.append(radio_comm_id)
 
     if(len(queryNames) != 0):
-        query = "UPDATE radio SET {0} WHERE radio_comm_id = ?".format(", ".join(queryNames))
+        query = "UPDATE radio SET {0} WHERE id = ?".format(", ".join(queryNames))
         c.execute(query, queryValues)
     return
+
+def insert_terminal_procedure_url(dbConn, chart):
+    c = dbConn.cursor()
+    columns = ""
+    values = ""
+    for item in chart:
+        if(item not in TABLES["tpp"]):
+            "Unknown item '{0}' when inserting row into tpp table".format(item)
+
+    query = "INSERT INTO tpp ({0}) VALUES ({1})".format(", ".join(chart.keys()),
+                                                             ", ".join("?"*len(chart)))
+    c.execute(query, chart.values())
+    c.close()
+
+def fetch_airport_id_for_designator(dbConn, designator):
+    airport_id = None
+
+    c = dbConn.cursor()
+    query = "SELECT id FROM airports WHERE designator = ?;"
+    c.execute(query, (designator,))
+
+    result = c.fetchone()
+    if(result is not None):
+        airport_id = result[0]
+
+    return airport_id
 
 
 # Ensure current working directory is the script's path
@@ -763,35 +781,17 @@ for event, elem in etree.iterparse(nasr.get_filepath_apt(), events=("start", "en
         elem.clear()
 
 print " => Done!"
+dbConn.commit()
 
-def insert_terminal_procedure_url(dbConn, chart):
-    c = dbConn.cursor()
-    columns = ""
-    values = ""
-    for item in chart:
-        if(item not in TABLES["tpp"]):
-            "Unknown item '{0}' when inserting row into tpp table".format(item)
 
-    query = "INSERT INTO tpp ({0}) VALUES ({1})".format(", ".join(chart.keys()),
-                                                             ", ".join("?"*len(chart)))
-    c.execute(query, chart.values())
-    c.close()
-
-def download_chart_and_format(chart):
-    basename = os.path.join(AIRPORT_PROCESSED_DIRECTORY, chart["filename"])
-    target_dir = basename + ".pdf"
-    svg_target = basename + ".svg"
-    if(os.path.exists(svg_target) is False):
-        nasr.download_with_progress(chart["url"], target_dir)
-        command = ["pdftocairo", "-svg", target_dir, svg_target]
-        subprocess.call(command)
-        os.remove(target_dir)
-
+print "Updating airport diagrams"
 # TODO: Check the modified date on the XML to see if it needs refreshed
 target_path = os.path.join(AIRPORT_DIRECTORY, "current_dtpp.xml")
 if(os.path.exists(target_path) is False):
+    print " => Downloading current DTPP XML"
     nasr.download_dtpp_list(target_path)
 
+print " => Parsing DTPP XML"
 inhibitClearing = False
 for event, elem in etree.iterparse(target_path, events=("start", "end")):
     if(event == "start"):
@@ -806,9 +806,14 @@ for event, elem in etree.iterparse(target_path, events=("start", "end")):
 
         if(elem.tag == "airport_name"):
             name = elem.get("apt_ident")
+            airport_id = fetch_airport_id_for_designator(dbConn, name)
+            if(airport_id is None):
+                print " => WARN: Could not find airport ID for {0}".format(name)
+                airport_id = ""
+
             for record in elem:
                 chart = {
-                    "airport_id": name,
+                    "airport_id": airport_id,
                     "chart_name": record.find("chart_name").text,
                     "chart_code": record.find("chart_code").text,
                     "filename": nasr.get_procedures_cycle() + "_" +
@@ -817,11 +822,22 @@ for event, elem in etree.iterparse(target_path, events=("start", "end")):
                 }
                 insert_terminal_procedure_url(dbConn, chart)
 
+                # If we have the Airport Directory, download it and convert it to SVG
                 if(chart["chart_code"] == "APD"):
-                    download_chart_and_format(chart)
+                    basename = os.path.join(AIRPORT_PROCESSED_DIRECTORY, chart["filename"])
+                    target_dir = basename + ".pdf"
+                    svg_target = basename + ".svg"
+
+                    if(os.path.exists(svg_target) is False):
+                        print " => Downloading airport directory for {0}".format(name)
+                        nasr.download_with_progress(chart["url"], target_dir)
+                        command = ["pdftocairo", "-svg", target_dir, svg_target]
+                        subprocess.call(command)
+                        os.remove(target_dir)
 
             elem.clear()
 
+print " => Done!"
 dbConn.commit()
 dbConn.close()
 sys.exit(0)

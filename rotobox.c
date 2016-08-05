@@ -222,10 +222,10 @@ static void api_airport_window_search(struct mg_connection *nc, int ev, void *ev
 
 static void api_airport_id_search(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *message = (struct http_message *)ev_data;
-    int id;
+    char id[256];
 
-    if(get_argument_int(&message->query_string, "id", &id) == true) {
-        database_search_airport_by_id(id);
+    if(get_argument_text(&message->query_string, "id", &id[0], sizeof(id)) == true) {
+        database_search_airport_by_id(&id[0]);
         generic_api_db_dump(nc);
         database_finish_query();
     } else {
@@ -239,10 +239,10 @@ static void api_airport_id_search(struct mg_connection *nc, int ev, void *ev_dat
 
 static void api_airport_runway_search(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *message = (struct http_message *)ev_data;
-    int id;
+    char id[256];
 
-    if(get_argument_int(&message->query_string, "id", &id) == true) {
-        database_search_runways_by_airport_id(id);
+    if(get_argument_text(&message->query_string, "id", &id[0], sizeof(id)) == true) {
+        database_search_runways_by_airport_id(&id[0]);
         generic_api_db_dump(nc);
         database_finish_query();
     } else {
@@ -255,10 +255,10 @@ static void api_airport_runway_search(struct mg_connection *nc, int ev, void *ev
 
 static void api_airport_radio_search(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *message = (struct http_message *)ev_data;
-    int id;
+    char id[256];
     
-    if(get_argument_int(&message->query_string, "id", &id) == true) {
-        database_search_radio_by_airport_id(id);
+    if(get_argument_text(&message->query_string, "id", &id[0], sizeof(id)) == true) {
+        database_search_radio_by_airport_id(&id[0]);
         generic_api_db_dump(nc);
         database_finish_query();
     } else {
@@ -271,10 +271,10 @@ static void api_airport_radio_search(struct mg_connection *nc, int ev, void *ev_
 
 static void api_airport_diagram_search(struct mg_connection *nc, int ev, void *ev_data) {
     struct http_message *message = (struct http_message *)ev_data;
-    int id;
+    char id[256];
 
-    if(get_argument_int(&message->query_string, "id", &id) == true) {
-        database_search_charts_by_airport_id(id);
+    if(get_argument_text(&message->query_string, "id", &id[0], sizeof(id)) == true) {
+        database_search_charts_by_airport_id(&id[0]);
         generic_api_db_dump(nc);
         database_finish_query();
     } else {

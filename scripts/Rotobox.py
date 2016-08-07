@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 
 from clint.textui import progress
-import os
-import sqlite3
-import xml.etree.ElementTree as etree
 import datetime
 import json
 import os
 import re
 import requests
 import shutil
+import sqlite3
 import subprocess
 import sys
+import xml.etree.ElementTree as etree
 import zipfile
 
 class Database():
-    # Definition of tables to store in sqlite
+    # Definition of tables to store in sqlite.  Always keep the column type as the first item in the
+    # list.
     TABLES = {
         "airports" : {
             "id": ["VARCHAR(32)", "PRIMARY KEY", "UNIQUE"],
@@ -68,6 +68,12 @@ class Database():
             "chart_name": ["VARCHAR(64)"],
             "filename": ["VARCHAR(64)"],
             "url": ["VARCHAR(256)"]
+        },
+        "updates": {
+            "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
+            "product": ["VARCHAR(32)"],
+            "cycle": ["VARCHAR(32)"],
+            "updated": ["DATETIME", "DEFAULT", "CURRENT_TIMESTAMP"],
         }
     }
 
@@ -101,9 +107,62 @@ class Database():
 
         return success
 
-    def reset_tables(self):
-        for table in self.TABLES:
+    def reset_tables(self, tables):
+        for table in tables:
             self.reset_table(table)
+
+    # TODO: This is a touch shitty because we could reset the table, but not touch the corresponding
+    # rows in the 'updates' table.  For, if we reset the 'airports' table it should be smart enough
+    # to reset the row in 'updates' for whatever source(s) populate it.
+    def verify_tables(self, fix=False):
+        c = self.dbConn.cursor()
+
+        for table in self.TABLES:
+            table_valid = True
+
+            query = "PRAGMA table_info({0});".format(table)
+            c.execute(query)
+
+            result = c.fetchall()
+            if(result is not None):
+                # 0 : cid
+                # 1 : name
+                # 2 : type
+                # 3 : notnull
+                # 4 : default value
+                # 5 : primary key
+
+                actual_table_columns = {}
+                for column in result:
+                    actual_table_columns[column[1]] = column[2]
+
+                for column in self.TABLES[table]:
+                    # Check that the column 
+                    if(column not in actual_table_columns):
+                        print "WARN: Column '{0}' is missing!".format(column)
+                        table_valid = False
+                        break
+
+                    # Check that the type is the same. This is a bit hackish because we have to
+                    # assume that the type is the first item in our definition. Fix.... later.
+                    elif(self.TABLES[table][column][0] != actual_table_columns[column]):
+                        print "WARN: Column '{0}' has mismatched type - " \
+                              "expecting '{1}' and but actually '{2}'!".format(
+                                column, self.TABLES[table][column][0], actual_table_columns[column])
+                        table_valid = False
+                        break
+
+            # The actual DB didn't even have the table we wanted!
+            else:
+                print "WARN: Table '{0}' not found!".format(table)
+                table_valid = False
+
+            if(table_valid is False):
+                if(fix is False):
+                    print "ERROR: DB needs touchup for table '{0}'!".format(table)
+                else:
+                    print "WARN: Fixing table '{0}' by resetting it!".format(table)
+                    self.reset_table(table)
 
     def insert_into_db_table_airports(self, airport):
         c = self.dbConn.cursor()
@@ -212,7 +271,42 @@ class Database():
         if(result is not None):
             airport_id = result[0]
 
+        c.close()
         return airport_id
+
+    def set_table_updated_cycle(self, product, cycle):
+        c = self.dbConn.cursor()
+        query = "SELECT id FROM updates WHERE product = ?"
+        c.execute(query, (product,))
+
+        result = c.fetchone()
+        if(result is not None):
+            product_id = result[0]
+            query = "UPDATE updates " \
+                    "SET cycle = ?, updated = (datetime('now','localtime')) " \
+                    "WHERE id = ?"
+            c.execute(query, (cycle, product_id))
+        else:
+            query = "INSERT INTO updates (product, cycle, updated) " \
+                    "VALUES (?, ?, (datetime('now','localtime')))"
+            c.execute(query, (product, cycle))
+
+        c.close()
+        return True
+
+    def get_product_updated_cycle(self, product):
+        cycle = None
+
+        c = self.dbConn.cursor()
+        query = "SELECT cycle FROM updates WHERE product = ?"
+        c.execute(query, (product,))
+
+        result = c.fetchone()
+        if(result is not None):
+            cycle = result[0]
+
+        c.close()
+        return cycle
 
 class FAA_GenericParser(object):
     XML_TAGS = {
@@ -611,34 +705,32 @@ class FAA_DtppAirportParser(FAA_GenericParser):
             })
         return charts
 
-class FAA_DttpAttrParser(FAA_GenericParser):
-    # The DTPP XML doesn't use the same notion of namespace as the AIXM
-    def get_supported_tag(self):
-        return "digital_tpp"
-
-    def parse(self, element):
-        return element.get("cycle")
-
 class FAA_NASR_Data():
     URL_CYCLES_LIST = "https://enasr.faa.gov/eNASR/nasr/ValueList/Cycle"
     URL_NASR_SUB = "https://nfdc.faa.gov/webContent/56DaySub/{0}/{1}"  # Cycle, product filename
 
     NASR_PRODUCT_AIXM = "aixm5.1.zip"
-    NASR_PRODUCT_TWR_TXT = "TWR.zip"
+    NASR_PRODUCTS_TXT = ["TWR", "FIX"]
 
     CHART_TYPES = ["sectional", "terminalArea", "world", "helicopter"]
 
     URL_DTPP_LIST = "https://nfdc.faa.gov/webContent/dtpp/current.xml"
     URL_PROCEDURES = "http://aeronav.faa.gov/d-tpp/{0}/{1}"  # Cycle, chart name
-    PROCEDURES_DEFAULT_CYCLE = 1608
 
-    def __init__(self):
+    def __init__(self, cache_dir):
         self.cycles = {}
+        self.procedures_cycle = None
+
+        self.cache_dir = cache_dir
         self.filepath_apt_xml = None
         self.filepath_awos_xml = None
-        self.filepath_awy_aixm = None
-        self.filepath_nav_aixm = None
-        self.procedures_cycle = self.PROCEDURES_DEFAULT_CYCLE
+        self.filepath_awy_xml = None
+        self.filepath_nav_xml = None
+        self.filepath_dtpp_xml = None
+
+        # Ensure the cache directory exists.
+        if(os.path.exists(self.cache_dir) is False):
+            os.makedirs(self.cache_dir)
 
     def download_nasr_aixm(self, cycle, target_path):
         if(cycle in self.cycles):
@@ -650,9 +742,10 @@ class FAA_NASR_Data():
     def download_dtpp_list(self, target_path):
         self.download_with_progress(self.URL_DTPP_LIST, target_path)
 
-    def download_nasr_txt(self, target_path):
-        url = self.URL_NASR_SUB.format(self.cycles["current"], NASR_PRODUCT_TWR_TXT)
-        self.download_with_progress(url, target_path)
+    def download_nasr_legacy(self, product, target_path):
+        if product in self.NASR_PRODUCTS_TXT:
+            url = self.URL_NASR_SUB.format(self.cycles["current"], product + ".zip")
+            self.download_with_progress(url, target_path)
 
     # Download with progress bar
     # http://stackoverflow.com/a/20943461
@@ -666,7 +759,20 @@ class FAA_NASR_Data():
                     f.write(chunk)
                     f.flush()
 
-    def update_cycles(self):
+    def update_dtpp_cycle(self):
+        success = False
+        # We don't have a nice way of knowing what the latest DTPP cycle is, rather just a URL with
+        # the latest XML as a generic filename.  Request the first few bytes of it and we'll parse
+        # out what the latest cycle number is.
+        r = requests.get(self.URL_DTPP_LIST, headers={"Range": "bytes=0-200"})
+        if(r.status_code == requests.codes.partial_content):
+            m = re.search("(?<=cycle=\")[0-9]{4}", r.text)
+            if(m is not None):
+                self.procedures_cycle = int(m.group(0))
+                success = True
+        return success
+
+    def update_aixm_cycles(self):
         page = requests.get(self.URL_CYCLES_LIST)
         obj = page.json()
 
@@ -677,15 +783,19 @@ class FAA_NASR_Data():
 
         return self.cycles
 
-    def update_all(self, target_dir):
-        self.update_cycles()
+    def update_aixm(self):
+        updatePerformed = False
+
+        self.update_aixm_cycles()
 
         basename = "aixm_" + self.cycles["current"]
-        downloadFullpath = os.path.join(target_dir, basename + ".zip")
-        print "Updating NASR AIXM Data".format(self.cycles["current"])
+        downloadFullpath = os.path.join(self.cache_dir, basename + ".zip")
+        print "Updating NASR AIXM Data"
         if(os.path.exists(downloadFullpath) is True):
             print " => Already have current subscription ({0})".format(self.cycles["current"])
         else:
+            updatePerformed = True
+
             print " => Fetching current subscription ({0})".format(self.cycles["current"])
             self.download_nasr_aixm("current", downloadFullpath)
 
@@ -701,24 +811,44 @@ class FAA_NASR_Data():
             extractedFilepaths = []
             for file in desiredFiles:
                 print " => Extracting file {0}".format(file)
-                outpath = main_zf.extract(file, target_dir)
+                outpath = main_zf.extract(file, self.cache_dir)
                 sub_zf = zipfile.ZipFile(outpath)
                 # HACKY HACK HACK
                 childname = os.path.basename(outpath).replace("zip", "xml")
-                filename = sub_zf.extract(childname, target_dir)
+                filename = sub_zf.extract(childname, self.cache_dir)
 
                 os.remove(outpath)
                 extractedFilepaths.append(filename)
 
             # Clean up after ourselves
-            shutil.rmtree(os.path.join(target_dir, "AIXM_5.1"))
+            shutil.rmtree(os.path.join(self.cache_dir, "AIXM_5.1"))
 
-        self.filepath_apt_xml = os.path.join(target_dir, "APT_AIXM.xml")
-        self.filepath_awos_xml = os.path.join(target_dir, "AWOS_AIXM.xml")
-        self.filepath_awy_xml = os.path.join(target_dir, "AWY_AIXM.xml")
-        self.filepath_nav_xml = os.path.join(target_dir, "AWOS_NAV.xml")
+        # TODO: Find a less hacky way of doing this
+        self.filepath_apt_xml = os.path.join(self.cache_dir, "APT_AIXM.xml")
+        self.filepath_awos_xml = os.path.join(self.cache_dir, "AWOS_AIXM.xml")
+        self.filepath_awy_xml = os.path.join(self.cache_dir, "AWY_AIXM.xml")
+        self.filepath_nav_xml = os.path.join(self.cache_dir, "AWOS_NAV.xml")
 
-        return True
+        return updatePerformed
+
+    def update_dtpp(self):
+        updatePerformed = False
+
+        self.update_dtpp_cycle()
+        # TODO: Be smarter about when we update the XML
+        print "Updating NASR DTPP Data"
+        target_path = os.path.join(self.cache_dir, "dtpp_{0}.xml".format(self.procedures_cycle))
+        if(os.path.exists(target_path) is False):
+            updatePerformed = True
+
+            print " => Downloading current DTPP XML ({0})".format(self.procedures_cycle)
+            self.download_dtpp_list(target_path)
+        else:
+            print " => Already have the current DTPP XML ({0})".format(self.procedures_cycle)
+
+        # TODO: Find less hacky way of doing this
+        self.filepath_dtpp_xml = target_path
+        return updatePerformed
 
     def get_current_cycle(self):
         return self.cycles["current"]
@@ -735,11 +865,11 @@ class FAA_NASR_Data():
     def get_filepath_nav(self):
         return self.filepath_nav_xml
 
+    def get_filepath_dtpp(self):
+        return self.filepath_dtpp_xml
+
     def assemble_procedures_url(self, pdf_name):
         return self.URL_PROCEDURES.format(self.procedures_cycle, pdf_name)
-
-    def set_procedures_cycle(self, cycle):
-        self.procedures_cycle = cycle
 
     def get_procedures_cycle(self):
         return self.procedures_cycle
@@ -747,46 +877,29 @@ class FAA_NASR_Data():
 class XML_Parser():
     def __init__(self, filename):
         self.filename = filename
-        self.start_tag_hooks = []
-        self.end_tag_hooks = []
-
-        self.start_parsers = {}
-        self.end_parsers = {}
+        self.tag_hooks = []
+        self.parsers = {}
         return
 
-    def register_start_tag_hook(self, parser, callback):
-        self.start_tag_hooks.append((parser(), callback))
-
-    def register_end_tag_hook(self, parser, callback):
-        self.end_tag_hooks.append((parser(), callback))
+    def register(self, parser, callback):
+        self.tag_hooks.append((parser(), callback))
 
     def run(self):
-        for hook in self.start_tag_hooks:
-            self.start_parsers[hook[0].SUPPORTED_TAG] = {
+        for hook in self.tag_hooks:
+            self.parsers[hook[0].SUPPORTED_TAG] = {
                 "action": hook[0].parse,
                 "callback": hook[1]
             }
-
-        for hook in self.end_tag_hooks:
-            self.end_parsers[hook[0].SUPPORTED_TAG] = {
-                "action": hook[0].parse,
-                "callback": hook[1]
-            }
-
 
         inhibitClearing = False
         for event, elem in etree.iterparse(self.filename, events=("start", "end")):
-            if((event == "start") and (elem.tag in self.start_parsers)):
-                result = self.start_parsers[elem.tag]["action"](elem)
-                self.start_parsers[elem.tag]["callback"](result)
-
-            if(elem.tag in self.end_parsers):
+            if(elem.tag in self.parsers):
                 if(event == "start"):
                     inhibitClearing = True
                 else:
                     inhibitClearing = False
-                    result = self.end_parsers[elem.tag]["action"](elem)
-                    self.end_parsers[elem.tag]["callback"](result)
+                    result = self.parsers[elem.tag]["action"](elem)
+                    self.parsers[elem.tag]["callback"](result)
 
             if(inhibitClearing is False):
                 elem.clear()

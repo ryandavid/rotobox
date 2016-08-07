@@ -35,6 +35,9 @@ rotobox
 .DS_Store
 ._*
 
+# Scripts pyc
+scripts/*.pyc
+
 # Downloaded charts
 charts/*.htm
 charts/*.tfw
@@ -45,7 +48,12 @@ charts/*.vrt
 wwwroot/charts/*
 wwwroot/airports/*
 
+# Converted airspace GeoJSON
+wwwroot/airspaces/*
+
 # Downloaded airport info
 airports/*.zip
 airports/*.xml
-airports/*.sqlite
+
+# SQLite Database
+rotobox.sqlite

@@ -221,7 +221,7 @@ function sidebar_showAirportResult(airport_id, center){
     var found = false;
     for (var i = 0; i < data.length; i++) {
       if(data[i].chart_name == "AIRPORT DIAGRAM"){
-        var svg_url = "airports/" + data[i].filename + ".svg";
+        var svg_url = "airports/" + data[i].filename;
         $("img.airport-diagram").attr("src", svg_url);
         $("img.airport-diagram-large").attr("src", svg_url);
         $("div.airport-diagram").show();

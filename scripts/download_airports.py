@@ -58,10 +58,15 @@ ROTOBOX_ROOT = os.path.dirname(SCRIPT_DIR)
 AIRPORT_DB = os.path.join(ROTOBOX_ROOT, "rotobox.sqlite")
 AIRPORT_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "airports")
 AIRPORT_PROCESSED_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "wwwroot", "airports")
+AIRSPACES_PROCESSED_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "wwwroot", "airspaces")
 
 # Ensure the chart output directory exists.
 if(os.path.exists(AIRPORT_PROCESSED_DIRECTORY) is False):
     os.makedirs(AIRPORT_PROCESSED_DIRECTORY)
+
+# Ensure the airspaces output directory exists.
+if(os.path.exists(AIRSPACES_PROCESSED_DIRECTORY) is False):
+    os.makedirs(AIRSPACES_PROCESSED_DIRECTORY)
 
 print "Airport DB:\t\t{0}".format(AIRPORT_DB)
 print "Airport Directory:\t{0}".format(AIRPORT_DIRECTORY)
@@ -111,6 +116,19 @@ if(db.get_product_updated_cycle("dtpp") != str(nasr.get_procedures_cycle())):
 else:
     print " => Already have the latest charts!"
 print " => Done!"
+
+# Airspace shapefiles
+nasr.update_airspace_shapefiles()
+if(db.get_product_updated_cycle("airspaces") != nasr.get_current_cycle()):
+    for file in nasr.get_filepath_airport_shapefiles():
+        print " => Processing '{0}'".format(file)
+        output_name = os.path.join(AIRSPACES_PROCESSED_DIRECTORY,
+                                   os.path.splitext(os.path.basename(file))[0] + ".geojson")
+
+        command = ["ogr2ogr", "-f", "GeoJSON", output_name, file]
+        subprocess.call(command)
+
+    db.set_table_updated_cycle("airspaces", nasr.get_current_cycle());
 
 db.commit()
 db.close()

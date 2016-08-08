@@ -52,8 +52,7 @@ wwwroot/airports/*
 wwwroot/airspaces/*
 
 # Downloaded airport info
-airports/*.zip
-airports/*.xml
+airports/*
 
 # SQLite Database
 rotobox.sqlite

@@ -710,6 +710,7 @@ class FAA_NASR_Data():
     URL_NASR_SUB = "https://nfdc.faa.gov/webContent/56DaySub/{0}/{1}"  # Cycle, product filename
 
     NASR_PRODUCT_AIXM = "aixm5.1.zip"
+    NASR_PRODUCT_AIRSPACE_SHAPES = "class_airspace_shape_files.zip"
     NASR_PRODUCTS_TXT = ["TWR", "FIX"]
 
     CHART_TYPES = ["sectional", "terminalArea", "world", "helicopter"]
@@ -727,6 +728,7 @@ class FAA_NASR_Data():
         self.filepath_awy_xml = None
         self.filepath_nav_xml = None
         self.filepath_dtpp_xml = None
+        self.filepath_airspace_shapefiles = []
 
         # Ensure the cache directory exists.
         if(os.path.exists(self.cache_dir) is False):
@@ -747,6 +749,10 @@ class FAA_NASR_Data():
             url = self.URL_NASR_SUB.format(self.cycles["current"], product + ".zip")
             self.download_with_progress(url, target_path)
 
+    def download_nasr_airspace_shapes(self, target_path):
+        url = self.URL_NASR_SUB.format(self.cycles["current"], self.NASR_PRODUCT_AIRSPACE_SHAPES)
+        self.download_with_progress(url, target_path)
+
     # Download with progress bar
     # http://stackoverflow.com/a/20943461
     def download_with_progress(self, url, target_path):
@@ -759,27 +765,30 @@ class FAA_NASR_Data():
                     f.write(chunk)
                     f.flush()
 
-    def update_dtpp_cycle(self):
-        success = False
-        # We don't have a nice way of knowing what the latest DTPP cycle is, rather just a URL with
-        # the latest XML as a generic filename.  Request the first few bytes of it and we'll parse
-        # out what the latest cycle number is.
-        r = requests.get(self.URL_DTPP_LIST, headers={"Range": "bytes=0-200"})
-        if(r.status_code == requests.codes.partial_content):
-            m = re.search("(?<=cycle=\")[0-9]{4}", r.text)
-            if(m is not None):
-                self.procedures_cycle = int(m.group(0))
-                success = True
-        return success
+    def update_dtpp_cycle(self, force=False):
+        # Attempt to do some caching.
+        if((self.procedures_cycle is None) or (force is True)):
+            # We don't have a nice way of knowing what the latest DTPP cycle is, rather just a URL
+            # with the latest XML as a generic filename.  Request the first few bytes of it and
+            # we'll parse out what the latest cycle number is.
+            r = requests.get(self.URL_DTPP_LIST, headers={"Range": "bytes=0-200"})
+            if(r.status_code == requests.codes.partial_content):
+                m = re.search("(?<=cycle=\")[0-9]{4}", r.text)
+                if(m is not None):
+                    self.procedures_cycle = int(m.group(0))
 
-    def update_aixm_cycles(self):
-        page = requests.get(self.URL_CYCLES_LIST)
-        obj = page.json()
+        return self.procedures_cycle
 
-        for cycle in obj["Cycle"]:
-            m = re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", cycle["choice"])
-            if(m is not None):
-                self.cycles[cycle["name"].lower()] = m.group(0)
+    def update_aixm_cycles(self, force=False):
+        # Attempt to do some caching.
+        if((self.cycles == {}) or (force is True)):
+            page = requests.get(self.URL_CYCLES_LIST)
+            obj = page.json()
+
+            for cycle in obj["Cycle"]:
+                m = re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", cycle["choice"])
+                if(m is not None):
+                    self.cycles[cycle["name"].lower()] = m.group(0)
 
         return self.cycles
 
@@ -844,11 +853,34 @@ class FAA_NASR_Data():
             print " => Downloading current DTPP XML ({0})".format(self.procedures_cycle)
             self.download_dtpp_list(target_path)
         else:
-            print " => Already have the current DTPP XML ({0})".format(self.procedures_cycle)
+            print " => Already up to date! ({0})".format(self.procedures_cycle)
 
         # TODO: Find less hacky way of doing this
         self.filepath_dtpp_xml = target_path
         return updatePerformed
+
+    def update_airspace_shapefiles(self):
+        self.update_aixm_cycles()
+
+        print "Updating NASR Airspace Shapefiles"
+        target_path = os.path.join(self.cache_dir,
+                                   "airspace_shapefiles_{0}.zip".format(self.procedures_cycle))
+        if(os.path.exists(target_path) is True):
+            print " => Already up to date! ({0})".format(self.procedures_cycle)
+        else:
+            print " => Downloading current Airspace Shapefiles ({0})".format(self.procedures_cycle)
+            self.download_nasr_airspace_shapes(target_path)
+
+            zf = zipfile.ZipFile(target_path)
+            zf.extractall(self.cache_dir)
+
+        # HACKY HACK HACK
+        self.filepath_airspace_shapefiles = []
+        for file in os.listdir(os.path.join(self.cache_dir, "Shape_Files")):
+            if ".shp" in file:
+                self.filepath_airspace_shapefiles.append(
+                    os.path.join(self.cache_dir, "Shape_Files", file))
+
 
     def get_current_cycle(self):
         return self.cycles["current"]
@@ -867,6 +899,9 @@ class FAA_NASR_Data():
 
     def get_filepath_dtpp(self):
         return self.filepath_dtpp_xml
+
+    def get_filepath_airport_shapefiles(self):
+        return self.filepath_airspace_shapefiles
 
     def assemble_procedures_url(self, pdf_name):
         return self.URL_PROCEDURES.format(self.procedures_cycle, pdf_name)

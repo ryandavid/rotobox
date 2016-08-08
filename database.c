@@ -122,3 +122,8 @@ void database_search_airports_by_name(const char* name) {
     sqlite3_bind_text(stmt, 3, name, strlen(name), SQLITE_STATIC);
 }
 
+void database_available_airspace_shapefiles() {
+    const char *query = "SELECT * FROM airspaces;";
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+}
+

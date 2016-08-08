@@ -139,6 +139,14 @@ function map_init(){
     }
   });
 
+  rotobox_api(API_AIRSPACE_AVAILABLE, {}, function(data) {
+    for (var i = 0; i < data.length; i++) {
+      console.log("Adding " + data[i].name)
+      var airspaces = new L.GeoJSON.AJAX("/airspaces/" + data[i].filename);
+      airspaces.addTo(map);
+    }
+  });
+
   // Search box on map sidebar.
   $("input.map-search").keyup(function(e){
     if(e.keyCode == 13) {

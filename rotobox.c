@@ -285,6 +285,12 @@ static void api_airport_diagram_search(struct mg_connection *nc, int ev, void *e
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
+static void api_available_airspace_shapefiles(struct mg_connection *nc, int ev, void *ev_data) {
+    database_available_airspace_shapefiles();
+    generic_api_db_dump(nc);
+    database_finish_query();
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
 
 void handle_sigint() {
     fprintf(stdout, "Caught SIGINT!\n");
@@ -331,6 +337,7 @@ int main(int argc, char **argv) {
         mg_register_http_endpoint(nc, "/api/airports/runways", api_airport_runway_search);
         mg_register_http_endpoint(nc, "/api/airports/radio", api_airport_radio_search);
         mg_register_http_endpoint(nc, "/api/airports/diagram", api_airport_diagram_search);
+        mg_register_http_endpoint(nc, "/api/airspace/available", api_available_airspace_shapefiles);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", s_http_port);
     }

@@ -8,6 +8,8 @@ var API_AIRPORT_RUNWAYS = "/airports/runways";
 var API_AIRPORT_RADIO = "/airports/radio";
 var API_AIRPORT_DIAGRAMS = "/airports/diagrams";
 
+var API_AIRSPACE_AVAILABLE = "/airspace/available";
+
 function rotobox_api(uri, args, callback) {
     var fullURL = API_ROOT + uri;
 

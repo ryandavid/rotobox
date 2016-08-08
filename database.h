@@ -40,5 +40,6 @@ void database_search_runways_by_airport_id(const char* airport_id);
 void database_search_charts_by_airport_id(const char* airport_id);
 void database_search_airports_within_window(float latMin, float latMax, float lonMin, float lonMax);
 void database_search_airports_by_name(const char* name);
+void database_available_airspace_shapefiles();
 
 #endif  // DATABASE_H_

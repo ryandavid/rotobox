@@ -120,6 +120,7 @@ print " => Done!"
 # Airspace shapefiles
 nasr.update_airspace_shapefiles()
 if(db.get_product_updated_cycle("airspaces") != nasr.get_current_cycle()):
+    db.reset_table("airspaces")
     for file in nasr.get_filepath_airport_shapefiles():
         print " => Processing '{0}'".format(file)
         output_name = os.path.join(AIRSPACES_PROCESSED_DIRECTORY,
@@ -127,6 +128,20 @@ if(db.get_product_updated_cycle("airspaces") != nasr.get_current_cycle()):
 
         command = ["ogr2ogr", "-f", "GeoJSON", output_name, file]
         subprocess.call(command)
+
+        # Make a nice name for this airspace
+        if("class_b" in file):
+            name = "Class B"
+        elif("class_c" in file):
+            name = "Class C"
+        elif("class_d" in file):
+            name = "Class D"
+        elif("class_e5" in file):
+            name = "Class E5"
+        else:
+            name = "Class E"
+
+        db.insert_processed_airspace_shapefile(name, os.path.basename(output_name))
 
     db.set_table_updated_cycle("airspaces", nasr.get_current_cycle());
 

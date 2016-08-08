@@ -69,6 +69,11 @@ class Database():
             "filename": ["VARCHAR(64)"],
             "url": ["VARCHAR(256)"]
         },
+        "airspaces": {
+            "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
+            "name": ["VARCHAR(32)"],
+            "filename": ["VARCHAR(64)"]
+        },
         "updates": {
             "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
             "product": ["VARCHAR(32)"],
@@ -258,6 +263,13 @@ class Database():
         query = "INSERT INTO tpp ({0}) VALUES ({1})".format(", ".join(chart.keys()),
                                                                  ", ".join("?"*len(chart)))
         c.execute(query, chart.values())
+        c.close()
+
+    def insert_processed_airspace_shapefile(self, name, filename):
+        c = self.dbConn.cursor()
+
+        query = "INSERT INTO airspaces (name, filename) VALUES (?, ?)"
+        c.execute(query, (name, filename))
         c.close()
 
     def fetch_airport_id_for_designator(self, designator):
@@ -871,8 +883,8 @@ class FAA_NASR_Data():
             print " => Downloading current Airspace Shapefiles ({0})".format(self.procedures_cycle)
             self.download_nasr_airspace_shapes(target_path)
 
-            zf = zipfile.ZipFile(target_path)
-            zf.extractall(self.cache_dir)
+        zf = zipfile.ZipFile(target_path)
+        zf.extractall(self.cache_dir)
 
         # HACKY HACK HACK
         self.filepath_airspace_shapefiles = []

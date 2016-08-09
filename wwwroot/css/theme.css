@@ -97,6 +97,7 @@ h5.airport-tags {
 img.airport-diagram {
   margin-top: -12px;
   width: 100%;
+  cursor: pointer;
 }
 
 img.airport-diagram-large {

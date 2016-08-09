@@ -55,20 +55,33 @@ function text_search_airports(query){
   });
 }
 
-function sidebar_showAirportSearchResults(results) {
-  if((results.length == 0) || (results == {})) {
-    var html = $("#sidebar-airportResultNone").render();
-    $("div.sidebar-scrollable").empty().append(html);
-  } else {
-    var html = $("#sidebar-airportResultList").render();
-    $("div.sidebar-scrollable").empty().append(html);
-    $("p.result-list-num-results").text("Found " + results.length + " results:");
+// Referenced http://leafletjs.com/examples/choropleth.html
+function highlight_airspace(e) {
+  var layer = e.target;
 
-    for (var i = 0; i < results.length; i++) {
-      var html = $("#sidebar-airportResultListItem").render(results[i]);
-      $("div.list-group").append(html);
-    }
-  }
+  layer.setStyle({
+    fillOpacity: 0.2
+  });
+}
+
+function reset_airspace(e) {
+  var layer = e.target;
+
+  layer.setStyle({
+    fillOpacity: 0.1
+  });
+}
+
+function click_airpsace(e) {
+  sidebar_showAirspaceDetail(e.target.feature.properties);
+}
+
+function on_each_airpsace(feature, layer) {
+  layer.on({
+    mouseover: highlight_airspace,
+    mouseout: reset_airspace,
+    click: click_airpsace
+  });
 }
 
 function map_init(){
@@ -89,6 +102,42 @@ function map_init(){
       iconSize: [48, 48],
       iconAnchor: [24, 24],
   });
+
+  var class_b_style = {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#2464A9",
+    "fillOpacity": 0.1,
+    "dashArray": ""
+  };
+
+  var class_c_style = {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#7A2B51",
+    "fillOpacity": 0.1,
+    "dashArray": ""
+  };
+
+  var class_d_style = {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#0C3573",
+    "fillOpacity": 0.1,
+    "dashArray": "10, 5"
+  };
+
+  var class_e_style = {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#741646",
+    "fillOpacity": 0.1,
+    "dashArray": "0.9"
+  };
 
   // Button below zoom buttons to re-center the map on the current location
   var centerButton =  L.Control.extend({
@@ -139,11 +188,36 @@ function map_init(){
     }
   });
 
+  // Load the airspace shapefiles in the form of GeoJSON's.
   rotobox_api(API_AIRSPACE_AVAILABLE, {}, function(data) {
+    var overlay_airspaces = {};
+
     for (var i = 0; i < data.length; i++) {
-      console.log("Adding " + data[i].name)
-      var airspaces = new L.GeoJSON.AJAX("/airspaces/" + data[i].filename);
-      airspaces.addTo(map);
+      // Skip Class-E5 because IMHO not very useful.
+      if(data[i].name == "Class E5") {
+        continue;
+      }
+
+      var airspaceStyle;
+      if(data[i].name == "Class B") {
+        airspaceStyle = class_b_style;
+      } else if(data[i].name == "Class C") {
+        airspaceStyle = class_c_style;
+      } else if(data[i].name == "Class D") {
+        airspaceStyle = class_d_style;
+      } else {
+        airspaceStyle = class_e_style;
+      }
+
+      overlay_airspaces[data[i].name] = new L.GeoJSON.AJAX("/airspaces/" + data[i].filename, {
+        style: airspaceStyle,
+        onEachFeature: on_each_airpsace
+      });
+    }
+
+    // Only show the layers control if we actually have airspaces available.
+    if(Object.keys(overlay_airspaces).length > 0){
+      L.control.layers(null, overlay_airspaces).addTo(map);
     }
   });
 
@@ -162,6 +236,26 @@ function map_init(){
   recenter_map_on_current_position();
 }
 
+function sidebar_showAirportSearchResults(results) {
+  if((results.length == 0) || (results == {})) {
+    var html = $("#sidebar-airportResultNone").render();
+    $("div.sidebar-scrollable").empty().append(html);
+  } else {
+    var html = $("#sidebar-airportResultList").render();
+    $("div.sidebar-scrollable").empty().append(html);
+    $("p.result-list-num-results").text("Found " + results.length + " results:");
+
+    for (var i = 0; i < results.length; i++) {
+      var html = $("#sidebar-airportResultListItem").render(results[i]);
+      $("div.list-group").append(html);
+    }
+  }
+}
+
+function sidebar_showAirspaceDetail(properties) {
+  var html = $("#sidebar-airspaceDescription").render(properties);
+  $("div.sidebar-scrollable").empty().append(html);
+}
 
 function sidebar_showAirportResult(airport_id, center){
   // TODO: Actually use the rendering functionality

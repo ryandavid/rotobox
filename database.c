@@ -112,9 +112,9 @@ void database_search_airports_within_window(float latMin, float latMax,
 void database_search_airports_by_name(const char* name) {
     const char *query = "SELECT * " \
                         "FROM airports " \
-                        "WHERE (icao_name LIKE '%' || ? || '%') " \
+                        "WHERE (icao_name LIKE ?) " \
                         "OR (name LIKE '%' || ? || '%') " \
-                        "OR (designator LIKE '%' || ? || '%');";
+                        "OR (designator LIKE ?);";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, name, strlen(name), SQLITE_STATIC);

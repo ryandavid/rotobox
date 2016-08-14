@@ -8,7 +8,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "sqlite3.h"
+#include <sqlite3.h>
+#include <spatialite.h>
+#include <spatialite/gaiageo.h>
 
 #define DATABASE_FILEPATH       "./rotobox.sqlite"
 #define DATABASE_WILDCARD       '%'
@@ -26,6 +28,7 @@ bool database_close();
 
 bool database_fetch_row();
 void database_finish_query();
+void database_execute_query(const char * query);
 
 int database_num_columns();
 enum database_column_type_t database_column_type(int i);
@@ -41,5 +44,6 @@ void database_search_charts_by_airport_id(const char* airport_id);
 void database_search_airports_within_window(float latMin, float latMax, float lonMin, float lonMax);
 void database_search_airports_by_name(const char* name);
 void database_available_airspace_shapefiles();
+void database_get_airspace_geojson_by_class(const char* class);
 
 #endif  // DATABASE_H_

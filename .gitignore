@@ -48,11 +48,9 @@ charts/*.vrt
 wwwroot/charts/*
 wwwroot/airports/*
 
-# Converted airspace GeoJSON
-wwwroot/airspaces/*
-
 # Downloaded airport info
 airports/*
 
 # SQLite Database
 rotobox.sqlite
+

@@ -13,18 +13,16 @@
 #include <rtl-sdr.h>
 
 #include "database.h"
-#include "dump978.h"
 #include "dump1090.h"
-#include "fec.h"
 #include "gdl90.h"
 #include "mongoose.h"
-#include "uat_decode.h"
 #include "rotobox.h"
 
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
 struct gps_data_t rx_gps_data;
-char path_to_db[256];
+
+//uat_uplink_mdb_ll_t *uplink_mdb_head = NULL;
 
 static const char *s_http_port = "80";
 static struct mg_serve_http_opts s_http_server_opts;
@@ -142,6 +140,8 @@ static void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
 static void generic_api_db_dump(struct mg_connection *nc){
     bool first = true;
     size_t numColumns = database_num_columns();
+    bool isGeo = false;
+    const char * geoColumnName = "geometry";
 
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
     while (database_fetch_row() == true) {
@@ -153,6 +153,11 @@ static void generic_api_db_dump(struct mg_connection *nc){
         mg_printf(nc, "    {\n");
         for (size_t i = 0; i < numColumns; i++) {
             mg_printf(nc, "        \"%s\": ", database_column_name(i));
+            if(strcmp(database_column_name(i), &geoColumnName[0]) == 0) {
+                isGeo = true;
+            } else {
+                isGeo = false;
+            }
 
             switch (database_column_type(i)) {
                 case(TYPE_INTEGER):
@@ -167,7 +172,11 @@ static void generic_api_db_dump(struct mg_connection *nc){
                 case(TYPE_NULL):
                 case(TYPE_TEXT):
                 default:
-                    mg_printf(nc, "\"%s\"", database_column_text(i));
+                    if (isGeo == true) {
+                        mg_printf(nc, "%s", database_column_text(i));
+                    } else {
+                        mg_printf(nc, "\"%s\"", database_column_text(i));
+                    }
             }
 
             if (i < numColumns - 1) {
@@ -292,6 +301,22 @@ static void api_available_airspace_shapefiles(struct mg_connection *nc, int ev, 
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
+static void api_airspace_geojson_by_class(struct mg_connection *nc, int ev, void *ev_data) {
+    struct http_message *message = (struct http_message *)ev_data;
+    char class[16];
+
+    if(get_argument_text(&message->query_string, "class", &class[0], sizeof(class)) == true) {
+        database_get_airspace_geojson_by_class(&class[0]);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
+        api_send_empty_result(nc);
+    }
+
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
 void handle_sigint() {
     fprintf(stdout, "Caught SIGINT!\n");
     exitRequested = true;
@@ -302,14 +327,29 @@ int main(int argc, char **argv) {
     pthread_t thread_978 = NULL, thread_1090 = NULL;
     struct mg_mgr mgr;
     struct mg_connection *nc;
-    
+    char gpsd_address[GPSD_ADDRESS_BUFFER_SIZE];
+
+    // By default, use 'localhost' for the GPSD address
+    snprintf(&gpsd_address[0], GPSD_ADDRESS_BUFFER_SIZE, "%s", "localhost");
+    char c;
+    while ((c = getopt(argc, argv, "a:")) != -1) {
+        switch (c) {
+            case('a'):
+                snprintf(&gpsd_address[0], GPSD_ADDRESS_BUFFER_SIZE, "%s", optarg);
+                break;
+
+            default:
+                fprintf(stdout, "Unknown flag %c\n", c);
+        }
+    }
 
     // Signal Handlers
     signal(SIGINT, handle_sigint);
     gdl90_crcInit();
 
     // Init GPSD
-    if(gps_open("localhost", "2947", &rx_gps_data) != 0) {
+    fprintf(stdout, "Connecting to GPSD via %s\n", &gpsd_address[0]);
+    if(gps_open(gpsd_address, GPSD_DEFAULT_PORT, &rx_gps_data) != 0) {
         fprintf(stdout, "ERROR: Could not connect to GPSD\n");
     } else {
         gps_stream(&rx_gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
@@ -337,12 +377,13 @@ int main(int argc, char **argv) {
         mg_register_http_endpoint(nc, "/api/airports/runways", api_airport_runway_search);
         mg_register_http_endpoint(nc, "/api/airports/radio", api_airport_radio_search);
         mg_register_http_endpoint(nc, "/api/airports/diagram", api_airport_diagram_search);
-        mg_register_http_endpoint(nc, "/api/airspace/available", api_available_airspace_shapefiles);
+        mg_register_http_endpoint(nc, "/api/airspace", api_available_airspace_shapefiles);
+        mg_register_http_endpoint(nc, "/api/airspace/geojson", api_airspace_geojson_by_class);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", s_http_port);
     }
 
-    /*
+
     // Init 978MHz receiver
     device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
     if(device978 != NULL) {
@@ -352,6 +393,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    /*
     // Init 1090MHz receiver
     device1090 = init_SDR("1090", RECEIVER_CENTER_FREQ_HZ_1090, RECEIVER_SAMPLING_HZ_1090);
     if(device1090 != NULL) {
@@ -465,6 +507,38 @@ void *dump978_worker() {
     pthread_exit(NULL);
 }
 
+/*
+static uat_uplink_mdb_ll_t * upsert_uplink_mdb_frame(struct uat_uplink_mdb *mdb){
+    int count = 0;
+
+    uat_uplink_mdb_ll_t *tail = uplink_mdb_head;
+    uat_uplink_mdb_ll_t *following = NULL;
+
+    // Special case if this is the first frame.
+    if(uplink_mdb_head == NULL) {
+        uplink_mdb_head = malloc(sizeof(uat_uplink_mdb_ll_t));
+        tail = uplink_mdb_head;
+        following = NULL;
+        count += 1;
+
+    } else {
+        while(tail->next != NULL){
+            if(tail->mdb.)
+            tail = tail->next;
+            count += 1;
+        }
+
+        tail->next = malloc(sizeof(uat_uplink_mdb_ll_t));
+        tail->next->next = NULL;
+    }
+
+
+
+    fprintf(stdout, "Count = %d\n", count);
+    return tail;
+}*/
+
+
 void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, frame_type_t type) {
     fprintf(stdout, "\nts=%llu, rs=%d\n", timestamp, receiveErrors);
 
@@ -475,7 +549,18 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
     } else if(type == FRAME_TYPE_UAT) {
         struct uat_uplink_mdb mdb;
         uat_decode_uplink_mdb(buffer, &mdb);
-        uat_display_uplink_mdb(&mdb, stdout);
+
+        for(uint32_t i = 0; i < mdb.num_info_frames; i++) {
+            fprintf(stdout, "Rx Type: %d (%d bytes)\n", mdb.info_frames[i].type, mdb.info_frames[i].length);
+            if(mdb.info_frames[i].type == 0){
+                fprintf(stdout, "Product ID: %d\n", mdb.info_frames[i].fisb.product_id);
+
+                
+            }
+        }
+        //uat_uplink_mdb_ll_t *mdb_ll = upsert_uplink_mdb_frame(&mdb);
+        
+        //uat_display_uplink_mdb(&(mdb_ll->mdb), stdout);
     } else {
         fprintf(stdout, "ERROR: Received unknown message type %d!\n", type);
     }

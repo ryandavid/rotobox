@@ -38,6 +38,7 @@ def process_dtp_chart(charts):
             target_dir = basename + ".pdf"
             svg_target = basename + ".svg"
 
+            # TODO: Need to catch if existing chart is from previous cycle.
             if(os.path.exists(svg_target) is False):
                 print " => Downloading airport directory for {0}".format(chart["apt_ident"])
                 nasr.download_with_progress(chart_db["url"], target_dir)
@@ -64,10 +65,6 @@ AIRSPACES_PROCESSED_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "wwwro
 if(os.path.exists(AIRPORT_PROCESSED_DIRECTORY) is False):
     os.makedirs(AIRPORT_PROCESSED_DIRECTORY)
 
-# Ensure the airspaces output directory exists.
-if(os.path.exists(AIRSPACES_PROCESSED_DIRECTORY) is False):
-    os.makedirs(AIRSPACES_PROCESSED_DIRECTORY)
-
 print "Airport DB:\t\t{0}".format(AIRPORT_DB)
 print "Airport Directory:\t{0}".format(AIRPORT_DIRECTORY)
 print "Airport WWW Root:\t{0}".format(AIRPORT_PROCESSED_DIRECTORY)
@@ -77,73 +74,85 @@ nasr = Rotobox.FAA_NASR_Data(AIRPORT_DIRECTORY)
 db = Rotobox.Database(AIRPORT_DB)
 db.verify_tables(fix=True)
 
-# NASR XML Data
-nasr.update_aixm()
-if(db.get_product_updated_cycle("aixm") != nasr.get_current_cycle()):
-    db.reset_tables(["airports", "radio", "runways"])
+# # NASR XML Data
+# if(db.get_product_updated_cycle("aixm") != nasr.get_current_cycle()):
+#     nasr.update_aixm()
+#     db.reset_tables(["airports", "radio", "runways"])
 
-    print "Parsing '{0}'".format(nasr.get_filepath_apt())
-    parser = Rotobox.XML_Parser(nasr.get_filepath_apt())
-    parser.register(Rotobox.FAA_AirportParser, db.insert_into_db_table_airports)
-    parser.register(Rotobox.FAA_RunwayParser, db.insert_into_db_table_runways)
-    parser.register(Rotobox.FAA_RadioCommunicationServiceParser, db.update_radio_db_with_frequency)
-    parser.register(Rotobox.FAA_TouchDownLiftOffParser, db.update_runway_db_with_tdlo_info)
-    parser.register(Rotobox.FAA_AirTrafficControlServiceParser, db.insert_into_db_table_radio)
+#     print "Parsing '{0}'".format(nasr.get_filepath_apt())
+#     parser = Rotobox.XML_Parser(nasr.get_filepath_apt())
+#     parser.register(Rotobox.FAA_AirportParser, db.insert_into_db_table_airports)
+#     parser.register(Rotobox.FAA_RunwayParser, db.insert_into_db_table_runways)
+#     parser.register(Rotobox.FAA_RadioCommunicationServiceParser, db.update_radio_db_with_frequency)
+#     parser.register(Rotobox.FAA_TouchDownLiftOffParser, db.update_runway_db_with_tdlo_info)
+#     parser.register(Rotobox.FAA_AirTrafficControlServiceParser, db.insert_into_db_table_radio)
 
-    parser.run()
-    # Make a note of the cycle we just updated with
-    db.set_table_updated_cycle("aixm", nasr.get_current_cycle())
-    db.commit()
-else:
-    print " => DB is already up to date with AIXM data!"
-print " => Done!"
+#     parser.run()
+#     # Make a note of the cycle we just updated with
+#     db.set_table_updated_cycle("aixm", nasr.get_current_cycle())
+#     db.commit()
+# else:
+#     print " => DB is already up to date with AIXM data!"
+# print " => Done!"
 
-# D-TPP, mainly interested in the airport diagrams
-nasr.update_dtpp()
-if(db.get_product_updated_cycle("dtpp") != str(nasr.get_procedures_cycle())):
-    print "Updating airport diagrams"
-    print " => Emptying DB table 'tpp'"
-    db.reset_table("tpp")
+# # D-TPP, mainly interested in the airport diagrams
+# if(db.get_product_updated_cycle("dtpp") != str(nasr.get_procedures_cycle())):
+#     nasr.update_dtpp()
+#     print "Updating airport diagrams"
+#     print " => Emptying DB table 'tpp'"
+#     db.reset_table("tpp")
 
-    print " => Parsing DTPP XML"
-    parser = Rotobox.XML_Parser(nasr.get_filepath_dtpp())
-    parser.register(Rotobox.FAA_DtppAirportParser, process_dtp_chart)
+#     print " => Parsing DTPP XML"
+#     parser = Rotobox.XML_Parser(nasr.get_filepath_dtpp())
+#     parser.register(Rotobox.FAA_DtppAirportParser, process_dtp_chart)
 
-    parser.run()
+#     parser.run()
     
-    db.set_table_updated_cycle("dtpp", nasr.get_procedures_cycle());
-    db.commit()
-else:
-    print " => Already have the latest charts!"
-print " => Done!"
+#     db.set_table_updated_cycle("dtpp", nasr.get_procedures_cycle());
+#     db.commit()
+# else:
+#     print " => Already have the latest charts!"
+# print " => Done!"
 
 # Airspace shapefiles
-nasr.update_airspace_shapefiles()
 if(db.get_product_updated_cycle("airspaces") != nasr.get_current_cycle()):
+    nasr.update_airspace_shapefiles()
+
     db.reset_table("airspaces")
     for file in nasr.get_filepath_airport_shapefiles():
         print " => Processing '{0}'".format(file)
-        output_name = os.path.join(AIRSPACES_PROCESSED_DIRECTORY,
-                                   os.path.splitext(os.path.basename(file))[0] + ".geojson")
-
-        command = ["ogr2ogr", "-f", "GeoJSON", output_name, file]
-        subprocess.call(command)
 
         # Make a nice name for this airspace
         if("class_b" in file):
-            name = "Class B"
+            airspace_type = "class_b"
         elif("class_c" in file):
-            name = "Class C"
+            airspace_type = "class_c"
         elif("class_d" in file):
-            name = "Class D"
+            airspace_type = "class_d"
         elif("class_e5" in file):
-            name = "Class E5"
+            airspace_type = "class_e5"
         else:
-            name = "Class E"
+            airspace_type = "class_e"
 
-        db.insert_processed_airspace_shapefile(name, os.path.basename(output_name))
+        shape = Rotobox.Shapefile(file)
+        for feature in shape.get_features():
+            feature.update({"type": airspace_type})
+            db.insert_processed_airspace_shapefile(feature)
 
     db.set_table_updated_cycle("airspaces", nasr.get_current_cycle());
+else:
+    print " => Already have the latest airspace shapefiles!"
+print " => Done!"
+
+# # Legacy Products
+# if(db.get_product_updated_cycle("twr") != nasr.get_current_cycle()):
+#     nasr.update_legacy_products()
+#     parser = Rotobox.Legacy_FIX_Parser(nasr.get_filepath_legacy_products("FIX"))
+#     results = parser.run()
+
+#     for fix in results:
+#         print results[fix].keys()
+#         break
 
 db.commit()
 db.close()

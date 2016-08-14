@@ -3,11 +3,12 @@
 from clint.textui import progress
 import datetime
 import json
+import ogr
 import os
+import pyspatialite.dbapi2 as sqlite3
 import re
 import requests
 import shutil
-import sqlite3
 import subprocess
 import sys
 import xml.etree.ElementTree as etree
@@ -71,8 +72,12 @@ class Database():
         },
         "airspaces": {
             "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
-            "name": ["VARCHAR(32)"],
-            "filename": ["VARCHAR(64)"]
+            "name": ["VARCHAR(128)"],
+            "airspace": ["VARCHAR(128)"],
+            "low_alt": ["VARCHAR(16)"],
+            "high_alt": ["VARCHAR(16)"],
+            "type": ["VARCHAR(16)"],
+            "geometry": {"SRS":4326, "type": "POLYGON", "point_type": "XY"}
         },
         "updates": {
             "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
@@ -93,6 +98,7 @@ class Database():
 
     def reset_table(self, table):
         success = False
+        geometry = []
 
         if(table in self.TABLES):
             c = self.dbConn.cursor()
@@ -100,11 +106,19 @@ class Database():
             query = "DROP TABLE IF EXISTS {0}".format(table)
             c.execute(query)
 
-            query = "CREATE TABLE IF NOT EXISTS {0}(".format(table)
+            query = "CREATE TABLE {0}(".format(table)
             for column in self.TABLES[table]:
-                query += "{0} {1}, ".format(column, " ".join(self.TABLES[table][column]))
+                if(isinstance(self.TABLES[table][column], dict) is True):
+                    geometry.append(self.TABLES[table][column])
+                else:
+                    query += "{0} {1}, ".format(column, " ".join(self.TABLES[table][column]))
             query = query[:-2] + ")"
             c.execute(query)
+
+            for column in geometry:
+                query = "SELECT AddGeometryColumn('{0}', 'geometry', {1}, '{2}', '{3}');".format(
+                    table, column["SRS"], column["type"], column["point_type"])
+                c.execute(query)
 
             c.close()
             self.dbConn.commit()
@@ -148,6 +162,17 @@ class Database():
                         table_valid = False
                         break
 
+                    # Special handling for geometry columns.
+                    if(isinstance(self.TABLES[table][column], dict) is True):
+                        if(self.TABLES[table][column]["type"] != actual_table_columns[column]):
+                            print "WARN: Column '{0}' has mismatched type - " \
+                                "expecting '{1}' and but actually '{2}'!".format(
+                                column,
+                                self.TABLES[table][column]["type"],
+                                actual_table_columns[column])
+                            table_valid = False
+                            break
+
                     # Check that the type is the same. This is a bit hackish because we have to
                     # assume that the type is the first item in our definition. Fix.... later.
                     elif(self.TABLES[table][column][0] != actual_table_columns[column]):
@@ -168,6 +193,9 @@ class Database():
                 else:
                     print "WARN: Fixing table '{0}' by resetting it!".format(table)
                     self.reset_table(table)
+
+        # Make sure the spatialite tables are still valid
+        c.execute("SELECT InitSpatialMetadata()")
 
     def insert_into_db_table_airports(self, airport):
         c = self.dbConn.cursor()
@@ -265,11 +293,19 @@ class Database():
         c.execute(query, chart.values())
         c.close()
 
-    def insert_processed_airspace_shapefile(self, name, filename):
+    def insert_processed_airspace_shapefile(self, feature):
         c = self.dbConn.cursor()
+        query = """
+                INSERT INTO airspaces (name, airspace, low_alt, high_alt, type, geometry)
+                VALUES (?, ?, ?, ?, ?, GeomFromText(?, 4326))
+                """
 
-        query = "INSERT INTO airspaces (name, filename) VALUES (?, ?)"
-        c.execute(query, (name, filename))
+        c.execute(query, (feature["name"],
+                          feature["airspace"],
+                          feature["low_alt"],
+                          feature["high_alt"],
+                          feature["type"],
+                          feature["geometry"]))
         c.close()
 
     def fetch_airport_id_for_designator(self, designator):
@@ -741,6 +777,7 @@ class FAA_NASR_Data():
         self.filepath_nav_xml = None
         self.filepath_dtpp_xml = None
         self.filepath_airspace_shapefiles = []
+        self.filepath_legacy = {}
 
         # Ensure the cache directory exists.
         if(os.path.exists(self.cache_dir) is False):
@@ -876,11 +913,11 @@ class FAA_NASR_Data():
 
         print "Updating NASR Airspace Shapefiles"
         target_path = os.path.join(self.cache_dir,
-                                   "airspace_shapefiles_{0}.zip".format(self.procedures_cycle))
+                                   "airspace_shapefiles_{0}.zip".format(self.cycles["current"]))
         if(os.path.exists(target_path) is True):
-            print " => Already up to date! ({0})".format(self.procedures_cycle)
+            print " => Already up to date! ({0})".format(self.cycles["current"])
         else:
-            print " => Downloading current Airspace Shapefiles ({0})".format(self.procedures_cycle)
+            print " => Downloading current Airspace Shapefiles ({0})".format(self.cycles["current"])
             self.download_nasr_airspace_shapes(target_path)
 
         zf = zipfile.ZipFile(target_path)
@@ -893,8 +930,30 @@ class FAA_NASR_Data():
                 self.filepath_airspace_shapefiles.append(
                     os.path.join(self.cache_dir, "Shape_Files", file))
 
+    def update_legacy_products(self):
+        self.filepath_legacy = {}
+
+        self.update_aixm_cycles()
+        
+        print "Updating NASR Legacy Products"
+        for product in self.NASR_PRODUCTS_TXT:
+            target_path = os.path.join(self.cache_dir, "{0}_{1}.zip".format(self.cycles["current"],
+                                                                            product))
+            if(os.path.exists(target_path) is True):
+                print " => Already downloaded {0}".format(product)
+            else:
+                print " => Downloading {0}".format(product)
+                self.download_nasr_legacy(product, target_path)
+
+            zf = zipfile.ZipFile(target_path)
+            filepath = zf.extract(product + ".txt", self.cache_dir)
+            # HACKY HACKY HACKKKYYYYY
+            self.filepath_legacy[product] = filepath
+
 
     def get_current_cycle(self):
+        # Since update_aixm_cycles is caching, make sure we have a valid cycle.
+        self.update_aixm_cycles()
         return self.cycles["current"]
 
     def get_filepath_apt(self):
@@ -915,10 +974,17 @@ class FAA_NASR_Data():
     def get_filepath_airport_shapefiles(self):
         return self.filepath_airspace_shapefiles
 
+    def get_filepath_legacy_products(self, product):
+        filepath = None
+        if(product in self.NASR_PRODUCTS_TXT):
+            filepath = self.filepath_legacy[product]
+        return filepath
+
     def assemble_procedures_url(self, pdf_name):
         return self.URL_PROCEDURES.format(self.procedures_cycle, pdf_name)
 
     def get_procedures_cycle(self):
+        self.update_dtpp_cycle()
         return self.procedures_cycle
 
 class XML_Parser():
@@ -954,4 +1020,134 @@ class XML_Parser():
         return
 
 
+class Generic_Legacy_Parser(object):
+    def __init__(self, filename):
+        with open(filename, "r") as fHandle:
+            self.lines = fHandle.read().split("\n")
 
+        self.mapping = self.register_mapping()
+        return
+
+    def register_mapping(self,):
+        return {}
+
+    def get_field(self, line, startPos, endPos):
+        return line[startPos:endPos].strip()
+
+    def run(self):
+        all_fields = {}
+        for line in self.lines:
+            record_type = line[0:4]  # TODO: Come up with a better way to abstract this.
+            if(record_type in self.mapping):
+                fields = {}
+                for field in self.mapping[record_type]:
+                    fields[field[0]] = self.get_field(line, field[1], field[2])
+
+                record_id = fields.pop("record_identifier")
+                if(record_id not in all_fields):
+                    all_fields[record_id] = {}
+
+                all_fields[record_id].update(fields)
+        return all_fields
+                
+
+
+class Legacy_FIX_Parser(Generic_Legacy_Parser):
+    def register_mapping(self):
+        mapping = {
+            "FIX1": [
+                # NOTE! FAA Layout Diagrams are 1-indexed! WTF!?
+                # Field                    Start, End Index
+                ("record_identifier",        4,  33),
+                ("state_name",              34,  63),
+                ("region_code",             64,  65),
+                ("latitude",                66,  79),
+                ("longitude",               80,  93),
+                ("type",                    94,  96),
+                ("mls_direction",           97, 118),
+                ("radar_distance",         119, 140),
+                ("previous_name",          141, 173),
+                ("charting_info",          174, 211),
+                ("to_be_published",        212, 212),
+                ("fix_use",                213, 227),
+                ("nas_identifier",         228, 232),
+                ("high_artcc",             233, 236),
+                ("low_artcc",              237, 240),
+                ("country_name",           241, 270),
+                ("pitch",                  271, 271),
+                ("catch",                  272, 272),
+                ("sua-atcaa",              273, 273)
+            ],
+            "FIX2": [
+                # Field                     Start, End Index
+                ("record_identifier",        4,  33),
+                ("state_name",              34,  63),
+                ("region_code",             64,  65),
+                ("navaid_used",             66,  88)
+            ],
+            "FIX3": [
+                # Field                     Start, End Index
+                ("record_identifier",        4,  33),
+                ("state_name",              34,  63),
+                ("region_code",             64,  65),
+                ("ils_component",           66,  88)
+            ],
+            "FIX4": [
+                # Field                     Start, End Index
+                ("record_identifier",        4,  33),
+                ("state_name",              34,  63),
+                ("region_code",             64,  65),
+                ("field_label",             66, 165),
+                ("remark",                 166,  -1),
+            ],
+            "FIX5": [
+                # Field                     Start, End Index
+                ("record_identifier",        4,  33),
+                ("state_name",              34,  63),
+                ("region_code",             64,  65),
+                ("depicted_chart",          66,  87),
+            ]
+        }
+        return mapping
+
+
+class Shapefile():
+    def __init__(self, filename):
+        self.driver = ogr.GetDriverByName("ESRI Shapefile")
+        self.dataSource = self.driver.Open(filename, 0)
+        self.layer = self.dataSource.GetLayer()
+        self.features = []
+
+    def get_features(self):
+        # Need to expand any multipolygons into individual polygons.
+        for feature in self.layer:
+            geometryName = feature.GetGeometryRef().GetGeometryName()
+            if(geometryName == "MULTIPOLYGON"):
+                parent_name = feature.GetField("NAME")
+                parent_airspace = feature.GetField("AIRSPACE")
+                parent_low_alt = feature.GetField("LOWALT")
+                parent_high_alt = feature.GetField("HIGHALT")
+
+                count = 0
+                for part in feature.GetGeometryRef():
+                    self.features.append({
+                        "name": "{0}-{1}".format(parent_name, count),
+                        "airspace": parent_airspace,
+                        "low_alt": parent_low_alt,
+                        "high_alt": parent_high_alt,
+                        "geometry": part.ExportToWkt()
+                    })
+                    count += 1
+
+            elif(geometryName == "POLYGON"):
+                self.features.append({
+                    "name": feature.GetField("NAME"),
+                    "airspace": feature.GetField("AIRSPACE"),
+                    "low_alt": feature.GetField("LOWALT"),
+                    "high_alt": feature.GetField("HIGHALT"),
+                    "geometry": feature.GetGeometryRef().ExportToWkt()
+                })
+            else:
+                print "Skipping {0} due to unknown geometry type".format(feature.GetField("NAME"))
+
+        return self.features

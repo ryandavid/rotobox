@@ -2,6 +2,7 @@
 
 static sqlite3 *db;
 static sqlite3_stmt *stmt;
+void *spatialite_cache;
 
 static void database_trace(void *arg1, const char* string) {
     fprintf(stdout, "[SQL] %s\n", string);
@@ -18,11 +19,24 @@ bool database_init() {
         sqlite3_trace(db, database_trace, NULL);
     }
 
+    spatialite_cache = spatialite_alloc_connection();
+    spatialite_init_ex(db, spatialite_cache, 0);
+
+    // We must make sure to call this at least once for new DBs.  Subsequent calling is harmless.
+    database_execute_query("SELECT InitSpatialMetaData();");
+
+    fprintf(stdout, "DB Path: %s\n", DATABASE_FILEPATH);
+    fprintf(stdout, "SQLite version: %s\n", sqlite3_libversion());
+    fprintf(stdout, "SpatiaLite version: %s\n", spatialite_version());
+    fprintf(stdout, "\n\n");
+
     return success;
 }
 
 bool database_close() {
     sqlite3_close(db);
+    spatialite_cleanup_ex(spatialite_cache);
+    spatialite_shutdown();
     return true;
 }
 
@@ -32,6 +46,10 @@ bool database_fetch_row() {
 
 void database_finish_query() {
     sqlite3_finalize(stmt);
+}
+
+void database_execute_query(const char * query) {
+    sqlite3_exec(db, query, NULL, NULL, NULL);
 }
 
 int database_num_columns() {
@@ -123,7 +141,15 @@ void database_search_airports_by_name(const char* name) {
 }
 
 void database_available_airspace_shapefiles() {
-    const char *query = "SELECT * FROM airspaces;";
+    const char *query = "SELECT id, name, airspace, type, low_alt, high_alt FROM airspaces;";
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+}
+
+void database_get_airspace_geojson_by_class(const char* class) {
+    const char *query = "SELECT id, name, airspace, type, low_alt, high_alt, AsGeoJSON(geometry) as geometry "\
+                        "FROM airspaces " \
+                        "WHERE type LIKE ?;";
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, class, strlen(class), SQLITE_STATIC);
 }
 

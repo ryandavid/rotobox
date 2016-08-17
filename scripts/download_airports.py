@@ -74,26 +74,26 @@ nasr = Rotobox.FAA_NASR_Data(AIRPORT_DIRECTORY)
 db = Rotobox.Database(AIRPORT_DB)
 db.verify_tables(fix=True)
 
-# # NASR XML Data
-# if(db.get_product_updated_cycle("aixm") != nasr.get_current_cycle()):
-#     nasr.update_aixm()
-#     db.reset_tables(["airports", "radio", "runways"])
+# NASR XML Data
+if(db.get_product_updated_cycle("aixm") != nasr.get_current_cycle()):
+    nasr.update_aixm()
+    db.reset_tables(["airports", "radio", "runways"])
 
-#     print "Parsing '{0}'".format(nasr.get_filepath_apt())
-#     parser = Rotobox.XML_Parser(nasr.get_filepath_apt())
-#     parser.register(Rotobox.FAA_AirportParser, db.insert_into_db_table_airports)
-#     parser.register(Rotobox.FAA_RunwayParser, db.insert_into_db_table_runways)
-#     parser.register(Rotobox.FAA_RadioCommunicationServiceParser, db.update_radio_db_with_frequency)
-#     parser.register(Rotobox.FAA_TouchDownLiftOffParser, db.update_runway_db_with_tdlo_info)
-#     parser.register(Rotobox.FAA_AirTrafficControlServiceParser, db.insert_into_db_table_radio)
+    print "Parsing '{0}'".format(nasr.get_filepath_apt())
+    parser = Rotobox.XML_Parser(nasr.get_filepath_apt())
+    parser.register(Rotobox.FAA_AirportParser, db.insert_into_db_table_airports)
+    parser.register(Rotobox.FAA_RunwayParser, db.insert_into_db_table_runways)
+    parser.register(Rotobox.FAA_RadioCommunicationServiceParser, db.update_radio_db_with_frequency)
+    parser.register(Rotobox.FAA_TouchDownLiftOffParser, db.update_runway_db_with_tdlo_info)
+    parser.register(Rotobox.FAA_AirTrafficControlServiceParser, db.insert_into_db_table_radio)
 
-#     parser.run()
-#     # Make a note of the cycle we just updated with
-#     db.set_table_updated_cycle("aixm", nasr.get_current_cycle())
-#     db.commit()
-# else:
-#     print " => DB is already up to date with AIXM data!"
-# print " => Done!"
+    parser.run()
+    # Make a note of the cycle we just updated with
+    db.set_table_updated_cycle("aixm", nasr.get_current_cycle())
+    db.commit()
+else:
+    print " => DB is already up to date with AIXM data!"
+print " => Done!"
 
 # # D-TPP, mainly interested in the airport diagrams
 # if(db.get_product_updated_cycle("dtpp") != str(nasr.get_procedures_cycle())):

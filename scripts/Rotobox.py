@@ -31,8 +31,7 @@ class Database():
             "magnetic_variation": ["FLOAT"],
             "wind_direction_indicator": ["BOOLEAN"],
             "served_city": ["VARCHAR(128)"],
-            "latitude": ["FLOAT"],
-            "longitude": ["FLOAT"],
+            "geometry": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
             "remarks": ["TEXT"],
             "sectional_chart": ["VARCHAR(64)"],
             "lighting_schedule": ["VARCHAR(64)"],
@@ -201,12 +200,19 @@ class Database():
         c = self.dbConn.cursor()
         columns = ""
         values = ""
+
+        latitude = airport.pop("latitude")
+        longitude = airport.pop("longitude")
+        geometry = "GeomFromText('POINT({0} {1})', 4326)".format(longitude, latitude)
+
         for item in airport:
             if(item not in self.TABLES["airports"]):
                 "Unknown item '{0}' when inserting row into airports table".format(item)
 
-        query = "INSERT INTO airports ({0}) VALUES ({1})".format(", ".join(airport.keys()),
-                                                                 ", ".join("?"*len(airport)))
+        query = "INSERT INTO airports ({0}, geometry)" \
+                "VALUES ({1}, {2})".format(", ".join(airport.keys()),
+                                           ", ".join("?"*len(airport)),
+                                           geometry)
         c.execute(query, airport.values())
         c.close()
 
@@ -226,11 +232,8 @@ class Database():
     def update_runway_db_with_tdlo_info(self, tdlo):
         c = self.dbConn.cursor()
 
-        designator = tdlo["designator"]
-        airport_id = tdlo["airport_id"]
-
-        tdlo.pop("designator")
-        tdlo.pop("airport_id")
+        designator = tdlo.pop("designator")
+        airport_id = tdlo.pop("airport_id")
 
         queryNames = []
         queryValues = []
@@ -262,8 +265,7 @@ class Database():
 
     def update_radio_db_with_frequency(self, radio):
         c = self.dbConn.cursor()
-        radio_comm_id = radio["id"]
-        radio.pop("id")
+        radio_comm_id = radio.pop("id")
 
         queryNames = []
         queryValues = []

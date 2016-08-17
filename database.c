@@ -79,15 +79,21 @@ double database_column_double(int i) {
 void database_search_radio_by_airport_id(const char* airport_id) {
     const char *query = "SELECT radio.* " \
                         "FROM radio " \
-                        "JOIN airports ON radio.airport_id = airports.id " \
-                        "WHERE airports.id = ?;";
+                        "WHERE airport_id = ?;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
 }
 
 void database_search_airport_by_id(const char* airport_id) {
-    const char *query = "SELECT * " \
+    // There's gotta be a better way....
+    const char *query = "SELECT " \
+                        "served_city, lighting_schedule, magnetic_variation, name, private_use, " \
+                        "sectional_chart, activated, beacon_lighting_schedule, designator, " \
+                        "traffic_control_tower_on_airport, segmented_circle_marker_on_airport, " \
+                        "attendance_schedule, wind_direction_indicator, marker_lens_color, " \
+                        "field_elevation, remarks, type, id, control_type, icao_name, " \
+                        "X(geometry) as longitude, Y(geometry) as latitude " \
                         "FROM airports " \
                         "WHERE id = ? " \
                         "LIMIT 1;";
@@ -97,18 +103,18 @@ void database_search_airport_by_id(const char* airport_id) {
 }
 
 void database_search_runways_by_airport_id(const char* airport_id) {
-    const char *query = "SELECT runways.* " \
-                        "FROM runways JOIN airports ON runways.airport_id = airports.id " \
-                        "WHERE airports.id = ?;";
+    const char *query = "SELECT * " \
+                        "FROM runways " \
+                        "WHERE airport_id = ?;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
 }
 
 void database_search_charts_by_airport_id(const char* airport_id) {
-    const char *query = "SELECT tpp.filename, tpp.chart_name "\
-                        "FROM tpp JOIN airports ON airports.id = tpp.airport_id "\
-                        "WHERE airports.id = ?;";
+    const char *query = "SELECT filename, chart_name "\
+                        "FROM tpp "\
+                        "WHERE airport_id = ?;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
@@ -116,19 +122,21 @@ void database_search_charts_by_airport_id(const char* airport_id) {
 
 void database_search_airports_within_window(float latMin, float latMax,
                                             float lonMin, float lonMax) {
-    const char *query = "SELECT * FROM airports " \
-                        "WHERE latitude BETWEEN ? AND ? " \
-                        "AND longitude BETWEEN ? AND ?;";
+    const char *query = "SELECT id, name, designator, designator, X(geometry) as longitude, " \
+                        "Y(geometry) as latitude " \
+                        "FROM airports " \
+                        "WHERE MbrWithin(geometry, BuildMbr(?, ?, ?, ?, 4326))";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    sqlite3_bind_double(stmt, 1, latMin);
-    sqlite3_bind_double(stmt, 2, latMax);
-    sqlite3_bind_double(stmt, 3, lonMin);
-    sqlite3_bind_double(stmt, 4, lonMax);
+    sqlite3_bind_double(stmt, 1, lonMin);
+    sqlite3_bind_double(stmt, 2, latMin);
+    sqlite3_bind_double(stmt, 3, lonMax);
+    sqlite3_bind_double(stmt, 4, latMax);
 }
 
 void database_search_airports_by_name(const char* name) {
-    const char *query = "SELECT * " \
+    const char *query = "SELECT id, name, designator, X(geometry) as longitude, "\
+                        "Y(geometry) as latitude " \
                         "FROM airports " \
                         "WHERE (icao_name LIKE ?) " \
                         "OR (name LIKE '%' || ? || '%') " \

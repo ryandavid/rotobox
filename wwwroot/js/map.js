@@ -72,15 +72,11 @@ function reset_airspace(e) {
   });
 }
 
-function click_airpsace(e) {
-  sidebar_showAirspaceDetail(e.target.options.properties);
-}
-
 function on_each_airspace(feature, layer) {
   layer.on({
     mouseover: highlight_airspace,
     mouseout: reset_airspace,
-    click: click_airpsace
+    click: sidebar_showAirspaceDetail
   });
 }
 
@@ -94,7 +90,8 @@ function map_init(){
       zoom: 5,
       minZoom: 1,
       maxZoom: 11,
-      layers: [lyr]
+      layers: [lyr],
+      attributionControl: false
   });
 
   ownshipIcon = L.icon({
@@ -245,8 +242,7 @@ function sidebar_showAirportSearchResults(results) {
 }
 
 function sidebar_showAirspaceDetail(properties) {
-  console.log(properties);
-  var html = $("#sidebar-airspaceDescription").render(properties);
+  var html = $("#sidebar-airspaceDescription").render(properties.target.options.properties);
   $("div.sidebar-scrollable").empty().append(html);
 }
 

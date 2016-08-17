@@ -18,10 +18,10 @@ LIBRTLSDR_MAKEFILE=$(LIBRTLSDR_BUILDDIR)/Makefile
 
 DUMP978_DEPENDS=dump978/dump978.o dump978/uat_decode.o dump978/fec.o dump978/fec/init_rs_char.o \
 				dump978/fec/decode_rs_char.o
-DUMP1090_DEPENDS=dump1090/dump1090.o dump1090/convert.o dump1090/anet.c dump1090/cpr.o \
-				dump1090/demod_2000.c dump1090/demod_2400.o dump1090/icao_filter.o \
+DUMP1090_DEPENDS=dump1090/dump1090.o dump1090/convert.o dump1090/anet.o dump1090/cpr.o \
+				dump1090/demod_2400.o dump1090/icao_filter.o dump1090/interactive.o \
 				dump1090/mode_ac.o dump1090/mode_s.o dump1090/net_io.o dump1090/stats.o \
-				dump1090/track.o dump1090/util.o dump1090/crc.o dump1090/interactive.o
+				dump1090/track.o dump1090/util.o dump1090/crc.o
 
 MONGOOSE_DEPENDS=mongoose/mongoose.o
 

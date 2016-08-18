@@ -2,10 +2,51 @@ var markerArray = new Array();
 var map;
 var ownshipIcon;
 
+const airspace_styles = {
+  "class_b": {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#2464A9",
+    "fillOpacity": 0.1,
+    "dashArray": ""
+  },
+  "class_c": {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#7A2B51",
+    "fillOpacity": 0.1,
+    "dashArray": ""
+  },
+  "class_d": {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#0C3573",
+    "fillOpacity": 0.1,
+    "dashArray": "10, 5"
+  },
+  "class_e": {
+    "stroke": true,
+    "weight": 4,
+    "opacity": 0.3,
+    "color": "#741646",
+    "fillOpacity": 0.1,
+    "dashArray": "0.9"
+  }
+}
+
 function recenter_map_on_current_position(){
   rotobox_api(API_URI_LOCATION, {}, function(data) {
     var marker = L.marker([data.latitude, data.longitude], {icon: ownshipIcon}).addTo(map);
     map.setView([data.latitude, data.longitude], 10);
+  });
+}
+
+function search_for_nearest_airports() {
+  rotobox_api(API_AIRPORT_NEAREST, {}, function(results){
+    sidebar_showAirportSearchResults(results);
   });
 }
 
@@ -99,40 +140,6 @@ function map_init(){
       iconSize: [48, 48],
       iconAnchor: [24, 24],
   });
-  var airspace_styles = {
-    "class_b": {
-      "stroke": true,
-      "weight": 4,
-      "opacity": 0.3,
-      "color": "#2464A9",
-      "fillOpacity": 0.1,
-      "dashArray": ""
-    },
-    "class_c": {
-      "stroke": true,
-      "weight": 4,
-      "opacity": 0.3,
-      "color": "#7A2B51",
-      "fillOpacity": 0.1,
-      "dashArray": ""
-    },
-    "class_d": {
-      "stroke": true,
-      "weight": 4,
-      "opacity": 0.3,
-      "color": "#0C3573",
-      "fillOpacity": 0.1,
-      "dashArray": "10, 5"
-    },
-    "class_e": {
-      "stroke": true,
-      "weight": 4,
-      "opacity": 0.3,
-      "color": "#741646",
-      "fillOpacity": 0.1,
-      "dashArray": "0.9"
-    }
-  }
 
   // Button below zoom buttons to re-center the map on the current location
   var centerButton =  L.Control.extend({
@@ -160,6 +167,32 @@ function map_init(){
   });
   map.addControl(new centerButton());
 
+  // Button to show nearest airports
+  var nearestButton =  L.Control.extend({
+    options: {
+      position: 'topleft'
+    },
+
+    onAdd: function (map) {
+      var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+
+      container.style.backgroundColor = 'white';     
+      container.style.backgroundImage = "url(img/directions.png)";
+      container.style.backgroundSize = "16px 16px";
+      container.style.backgroundRepeat = "no-repeat";
+      container.style.backgroundPosition = "50% 50%";
+      container.style.width = '26px';
+      container.style.height = '26px';
+
+      container.onclick = function(){
+        search_for_nearest_airports();
+      }
+
+      return container;
+    }
+  });
+  map.addControl(new nearestButton());
+
   // Reload airport markers when the user pans/zooms.
   map.on('moveend', function(){
     ROUND_DECIMAL_PLACES = 1000;
@@ -167,19 +200,14 @@ function map_init(){
         bounds = map.getBounds();
         zoom = map.getZoom();
 
-        lonMin = Math.round(bounds.getWest() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
-        lonMax = Math.round(bounds.getEast() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
-        latMin = Math.round(bounds.getSouth() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
-        latMax = Math.round(bounds.getNorth() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES;
-
         rotobox_api(API_AIRPORT_WINDOW,
-            {
-                "latMin": latMin,
-                "latMax": latMax,
-                "lonMin": lonMin,
-                "lonMax": lonMax
-            },
-            update_airport_markers);
+          {
+              "latMin": Math.round(bounds.getSouth() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES,
+              "latMax": Math.round(bounds.getNorth() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES,
+              "lonMin": Math.round(bounds.getWest() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES,
+              "lonMax": Math.round(bounds.getEast() * ROUND_DECIMAL_PLACES)/ROUND_DECIMAL_PLACES,
+          },
+          update_airport_markers);
     }
   });
 

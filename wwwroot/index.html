@@ -223,7 +223,12 @@
 
     <script id="sidebar-airportResultListItem" type="text/x-jsrender">
       <a href="#" class="list-group-item" onclick="sidebar_showAirportResult('{{:id}}', true)">
-        <h4 class="list-group-item-heading">{{:designator}}</h4>
+        <h4 class="list-group-item-heading">
+          {{:designator}}
+          {{if distance}}
+          <span class='badge'>{{metersToNauticalMiles:distance}}nm</span>
+          {{/if}}
+        </h4>
         <p class="list-group-item-text">{{:name}}</p>
       </a>
     </script>

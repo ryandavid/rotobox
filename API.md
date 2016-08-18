@@ -185,3 +185,38 @@ Keys are the satellite PRN
     }
 ]
 ```
+
+
+## /api/airports/nearest
+[
+    {
+        "id": "AH_0002349",
+        "name": "NORMAN Y MINETA SAN JOSE INTL",
+        "designator": "SJC",
+        "distance": 1234.861223
+    },
+    {
+        "id": "AH_0002347",
+        "name": "REGIONAL MEDICAL CENTER SAN JOSE H2",
+        "designator": "88CA",
+        "distance": 2345.796561
+    },
+    {
+        "id": "AH_0002346",
+        "name": "COUNTY MEDICAL CENTER",
+        "designator": "CA33",
+        "distance": 3456.542485
+    },
+    {
+        "id": "AH_0002348",
+        "name": "REID-HILLVIEW OF SANTA CLARA COUNTY",
+        "designator": "RHV",
+        "distance": 4567.065565
+    },
+    {
+        "id": "AH_0002371",
+        "name": "SANTA CLARA TOWERS",
+        "designator": "CL86",
+        "distance": 5678.344991
+    }
+]

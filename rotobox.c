@@ -294,6 +294,14 @@ static void api_airport_diagram_search(struct mg_connection *nc, int ev, void *e
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
+static void api_airport_find_nearest(struct mg_connection *nc, int ev, void *ev_data) {
+    // TODO: Make sure that GPSD is actually up and running.
+    database_find_nearest_airports(rx_gps_data.fix.latitude, rx_gps_data.fix.longitude);
+    generic_api_db_dump(nc);
+    database_finish_query();
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
 static void api_available_airspace_shapefiles(struct mg_connection *nc, int ev, void *ev_data) {
     database_available_airspace_shapefiles();
     generic_api_db_dump(nc);
@@ -377,6 +385,7 @@ int main(int argc, char **argv) {
         mg_register_http_endpoint(nc, "/api/airports/runways", api_airport_runway_search);
         mg_register_http_endpoint(nc, "/api/airports/radio", api_airport_radio_search);
         mg_register_http_endpoint(nc, "/api/airports/diagram", api_airport_diagram_search);
+        mg_register_http_endpoint(nc, "/api/airports/nearest", api_airport_find_nearest);
         mg_register_http_endpoint(nc, "/api/airspace", api_available_airspace_shapefiles);
         mg_register_http_endpoint(nc, "/api/airspace/geojson", api_airspace_geojson_by_class);
     } else {
@@ -625,10 +634,10 @@ void init_dump1090() {
     Modes.maxRange                = 1852 * 300; // 300NM default max range
     Modes.sample_rate             = RECEIVER_SAMPLING_HZ_1090;
     Modes.trailing_samples = (MODES_PREAMBLE_US + MODES_LONG_MSG_BITS + 16) * 1e-6 * Modes.sample_rate;
-    Modes.oversample              = 1;
+    //Modes.oversample              = 1;
     Modes.mode_ac                 = 0;
     Modes.nfix_crc                = MODES_MAX_BITERRORS;
-    Modes.phase_enhance           = 1;
+    //Modes.phase_enhance           = 1;
     Modes.quiet                   = 1;
 
     Modes.maglut     = (uint16_t *) malloc(sizeof(uint16_t) * 256 * 256);
@@ -676,10 +685,9 @@ void init_dump1090() {
     Modes.input_format = INPUT_UC8;
 
     Modes.converter_function = init_converter(Modes.input_format,
-                                                  Modes.sample_rate,
-                                                  Modes.dc_filter,
-                                                  Modes.measure_noise, /* total power is interesting if we want noise */
-                                                  &Modes.converter_state);
+                                              Modes.sample_rate,
+                                              Modes.dc_filter,
+                                              &Modes.converter_state);
 }
 
 void cleanup_dump1090() {

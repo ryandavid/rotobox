@@ -1,3 +1,4 @@
+const METER_TO_NAUTICAL_MILE = 0.000539957;
 
 function switchTab($button){
     // Set the correct item on the nav bar to active
@@ -23,6 +24,11 @@ function switchTab($button){
 
 
 $(document).ready(function(){
+    $.views.converters("metersToNauticalMiles", function(val) {
+        // Do this a bit wonky so we keep one decimal point around.
+        return Math.round(val * METER_TO_NAUTICAL_MILE * 10) / 10;
+    });
+
     // Load up the main page.
     var html = $("#mainPageTemplate").render();
     $("body").append(html);

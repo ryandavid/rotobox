@@ -154,10 +154,23 @@ void database_available_airspace_shapefiles() {
 }
 
 void database_get_airspace_geojson_by_class(const char* class) {
-    const char *query = "SELECT id, name, airspace, type, low_alt, high_alt, AsGeoJSON(geometry) as geometry "\
+    const char *query = "SELECT id, name, airspace, type, low_alt, high_alt, " \
+                        "AsGeoJSON(geometry) as geometry " \
                         "FROM airspaces " \
                         "WHERE type LIKE ?;";
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, class, strlen(class), SQLITE_STATIC);
+}
+
+void database_find_nearest_airports(float lat, float lon) {
+    const char *query = "SELECT id, name, designator, "\
+                        "ST_Distance(geometry, MakePoint(?, ?, 4326), 1) AS distance " \
+                        "FROM airports " \
+                        "ORDER BY distance ASC " \
+                        "LIMIT 10";
+
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_double(stmt, 1, lon);
+    sqlite3_bind_double(stmt, 2, lat);
 }
 

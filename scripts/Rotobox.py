@@ -19,40 +19,226 @@ class Database():
     # list.
     TABLES = {
         "airports" : {
-            "id": ["VARCHAR(32)", "PRIMARY KEY", "UNIQUE"],
-            "designator": ["VARCHAR(8)"],
-            "name": ["VARCHAR(64)"],
-            "activated": ["VARCHAR(64)"],  # TODO: Datetime
-            "icao_name": ["VARCHAR(64)"],
-            "type": ["VARCHAR(64)"],
-            "private_use": ["BOOLEAN"],
-            "control_type": ["VARCHAR(64)"],
-            "field_elevation": ["FLOAT"],
+            "id": ["VARCHAR(32)", "PRIMARY KEY", "UNIQUE"], # Landing Facility Site Number
+            "landing_facility_type": ["VARCHAR(32)"],
+            "location_identifier": ["VARCHAR(8)"],
+            "effective_date": ["INTEGER"],
+            "region_code": ["VARCHAR(4)"],
+            "faa_district_code": ["VARCHAR(4)"],
+            "state_code": ["VARCHAR(4)"],
+            "state_name": ["VARCHAR(32)"],
+            "county_name": ["VARCHAR(32)"],
+            "county_state": ["VARCHAR(4)"],
+            "city_name": ["VARCHAR(64)"],
+            "facility_name": ["VARCHAR(64)"],
+            "ownership_type": ["VARCHAR(4)"],
+            "facility_use": ["VARCHAR(4)"],
+            "owner_name": ["VARCHAR(32)"],
+            "owner_address": ["VARCHAR(128)"],
+            "owner_address2": ["VARCHAR(64)"],
+            "owner_phone": ["VARCHAR(16)"],
+            "manager_name": ["VARCHAR(64)"],
+            "manager_address": ["VARCHAR(128)"],
+            "manager_address2": ["VARCHAR(64)"],
+            "manager_phone": ["VARCHAR(16)"],
+            "location": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "location_surveyed": ["BOOLEAN"],
+            "elevation": ["FLOAT"],
+            "elevation_surveyed": ["BOOLEAN"],
             "magnetic_variation": ["FLOAT"],
-            "wind_direction_indicator": ["BOOLEAN"],
-            "served_city": ["VARCHAR(128)"],
-            "geometry": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
-            "remarks": ["TEXT"],
-            "sectional_chart": ["VARCHAR(64)"],
-            "lighting_schedule": ["VARCHAR(64)"],
-            "beacon_lighting_schedule": ["VARCHAR(64)"],
-            "marker_lens_color": ["VARCHAR(64)"],
-            "traffic_control_tower_on_airport": ["BOOLEAN"],
-            "segmented_circle_marker_on_airport": ["BOOLEAN"],
-            "attendance_schedule": ["VARCHAR(64)"],
+            "magnetic_epoch_year": ["INTEGER"],
+            "tpa": ["INTEGER"],
+            "sectional": ["VARCHAR(32)"],
+            "associated_city_distance": ["INTEGER"],
+            "associated_city_direction": ["VARCHAR(4)"],
+            "land_covered": ["FLOAT"],
+            "boundary_artcc_id": ["VARCHAR(4)"],
+            "boundary_artcc_computer_id": ["VARCHAR(4)"],
+            "boundary_artcc_name": ["VARCHAR(32)"],
+            "responsible_artcc_id": ["VARCHAR(4)"],
+            "responsible_artcc_computer_id": ["VARCHAR(4)"],
+            "responsible_artcc_name": ["VARCHAR(32)"],
+            "fss_on_site": ["BOOLEAN"],
+            "fss_id": ["VARCHAR(16)"],
+            "fss_name": ["VARCHAR(32)"],
+            "fss_admin_phone": ["VARCHAR(16)"],
+            "fss_pilot_phone": ["VARCHAR(16)"],
+            "alt_fss_id": ["VARCHAR(16)"],
+            "alt_fss_name": ["VARCHAR(32)"],
+            "alt_fss_pilot_phone": ["VARCHAR(16)"],
+            "notam_facility_id": ["VARCHAR(32)"],
+            "notam_d_avail": ["BOOLEAN"],
+            "manager_phone": ["VARCHAR(16)"],
+            "activation_date": ["INTEGER"],
+            "status_code": ["VARCHAR(4)"],
+            "arff_certification_type": ["VARCHAR(32)"],
+            "agreements_code": ["VARCHAR(16)"],
+            "airspace_analysis_det": ["VARCHAR(16)"],
+            "entry_for_customs": ["BOOLEAN"],
+            "landing_rights": ["BOOLEAN"],
+            "mil_civ_joint_use": ["BOOLEAN"],
+            "mil_landing_rights": ["BOOLEAN"],
+            "inspection_method": ["VARCHAR(4)"],
+            "inspection_agency": ["VARCHAR(4)"],
+            "inspection_date": ["INTEGER"],
+            "information_request_date": ["VARCHAR(4)"],
+            "fuel_types_avail": ["VARCHAR(64)"],
+            "airframe_repair_avail": ["VARCHAR(16)"],
+            "powerplant_repair_avail": ["VARCHAR(16)"],
+            "oxygen_avail": ["VARCHAR(16)"],
+            "bulk_oxygen_avail": ["VARCHAR(16)"],
+            "lighting_schedule": ["VARCHAR(16)"],
+            "beacon_schedule": ["VARCHAR(16)"],
+            "tower_onsite": ["BOOLEAN"],
+            "unicom_freq": ["FLOAT"],
+            "ctaf_freq": ["FLOAT"],
+            "segmented_circle": ["VARCHAR(4)"],
+            "beacon_lens_color": ["VARCHAR(4)"],
+            "non_commerial_ldg_fee": ["BOOLEAN"],
+            "medical_use": ["BOOLEAN"],
+            "num_se_aircraft": ["INTEGER"],
+            "num_me_aircraft": ["INTEGER"],
+            "num_jet_aircraft": ["INTEGER"],
+            "num_helicopters": ["INTEGER"],
+            "num_gliders": ["INTEGER"],
+            "num_mil_aircraft": ["INTEGER"],
+            "num_ultralight": ["INTEGER"],
+            "ops_commerical": ["INTEGER"],
+            "ops_commuter": ["INTEGER"],
+            "ops_air_taxi": ["INTEGER"],
+            "ops_general_local": ["INTEGER"],
+            "ops_general_iternant": ["INTEGER"],
+            "ops_military": ["INTEGER"],
+            "operations_date": ["INTEGER"],
+            "position_source": ["VARCHAR(16)"],
+            "position_date": ["INTEGER"],
+            "elevation_source": ["VARCHAR(16)"],
+            "elevation_date": ["INTEGER"],
+            "contract_fuel_avail": ["BOOLEAN"],
+            "transient_storage_facilities": ["VARCHAR(16)"],
+            "other_services": ["VARCHAR(128)"],
+            "wind_indicator": ["VARCHAR(16)"],
+            "icao_identifier": ["VARCHAR(8)"],
+            "attendance_schedule": ["VARCHAR(128)"],
         },
+
         "runways" : {
-            "id": ["VARCHAR(32)", "PRIMARY KEY", "UNIQUE"],
+            "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
             "airport_id": ["VARCHAR(32)"],
-            "designator": ["VARCHAR(16)"],
-            "length": ["FLOAT"],
-            "width": ["FLOAT"],
-            "preparation": ["VARCHAR(64)"],
-            "composition": ["VARCHAR(64)"],
-            "condition": ["VARCHAR(64)"],
-            "right_traffic_pattern": ["BOOLEAN"],
-            "true_bearing": ["FLOAT"],
-            "ils_type": ["VARCHAR(64)"]
+            "name": ["VARCHAR(16)"],
+            "length": ["INTEGER"],
+            "width": ["INTEGER"],
+            "surface_type": ["VARCHAR(16)"],
+            "surface_treatment": ["VARCHAR(16)"],
+            "pavement_classification": ["VARCHAR(16)"],
+            "lights_intensity": ["VARCHAR(8)"],
+
+            "base_id": ["VARCHAR(8)"],
+            "base_true_hdg": ["INTEGER"],
+            "base_ils_type": ["VARCHAR(16)"],
+            "base_rh_traffic": ["BOOLEAN"],
+            "base_markings": ["VARCHAR(16)"],
+            "base_markings_condition": ["VARCHAR(4)"],
+            "base_location": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "base_elevation": ["FLOAT"],
+            "base_threshold_height": ["INTEGER"],
+            "base_glide_angle": ["FLOAT"],
+            "base_disp_threshold_location": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "base_disp_threshold_elevation": ["FLOAT"],
+            "base_disp_threshold_distance": ["FLOAT"],
+            "base_touchdown_elevation": ["FLOAT"],
+            "base_glideslope_indicators": ["VARCHAR(8)"],
+            "base_visual_range_equip": ["VARCHAR(8)"],
+            "base_visual_range_avail": ["BOOLEAN"],
+            "base_app_lighting": ["VARCHAR(16)"],
+            "base_reil_avail": ["BOOLEAN"],
+            "base_center_lights_avail": ["BOOLEAN"],
+            "base_touchdown_lights_avail": ["BOOLEAN"],
+            "base_obstance_description": ["VARCHAR(16)"],
+            "base_obstacle_lighting": ["VARCHAR(4)"],
+            "base_obstacle_category": ["VARCHAR(8)"],
+            "base_obstacle_slope": ["INTEGER"],
+            "base_obstacle_height": ["INTEGER"],
+            "base_obstacle_distance": ["INTEGER"],
+            "base_obstacle_offset": ["INTEGER"],
+
+            "recip_id": ["VARCHAR(8)"],
+            "recip_true_hdg": ["INTEGER"],
+            "recip_ils_type": ["VARCHAR(16)"],
+            "recip_rh_traffic": ["BOOLEAN"],
+            "recip_markings": ["VARCHAR(16)"],
+            "recip_markings_condition": ["VARCHAR(4)"],
+            "recip_location": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "recip_elevation": ["FLOAT"],
+            "recip_threshold_height": ["INTEGER"],
+            "recip_glide_angle": ["FLOAT"],
+            "recip_disp_threshold_location": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "recip_disp_threshold_elevation": ["FLOAT"],
+            "recip_disp_threshold_distance": ["FLOAT"],
+            "recip_touchdown_elevation": ["FLOAT"],
+            "recip_glideslope_indicators": ["VARCHAR(8)"],
+            "recip_visual_range_equip": ["VARCHAR(8)"],
+            "recip_visual_range_avail": ["BOOLEAN"],
+            "recip_app_lighting": ["VARCHAR(16)"],
+            "recip_reil_avail": ["BOOLEAN"],
+            "recip_center_lights_avail": ["BOOLEAN"],
+            "recip_touchdown_lights_avail": ["BOOLEAN"],
+            "recip_obstance_description": ["VARCHAR(16)"],
+            "recip_obstacle_lighting": ["VARCHAR(4)"],
+            "recip_obstacle_category": ["VARCHAR(8)"],
+            "recip_obstacle_slope": ["INTEGER"],
+            "recip_obstacle_height": ["INTEGER"],
+            "recip_obstacle_distance": ["INTEGER"],
+            "recip_obstacle_offset": ["INTEGER"],
+
+            "length_source": ["VARCHAR(16)"],
+            "length_source_date": ["INTEGER"],
+            "weight_cap_single_wheel": ["INTEGER"],
+            "weight_cap_dual_wheel": ["INTEGER"],
+            "weight_cap_two_dual_wheel": ["INTEGER"],
+            "weight_cap_tandem_dual_wheel": ["INTEGER"],
+
+            "base_gradient": ["FLOAT"],
+            "base_position_source": ["VARCHAR(16)"],
+            "base_position_source_date": ["INTEGER"],
+            "base_elevation_source": ["VARCHAR(16)"],
+            "base_elevation_source_date": ["INTEGER"],
+            "base_disp_threshold_source": ["VARCHAR(16)"],
+            "base_disp_threshold_source_date": ["INTEGER"],
+            "base_disp_threshold_elevation_source": ["VARCHAR(16)"],
+            "base_disp_threshold_elevation_source_date": ["INTEGER"],
+            "base_takeoff_run": ["INTEGER"],
+            "base_takeoff_distance": ["INTEGER"],
+            "base_aclt_stop_distance": ["INTEGER"],
+            "base_landing_distance": ["INTEGER"],
+            "base_lahso_distance": ["INTEGER"],
+            "base_intersecting_runway_id": ["VARCHAR(16)"],
+            "base_hold_short_description": ["VARCHAR(64)"],
+            "base_lahso_position": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "base_lahso_source": ["VARCHAR(16)"],
+            "base_lahso_source_date": ["INTEGER"],
+
+            "recip_gradient": ["FLOAT"],
+            "recip_position_source": ["VARCHAR(16)"],
+            "recip_position_source_date": ["INTEGER"],
+            "recip_elevation_source": ["VARCHAR(16)"],
+            "recip_elevation_source_date": ["INTEGER"],
+            "recip_disp_threshold_source": ["VARCHAR(16)"],
+            "recip_disp_threshold_source_date": ["INTEGER"],
+            "recip_disp_threshold_elevation_source": ["VARCHAR(16)"],
+            "recip_disp_threshold_elevation_source_date": ["INTEGER"],
+            "recip_takeoff_run": ["INTEGER"],
+            "recip_takeoff_distance": ["INTEGER"],
+            "recip_aclt_stop_distance": ["INTEGER"],
+            "recip_landing_distance": ["INTEGER"],
+            "recip_lahso_distance": ["INTEGER"],
+            "recip_intersecting_runway_id": ["VARCHAR(16)"],
+            "recip_hold_short_description": ["VARCHAR(64)"],
+            "recip_lahso_position": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "recip_lahso_source": ["VARCHAR(16)"],
+            "recip_lahso_source_date": ["INTEGER"],
+
+
         },
         "radio" : {
             "id": ["VARCHAR(64)", "PRIMARY KEY", "UNIQUE"],
@@ -77,6 +263,23 @@ class Database():
             "high_alt": ["VARCHAR(16)"],
             "type": ["VARCHAR(16)"],
             "geometry": {"SRS":4326, "type": "POLYGON", "point_type": "XY"}
+        },
+        "waypoints":{
+            "id": ["VARCHAR(64)", "PRIMARY KEY", "UNIQUE"],
+            "state_name": ["VARCHAR(16)"],
+            "region_code": ["VARCHAR(64)"],
+            "geometry": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "previous_name": ["VARCHAR(64)"],
+            "charting_info": ["VARCHAR(64)"],
+            "to_be_published": ["BOOLEAN"],
+            "fix_use": ["VARCHAR(32)"],
+            "nas_identifier": ["VARCHAR(16)"],
+            "high_artcc": ["VARCHAR(16)"],
+            "low_artcc": ["VARCHAR(16)"],
+            "country_name": ["VARCHAR(16)"],
+            "sua_atcaa": ["BOOLEAN"],
+            "remark": ["VARCHAR(128)"],
+            "depicted_chart": ["VARCHAR(32)"]
         },
         "updates": {
             "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
@@ -108,15 +311,17 @@ class Database():
             query = "CREATE TABLE {0}(".format(table)
             for column in self.TABLES[table]:
                 if(isinstance(self.TABLES[table][column], dict) is True):
-                    geometry.append(self.TABLES[table][column])
+                    geometry.append({column: self.TABLES[table][column]})
                 else:
                     query += "{0} {1}, ".format(column, " ".join(self.TABLES[table][column]))
             query = query[:-2] + ")"
             c.execute(query)
 
             for column in geometry:
-                query = "SELECT AddGeometryColumn('{0}', 'geometry', {1}, '{2}', '{3}');".format(
-                    table, column["SRS"], column["type"], column["point_type"])
+                columnName = column.keys()[0]
+                columnAttr = column[columnName]
+                query = "SELECT AddGeometryColumn('{0}', '{1}', {2}, '{3}', '{4}');".format(
+                    table, columnName, columnAttr["SRS"], columnAttr["type"], columnAttr["point_type"])
                 c.execute(query)
 
             c.close()
@@ -761,7 +966,10 @@ class FAA_NASR_Data():
 
     NASR_PRODUCT_AIXM = "aixm5.1.zip"
     NASR_PRODUCT_AIRSPACE_SHAPES = "class_airspace_shape_files.zip"
-    NASR_PRODUCTS_TXT = ["TWR", "FIX"]
+    NASR_PRODUCTS_TXT = ["TWR", "FIX", "APT"]
+
+    NASR_CYCLE_START = datetime.datetime(2016, 7, 21)
+    NASR_CYCLE_DURATION = datetime.timedelta(56)  # 56-days
 
     CHART_TYPES = ["sectional", "terminalArea", "world", "helicopter"]
 
@@ -798,6 +1006,7 @@ class FAA_NASR_Data():
     def download_nasr_legacy(self, product, target_path):
         if product in self.NASR_PRODUCTS_TXT:
             url = self.URL_NASR_SUB.format(self.cycles["current"], product + ".zip")
+            print url
             self.download_with_progress(url, target_path)
 
     def download_nasr_airspace_shapes(self, target_path):
@@ -833,13 +1042,14 @@ class FAA_NASR_Data():
     def update_aixm_cycles(self, force=False):
         # Attempt to do some caching.
         if((self.cycles == {}) or (force is True)):
-            page = requests.get(self.URL_CYCLES_LIST)
-            obj = page.json()
+            # Calculate the NASR cycles using a known date, and then keep adding the cycle duration.
+            current_date = datetime.datetime.now()
+            current_cycle = self.NASR_CYCLE_START
+            while(current_cycle + self.NASR_CYCLE_DURATION < current_date):
+                current_cycle += self.NASR_CYCLE_DURATION
 
-            for cycle in obj["Cycle"]:
-                m = re.search("([0-9]{4}-[0-9]{2}-[0-9]{2})", cycle["choice"])
-                if(m is not None):
-                    self.cycles[cycle["name"].lower()] = m.group(0)
+            self.cycles["current"] = current_cycle.strftime("%Y-%m-%d")
+            self.cycles["next"] = (current_cycle + self.NASR_CYCLE_DURATION).strftime("%Y-%m-%d")
 
         return self.cycles
 
@@ -1023,44 +1233,128 @@ class XML_Parser():
 
 
 class Generic_Legacy_Parser(object):
+    COORDINATES_REGEX = re.compile("(?P<deg>[0-9]{2,3})(?:\-)(?P<min>[0-9]{2})(?:\-)(?P<sec>[0-9.]{7})(?P<dir>[NSEW]{1})")
+
     def __init__(self, filename):
+        self.mapping = {}
+        self.record_id_length = 4
+        self.all_fields = {}
+
+        self.register_mapping()
+
         with open(filename, "r") as fHandle:
             self.lines = fHandle.read().split("\n")
 
-        self.mapping = self.register_mapping()
+        self.parse()
+
         return
 
     def register_mapping(self,):
-        return {}
+        return
 
     def get_field(self, line, startPos, endPos):
         return line[startPos:endPos].strip()
 
-    def run(self):
-        all_fields = {}
+    def parse(self):
+        self.all_fields = []
+
         for line in self.lines:
-            record_type = line[0:4]  # TODO: Come up with a better way to abstract this.
-            if(record_type in self.mapping):
-                fields = {}
-                for field in self.mapping[record_type]:
-                    fields[field[0]] = self.get_field(line, field[1], field[2])
+            if(line == ""):
+                continue
 
-                record_id = fields.pop("record_identifier")
-                if(record_id not in all_fields):
-                    all_fields[record_id] = {}
+            record_type = line[0:self.record_id_length]
+            if(record_type not in self.mapping):
+                print "ERROR: Unknown record type '{0}'".format(record_type)
+                continue
 
-                all_fields[record_id].update(fields)
-        return all_fields
-                
+            fields = {"type":record_type}
+            for field in self.mapping[record_type]:
+                value = self.get_field(line, field[1], field[2])
 
+                if(len(field) == 4):
+                    value = field[3](value)
+
+                fields[field[0]] = value
+
+            self.all_fields.append(fields)
+
+
+    def run(self):
+        return self.all_fields
+
+    def helper_coordinates(self, asciiCoordinate):
+        decimal_degrees = None
+
+        m = re.match(self.COORDINATES_REGEX, asciiCoordinate)
+        if(m is not None):
+            degrees = int(m.group("deg"))
+            minutes = int(m.group("min"))
+            seconds = float(m.group("sec"))
+
+            direction = 1
+            if((m.group("dir") == "S") or (m.group("dir") == "W")):
+                direction = -1
+
+            decimal_degrees = (degrees + (minutes/60) + (seconds / 3600)) * direction
+
+        return decimal_degrees
+
+    def helper_int(self, asciiValue):
+        converted = None
+        if(asciiValue != ""):
+            # Convert to float first just in case the ASCII representation includes a decimal.
+            converted = int(float(asciiValue))
+
+        return converted
+
+    def helper_float(self, asciiValue):
+        converted = None
+        if(asciiValue != ""):
+            converted = float(asciiValue)
+
+        return converted
+
+    def helper_boolean(self, asciiValue):
+        converted = False
+
+        if((asciiValue == "T") or (asciiValue == "Y")):
+            converted = True
+
+        return converted
+
+    def helper_date(self, asciiDate):
+        result = None
+        if(asciiDate is not None and asciiDate != ""):
+            date = datetime.datetime.strptime(asciiDate, "%m/%d/%Y")
+            epochDelta = date - datetime.datetime(1970, 1, 1)
+            result = int(epochDelta.total_seconds())
+        return result
+
+    def helper_date_mmyyyy(self, asciiDate):
+        result = None
+        if(asciiDate is not None and asciiDate != ""):
+            date = datetime.datetime.strptime(asciiDate, "%m/%Y")
+            epochDelta = date - datetime.datetime(1970, 1, 1)
+            result = int(epochDelta.total_seconds())
+        return result
+
+    def helper_date_mmddyyyy(self, asciiDate):
+        result = None
+        if(asciiDate is not None and asciiDate != ""):
+            date = datetime.datetime.strptime(asciiDate, "%m%d%Y")
+            epochDelta = date - datetime.datetime(1970, 1, 1)
+            result = int(epochDelta.total_seconds())
+        return result
 
 class Legacy_FIX_Parser(Generic_Legacy_Parser):
     def register_mapping(self):
-        mapping = {
+        self.record_id_length = 4
+
+        self.mapping = {
             "FIX1": [
                 # NOTE! FAA Layout Diagrams are 1-indexed! WTF!?
                 # Field                    Start, End Index
-                ("record_identifier",        4,  33),
+                ("id",                       4,  33),
                 ("state_name",              34,  63),
                 ("region_code",             64,  65),
                 ("latitude",                66,  79),
@@ -1110,7 +1404,344 @@ class Legacy_FIX_Parser(Generic_Legacy_Parser):
                 ("depicted_chart",          66,  87),
             ]
         }
-        return mapping
+
+
+class Legacy_APT_Parser(Generic_Legacy_Parser):
+    MAGVAR_REGEX = re.compile("(?P<var>[0-9]{1,2})(?P<dir>[EW])")
+    OBSTACLE_OFFSET_REGEX = re.compile("(?P<dist>[0-9]{1,6})(?P<dir>[LRB])?")
+    OBSTACLE_DIST_REGEX = re.compile("(?P<dist>[0-9]{1,6})")
+    GRADIENT_REGEX = re.compile("(?P<gradient>[0-9.]{1,6})(?P<direction>[A-Z]{2,4})?")
+
+    def register_mapping(self):
+        self.record_id_length = 3
+
+        self.mapping = {
+            "APT": [
+                # NOTE! FAA Layout Diagrams are 1-indexed! WTF!?
+                # Field                    Start, End Index
+                ("id", 3, 13),
+                ("landing_facility_type", 14, 27),
+                ("location_identifier", 27, 31),
+                ("effective_date", 31, 41, self.helper_date),
+                ("region_code", 41, 44),
+                ("faa_district_code", 44, 48),
+                ("state_code", 48, 50),
+                ("state_name", 50, 70),
+                ("county_name", 70, 91),
+                ("county_state", 91, 93),
+                ("city_name", 93, 133),
+                ("facility_name", 133, 183),
+                ("ownership_type", 183, 185),
+                ("facility_use", 185, 187),
+                ("owner_name", 187, 222),
+                ("owner_address", 222, 294),
+                ("owner_address2", 294, 339),
+                ("owner_phone", 339, 355),
+                ("manager_name", 355, 390),
+                ("manager_address", 390, 462),
+                ("manager_address2", 462, 507),
+                ("manager_phone", 507, 523),
+                ("latitude", 523, 538, self.helper_coordinates),
+                ("longitude", 550, 565, self.helper_coordinates),
+                ("location_surveyed", 577, 578, self.helper_location_surveyed),
+                ("elevation", 578, 585),
+                ("elevation_surveyed", 585, 586, self.helper_location_surveyed),
+                ("magnetic_variation", 586, 589, self.helper_magnetic_variation),
+                ("magnetic_epoch_year", 589, 593, self.helper_int),
+                ("tpa", 593, 597, self.helper_int),
+                ("sectional", 597, 627),
+                ("associated_city_distance", 627, 629, self.helper_int),
+                ("associated_city_direction", 629, 632),
+                ("land_covered", 632, 637),
+                ("boundary_artcc_id", 637, 641),
+                ("boundary_artcc_computer_id", 641, 644),
+                ("boundary_artcc_name", 644, 674),
+                ("responsible_artcc_id", 674, 678),
+                ("responsible_artcc_computer_id", 678, 681),
+                ("responsible_artcc_name", 681, 711),
+                ("fss_on_site", 711, 712, self.helper_boolean),
+                ("fss_id", 712, 716),
+                ("fss_name", 716, 746),
+                ("fss_admin_phone", 746, 762),
+                ("fss_pilot_phone", 762, 778),
+                ("alt_fss_id", 778, 782),
+                ("alt_fss_name", 782, 812),
+                ("alt_fss_pilot_phone", 812, 828),
+                ("notam_facility_id", 828, 832),
+                ("notam_d_avail", 832, 833, self.helper_boolean),
+                ("activation_date", 833, 840, self.helper_date_mmyyyy),
+                ("status_code", 840, 842),
+                ("arff_certification_type", 842, 857),
+                ("agreements_code", 857, 864),
+                ("airspace_analysis_det", 864, 877),
+                ("entry_for_customs", 877, 878, self.helper_boolean),
+                ("landing_rights", 878, 879, self.helper_boolean),
+                ("mil_civ_joint_use", 879, 880, self.helper_boolean),
+                ("mil_landing_rights", 880, 881, self.helper_boolean),
+                ("inspection_method", 881, 883),
+                ("inspection_agency", 883, 884),
+                ("inspection_date", 884, 892, self.helper_date_mmddyyyy),
+                ("information_request_date", 892, 900),
+                ("fuel_types_avail", 900, 940),
+                ("airframe_repair_avail", 940, 945),
+                ("powerplant_repair_avail", 945, 950),
+                ("oxygen_avail", 950, 958),
+                ("bulk_oxygen_avail", 958, 966),
+                ("lighting_schedule", 966, 973),
+                ("beacon_schedule", 973, 980),
+                ("tower_onsite", 980, 981, self.helper_boolean),
+                ("unicom_freq", 981, 988, self.helper_float),
+                ("ctaf_freq", 988, 995, self.helper_float),
+                ("segmented_circle", 995, 999),
+                ("beacon_lens_color", 999, 1002),
+                ("non_commerial_ldg_fee", 1002, 1003, self.helper_boolean),
+                ("medical_use", 1003, 1004, self.helper_boolean),
+                ("num_se_aircraft", 1004, 1007, self.helper_int),
+                ("num_me_aircraft", 1007, 1010, self.helper_int),
+                ("num_jet_aircraft", 1010, 1013, self.helper_int),
+                ("num_helicopters", 1013, 1016, self.helper_int),
+                ("num_gliders", 1016, 1019, self.helper_int),
+                ("num_mil_aircraft", 1019, 1022, self.helper_int),
+                ("num_ultralight", 1022, 1025, self.helper_int),
+                ("ops_commerical", 1025, 1031, self.helper_int),
+                ("ops_commuter", 1031, 1037, self.helper_int),
+                ("ops_air_taxi", 1037, 1043, self.helper_int),
+                ("ops_general_local", 1043, 1049, self.helper_int),
+                ("ops_general_iternant", 1049, 1055, self.helper_int),
+                ("ops_military", 1055, 1061, self.helper_int),
+                ("operations_date", 1061, 1071, self.helper_date),
+                ("position_source", 1071, 1087),
+                ("position_date", 1087, 1097, self.helper_date),
+                ("elevation_source", 1097, 1113),
+                ("elevation_date", 1113, 1123, self.helper_date),
+                ("contract_fuel_avail", 1123, 1124),
+                ("transient_storage_facilities", 1124, 1136),
+                ("other_services", 1136, 1207),
+                ("wind_indicator", 1207, 1210),
+                ("icao_identifier", 1210, 1217),
+            ],
+            "ATT": [
+                ("airport_id", 3, 13),
+                ("attendance_schedule", 18, 125),
+            ],
+            "RWY": [
+                ("airport_id", 3, 13),
+                ("name", 16, 23),
+                ("length", 23, 28, self.helper_int),
+                ("width", 28, 32, self.helper_int),
+                ("surface_type", 32, 44),
+                ("surface_treatment", 44, 49),
+                ("pavement_classification", 49, 60),
+                ("lights_intensity", 60, 65),
+                ("base_id", 65, 68),
+                ("base_true_hdg", 68, 71, self.helper_int),
+                ("base_ils_type", 71, 81),
+                ("base_rh_traffic", 81, 82, self.helper_boolean),
+                ("base_markings", 82, 87),
+                ("base_markings_condition", 87, 88),
+                ("base_latitude", 88, 103, self.helper_coordinates),
+                ("base_longitude", 115, 130, self.helper_coordinates),
+                ("base_elevation", 142, 149, self.helper_float),
+                ("base_threshold_height", 149, 152, self.helper_int),
+                ("base_glide_angle", 152, 156, self.helper_float),
+                ("base_disp_threshold_latitude", 156, 171, self.helper_coordinates),
+                ("base_disp_threshold_longitude", 183, 198, self.helper_coordinates),
+                ("base_disp_threshold_elevation", 210, 217, self.helper_float),
+                ("base_disp_threshold_distance", 217, 221, self.helper_float),
+                ("base_touchdown_elevation", 221, 228, self.helper_float),
+                ("base_glideslope_indicators", 228, 233),
+                ("base_visual_range_equip", 233, 236),
+                ("base_visual_range_avail", 236, 237, self.helper_boolean),
+                ("base_app_lighting", 237, 245),
+                ("base_reil_avail", 245, 246, self.helper_boolean),
+                ("base_center_lights_avail", 246, 247, self.helper_boolean),
+                ("base_touchdown_lights_avail", 247, 248, self.helper_boolean),
+                ("base_obstacle_description", 248, 259),
+                ("base_obstacle_lighting", 259, 263),
+                ("base_obstacle_category", 263, 268),
+                ("base_obstacle_slope", 268, 270, self.helper_int),
+                ("base_obstacle_height", 270, 275, self.helper_int),
+                ("base_obstacle_distance", 275, 280, self.helper_obstacle_distance),
+                ("base_obstacle_offset", 280, 287, self.helper_obstacle_offset),
+                ("recip_id", 287, 290),
+                ("recip_true_hdg", 290, 293, self.helper_int),
+                ("recip_ils_type", 293, 303),
+                ("recip_rh_traffic", 303, 304, self.helper_boolean),
+                ("recip_markings", 304, 309),
+                ("recip_markings_condition", 309, 310),
+                ("recip_latitude", 310, 325, self.helper_coordinates),
+                ("recip_longitude", 337, 352, self.helper_coordinates),
+                ("recip_elevation", 364, 371, self.helper_float),
+                ("recip_threshold_height", 371, 374, self.helper_int),
+                ("recip_glide_angle", 374, 378, self.helper_float),
+                ("recip_disp_threshold_latitude", 378, 393, self.helper_coordinates),
+                ("recip_disp_threshold_longitude", 405, 420, self.helper_coordinates),
+                ("recip_disp_threshold_elevation", 432, 439, self.helper_float),
+                ("recip_disp_threshold_distance", 439, 443, self.helper_float),
+                ("recip_touchdown_elevation", 443, 450, self.helper_float),
+                ("recip_glideslope_indicators", 450, 455),
+                ("recip_visual_range_equip", 455, 458),
+                ("recip_visual_range_avail", 458, 459, self.helper_boolean),
+                ("recip_app_lighting", 459, 467),
+                ("recip_reil_avail", 467, 468, self.helper_boolean),
+                ("recip_center_lights_avail", 468, 469, self.helper_boolean),
+                ("recip_touchdown_lights_avail", 469, 470, self.helper_boolean),
+                ("recip_obstance_description", 470, 481),
+                ("recip_obstacle_lighting", 481, 485),
+                ("recip_obstacle_category", 485, 490),
+                ("recip_obstacle_slope", 490, 492, self.helper_int),
+                ("recip_obstacle_height", 492, 497, self.helper_int),
+                ("recip_obstacle_distance", 497, 502, self.helper_obstacle_distance),
+                ("recip_obstacle_offset", 502, 509, self.helper_obstacle_offset),
+                ("length_source", 509, 525),
+                ("length_source_date", 525, 535, self.helper_date),
+                ("weight_cap_single_wheel", 535, 541, self.helper_int),
+                ("weight_cap_dual_wheel", 541, 547, self.helper_int),
+                ("weight_cap_two_dual_wheel", 547, 553, self.helper_int),
+                ("weight_cap_tandem_dual_wheel", 553, 559, self.helper_int),
+                ("base_gradient", 559, 568, self.helper_gradient),
+                ("base_position_source", 568, 584),
+                ("base_position_source_date", 584, 594, self.helper_date),
+                ("base_elevation_source", 594, 610),
+                ("base_elevation_source_date", 610, 620, self.helper_date),
+                ("base_disp_threshold_source", 620, 636),
+                ("base_disp_threshold_source_date", 636, 646, self.helper_date),
+                ("base_disp_threshold_elevation_source", 646, 662),
+                ("base_disp_threshold_elevation_source_date", 662, 672, self.helper_date),
+                ("base_takeoff_run", 698, 703, self.helper_int),
+                ("base_takeoff_distance", 703, 708, self.helper_int),
+                ("base_aclt_stop_distance", 708, 713, self.helper_int),
+                ("base_landing_distance", 713, 718, self.helper_int),
+                ("base_lahso_distance", 718, 723, self.helper_int),
+                ("base_intersecting_runway_id", 723, 730),
+                ("base_hold_short_description", 730, 770),
+                ("base_lahso_position_latitude", 770, 785, self.helper_coordinates),
+                ("base_lahso_position_longitude", 797, 812, self.helper_coordinates),
+                ("base_lahso_source", 824, 840),
+                ("base_lahso_source_date", 840, 850, self.helper_date),
+
+                ("recip_gradient", 850, 859, self.helper_gradient),
+                ("recip_position_source", 859, 875),
+                ("recip_position_source_date", 875, 885, self.helper_date),
+                ("recip_elevation_source", 885, 901),
+                ("recip_elevation_source_date", 901, 911, self.helper_date),
+                ("recip_disp_threshold_source", 911, 927),
+                ("recip_disp_threshold_source_date", 927, 937, self.helper_date),
+                ("recip_disp_threshold_elevation_source", 937, 953),
+                ("recip_disp_threshold_elevation_source_date", 953, 963, self.helper_date),
+                ("recip_takeoff_run", 989, 994, self.helper_int),
+                ("recip_takeoff_distance", 994, 999, self.helper_int),
+                ("recip_aclt_stop_distance", 999, 1004, self.helper_int),
+                ("recip_landing_distance", 1004, 1009, self.helper_int),
+                ("recip_lahso_distance", 1009, 1014, self.helper_int),
+                ("recip_intersecting_runway_id", 1014, 1021),
+                ("recip_hold_short_description", 1021, 1061),
+                ("recip_lahso_position_latitude", 1061, 1076, self.helper_coordinates),
+                ("recip_lahso_position_longitude", 1088, 1103, self.helper_coordinates),
+                ("recip_lahso_source", 1115, 1131),
+                ("recip_lahso_source_date", 1131, 1141, self.helper_date),
+            ],
+            "ARS": [],
+            "RMK": [
+                ("airport_id", 3, 13),
+                ("remark_name", 16, 28),
+                ("remark", 29, 1528)
+            ]
+        }
+
+    def run(self):
+        airports = {}
+        for field in self.all_fields:
+            if(field["type"] == "APT"):
+                airportId = field.pop("id")
+                airports[airportId] = field
+
+            if(field["type"] == "ATT"):
+                airportId = field.pop("airport_id")
+
+                if(airportId in airports):
+                    airports[airportId].update(field)
+                else:
+                    print "COULD NOT FIND AIRPORT FOR 'ATT'"
+
+            if(field["type"] == "RWY"):
+                airportId = field.pop("airport_id")
+
+                if(airportId in airports):
+                    if("runways" not in airports[airportId]):
+                        airports[airportId]["runways"] = []
+                    airports[airportId]["runways"].append(field)
+                else:
+                    print "COULD NOT FIND AIRPORT FOR 'RWY'"
+
+            if(field["type"] == "RMK"):
+                airportId = field.pop("airport_id")
+
+                if(airportId in airports):
+                    if("remarks" not in airports[airportId]):
+                        airports[airportId]["remarks"] = []
+                    airports[airportId]["remarks"].append(field)
+                else:
+                    print "COULD NOT FIND AIRPORT FOR 'RMK'"
+
+        return airports
+
+    def helper_location_surveyed(self, surveyed):
+        return (surveyed == "S")
+
+    def helper_magnetic_variation(self, magvar):
+        result = None
+        if(magvar is not None and magvar != ""):
+            m = re.match(self.MAGVAR_REGEX, magvar)
+            if(m is not None):
+                degrees = int(m.group("var"))
+
+                direction = 1
+                if(m.group("dir") == "W"):
+                    direction = -1
+                result = direction * degrees
+
+        return result
+
+    def helper_obstacle_offset(self, offset):
+        result = None
+        if(offset is not None and offset != ""):
+            m = re.match(self.OBSTACLE_OFFSET_REGEX, offset)
+            if(m is not None):
+                distance = int(m.group("dist"))
+
+                direction = 1
+                if(m.group("dir") == "L"):
+                    direction = -1
+                result = direction * distance
+
+        return result
+
+    def helper_obstacle_distance(self, distance):
+        result = None
+        if(distance is not None and distance != ""):
+            m = re.match(self.OBSTACLE_DIST_REGEX, distance)
+            if(m is not None):
+                result = int(m.group("dist"))
+
+        return result
+
+
+    def helper_gradient(self, gradient):
+        result = None
+        if(gradient is not None and gradient != ""):
+            m = re.match(self.GRADIENT_REGEX, gradient)
+            if(m is not None):
+                distance = float(m.group("gradient"))
+
+                direction = 1
+                if(m.group("direction") == "DOWN"):
+                    direction = -1
+                result = direction * distance
+
+        return result
+
+
 
 
 class Shapefile():

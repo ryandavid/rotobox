@@ -74,45 +74,39 @@ nasr = Rotobox.FAA_NASR_Data(AIRPORT_DIRECTORY)
 db = Rotobox.Database(AIRPORT_DB)
 db.verify_tables(fix=True)
 
-# NASR XML Data
-if(db.get_product_updated_cycle("aixm") != nasr.get_current_cycle()):
-    nasr.update_aixm()
-    db.reset_tables(["airports", "radio", "runways"])
+# NASR 56 Day Subscription Data
+if(db.get_product_updated_cycle("nasr") != nasr.get_current_cycle()):
+    nasr.update_legacy_products()
 
-    print "Parsing '{0}'".format(nasr.get_filepath_apt())
-    parser = Rotobox.XML_Parser(nasr.get_filepath_apt())
-    parser.register(Rotobox.FAA_AirportParser, db.insert_into_db_table_airports)
-    parser.register(Rotobox.FAA_RunwayParser, db.insert_into_db_table_runways)
-    parser.register(Rotobox.FAA_RadioCommunicationServiceParser, db.update_radio_db_with_frequency)
-    parser.register(Rotobox.FAA_TouchDownLiftOffParser, db.update_runway_db_with_tdlo_info)
-    parser.register(Rotobox.FAA_AirTrafficControlServiceParser, db.insert_into_db_table_radio)
+    apt_filepath = nasr.get_filepath_legacy_products("APT")
+    apt_parser = Rotobox.Legacy_APT_Parser(apt_filepath)
+    apt_parser.run()
 
-    parser.run()
-    # Make a note of the cycle we just updated with
-    db.set_table_updated_cycle("aixm", nasr.get_current_cycle())
+    #db.set_table_updated_cycle("nasr", nasr.get_current_cycle());
     db.commit()
 else:
     print " => DB is already up to date with AIXM data!"
 print " => Done!"
+sys.exit()
 
-# # D-TPP, mainly interested in the airport diagrams
-# if(db.get_product_updated_cycle("dtpp") != str(nasr.get_procedures_cycle())):
-#     nasr.update_dtpp()
-#     print "Updating airport diagrams"
-#     print " => Emptying DB table 'tpp'"
-#     db.reset_table("tpp")
+# D-TPP, mainly interested in the airport diagrams
+if(db.get_product_updated_cycle("dtpp") != str(nasr.get_procedures_cycle())):
+    nasr.update_dtpp()
+    print "Updating airport diagrams"
+    print " => Emptying DB table 'tpp'"
+    db.reset_table("tpp")
 
-#     print " => Parsing DTPP XML"
-#     parser = Rotobox.XML_Parser(nasr.get_filepath_dtpp())
-#     parser.register(Rotobox.FAA_DtppAirportParser, process_dtp_chart)
+    print " => Parsing DTPP XML"
+    parser = Rotobox.XML_Parser(nasr.get_filepath_dtpp())
+    parser.register(Rotobox.FAA_DtppAirportParser, process_dtp_chart)
 
-#     parser.run()
+    parser.run()
     
-#     db.set_table_updated_cycle("dtpp", nasr.get_procedures_cycle());
-#     db.commit()
-# else:
-#     print " => Already have the latest charts!"
-# print " => Done!"
+    db.set_table_updated_cycle("dtpp", nasr.get_procedures_cycle());
+    db.commit()
+else:
+    print " => Already have the latest charts!"
+print " => Done!"
 
 # Airspace shapefiles
 if(db.get_product_updated_cycle("airspaces") != nasr.get_current_cycle()):
@@ -144,15 +138,15 @@ else:
     print " => Already have the latest airspace shapefiles!"
 print " => Done!"
 
-# # Legacy Products
-# if(db.get_product_updated_cycle("twr") != nasr.get_current_cycle()):
-#     nasr.update_legacy_products()
-#     parser = Rotobox.Legacy_FIX_Parser(nasr.get_filepath_legacy_products("FIX"))
-#     results = parser.run()
+# Legacy Products
+if(db.get_product_updated_cycle("twr") != nasr.get_current_cycle()):
+    nasr.update_legacy_products()
+    parser = Rotobox.Legacy_FIX_Parser(nasr.get_filepath_legacy_products("FIX"))
+    results = parser.run()
 
-#     for fix in results:
-#         print results[fix].keys()
-#         break
+    for fix in results:
+        print results[fix].keys()
+        break
 
 db.commit()
 db.close()

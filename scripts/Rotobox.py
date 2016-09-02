@@ -154,7 +154,7 @@ class Database():
             "base_reil_avail": ["BOOLEAN"],
             "base_center_lights_avail": ["BOOLEAN"],
             "base_touchdown_lights_avail": ["BOOLEAN"],
-            "base_obstance_description": ["VARCHAR(16)"],
+            "base_obstacle_description": ["VARCHAR(16)"],
             "base_obstacle_lighting": ["VARCHAR(4)"],
             "base_obstacle_category": ["VARCHAR(8)"],
             "base_obstacle_slope": ["INTEGER"],
@@ -183,7 +183,7 @@ class Database():
             "recip_reil_avail": ["BOOLEAN"],
             "recip_center_lights_avail": ["BOOLEAN"],
             "recip_touchdown_lights_avail": ["BOOLEAN"],
-            "recip_obstance_description": ["VARCHAR(16)"],
+            "recip_obstacle_description": ["VARCHAR(16)"],
             "recip_obstacle_lighting": ["VARCHAR(4)"],
             "recip_obstacle_category": ["VARCHAR(8)"],
             "recip_obstacle_slope": ["INTEGER"],
@@ -237,15 +237,24 @@ class Database():
             "recip_lahso_position": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
             "recip_lahso_source": ["VARCHAR(16)"],
             "recip_lahso_source_date": ["INTEGER"],
-
-
         },
-        "radio" : {
+        "awos" : {
             "id": ["VARCHAR(64)", "PRIMARY KEY", "UNIQUE"],
-            "airport_id": ["VARCHAR(32)"],
-            "channel_name": ["VARCHAR(32)"],
-            "tx_frequency": ["FLOAT"],
-            "rx_frequency": ["FLOAT"]
+            "type": ["VARCHAR(16)"],
+            "commissioning": ["BOOLEAN"],
+            "commissioning_date": ["INTEGER"],
+            "associated_with_naviad": ["BOOLEAN"],
+            "location": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "elevation": ["FLOAT"],
+            "surveyed": ["BOOLEAN"],
+            "frequency": ["FLOAT"],
+            "frequency2": ["FLOAT"],
+            "phone_number": ["VARCHAR(16)"],
+            "phone_number2": ["VARCHAR(16)"],
+            "associated_facility": ["VARCHAR(16)"],
+            "city": ["VARCHAR(64)"],
+            "state": ["VARCHAR(4)"],
+            "effective_date": ["INTEGER"],
         },
         "tpp" : {
             "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
@@ -268,7 +277,7 @@ class Database():
             "id": ["VARCHAR(64)", "PRIMARY KEY", "UNIQUE"],
             "state_name": ["VARCHAR(16)"],
             "region_code": ["VARCHAR(64)"],
-            "geometry": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
+            "location": {"SRS": 4326, "type": "POINT", "point_type": "XY"},
             "previous_name": ["VARCHAR(64)"],
             "charting_info": ["VARCHAR(64)"],
             "to_be_published": ["BOOLEAN"],
@@ -279,7 +288,12 @@ class Database():
             "country_name": ["VARCHAR(16)"],
             "sua_atcaa": ["BOOLEAN"],
             "remark": ["VARCHAR(128)"],
-            "depicted_chart": ["VARCHAR(32)"]
+            "depicted_chart": ["VARCHAR(32)"],
+            "mls_component": ["VARCHAR(32)"],
+            "radar_component": ["VARCHAR(32)"],
+            "pitch": ["BOOLEAN"],
+            "catch": ["BOOLEAN"],
+            "type": ["VARCHAR(8)"],
         },
         "updates": {
             "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
@@ -340,6 +354,9 @@ class Database():
     def verify_tables(self, fix=False):
         c = self.dbConn.cursor()
 
+        # Make sure the spatialite tables are still valid
+        c.execute("SELECT InitSpatialMetadata()")
+
         for table in self.TABLES:
             table_valid = True
 
@@ -398,8 +415,6 @@ class Database():
                     print "WARN: Fixing table '{0}' by resetting it!".format(table)
                     self.reset_table(table)
 
-        # Make sure the spatialite tables are still valid
-        c.execute("SELECT InitSpatialMetadata()")
 
     def insert_into_db_table_airports(self, airport):
         c = self.dbConn.cursor()
@@ -414,7 +429,7 @@ class Database():
             if(item not in self.TABLES["airports"]):
                 "Unknown item '{0}' when inserting row into airports table".format(item)
 
-        query = "INSERT INTO airports ({0}, geometry)" \
+        query = "INSERT INTO airports ({0}, location)" \
                 "VALUES ({1}, {2})".format(", ".join(airport.keys()),
                                            ", ".join("?"*len(airport)),
                                            geometry)
@@ -425,67 +440,99 @@ class Database():
         c = self.dbConn.cursor()
         columns = ""
         values = ""
+
+        base_latitude = runway.pop("base_latitude")
+        base_longitude = runway.pop("base_longitude")
+        base_location = "GeomFromText('POINT({0} {1})', 4326)".format(
+            base_longitude, base_latitude)
+
+        recip_latitude = runway.pop("recip_latitude")
+        recip_longitude = runway.pop("recip_longitude")
+        recip_location = "GeomFromText('POINT({0} {1})', 4326)".format(
+            recip_longitude, recip_latitude)
+
+        base_disp_threshold_latitude = runway.pop("base_disp_threshold_latitude")
+        base_disp_threshold_longitude = runway.pop("base_disp_threshold_longitude")
+        base_disp_threshold_location = "GeomFromText('POINT({0} {1})', 4326)".format(
+            base_disp_threshold_longitude, base_disp_threshold_latitude)
+
+        recip_disp_threshold_latitude = runway.pop("recip_disp_threshold_latitude")
+        recip_disp_threshold_longitude = runway.pop("recip_disp_threshold_longitude")
+        recip_disp_threshold_location = "GeomFromText('POINT({0} {1})', 4326)".format(
+            recip_disp_threshold_longitude, recip_disp_threshold_latitude)
+
+        base_lahso_position_latitude = runway.pop("base_lahso_position_latitude")
+        base_lahso_position_longitude = runway.pop("base_lahso_position_longitude")
+        base_lahso_location = "GeomFromText('POINT({0} {1})', 4326)".format(
+            base_lahso_position_longitude, base_lahso_position_latitude)
+
+        recip_lahso_position_latitude = runway.pop("recip_lahso_position_latitude")
+        recip_lahso_position_longitude = runway.pop("recip_lahso_position_longitude")
+        recip_lahso_location = "GeomFromText('POINT({0} {1})', 4326)".format(
+            recip_lahso_position_longitude, recip_lahso_position_latitude)
+
+        geometry = [base_location, recip_location, base_disp_threshold_location, 
+                    recip_disp_threshold_location, base_lahso_location, recip_lahso_location]
+
         for item in runway:
             if(item not in self.TABLES["runways"]):
                 "Unknown item '{0}' when inserting row into runways table".format(item)
 
-        query = "INSERT INTO runways ({0}) VALUES ({1})".format(", ".join(runway.keys()),
-                                                                 ", ".join("?"*len(runway)))
+        query = "INSERT INTO runways ({0}, base_location, recip_location, " \
+                "base_disp_threshold_location, recip_disp_threshold_location, " \
+                "base_lahso_position, recip_lahso_position) VALUES ({1}, {2})".format(
+                    ", ".join(runway.keys()), ", ".join("?"*len(runway)), ", ".join(geometry))
+
         c.execute(query, runway.values())
         c.close()
 
-    def update_runway_db_with_tdlo_info(self, tdlo):
-        c = self.dbConn.cursor()
 
-        designator = tdlo.pop("designator")
-        airport_id = tdlo.pop("airport_id")
-
-        queryNames = []
-        queryValues = []
-        for item in tdlo:
-            if(item not in self.TABLES["runways"]):
-                "Unknown item '{0}' when inserting row into runways table".format(item)
-            else:
-                queryNames.append("{0} = ?".format(item))
-                queryValues.append(tdlo[item])
-
-        if(len(queryNames) != 0):
-            query = "UPDATE runways SET {0} WHERE designator = ? AND airport_id = ?".format(
-                ", ".join(queryNames))
-            c.execute(query, queryValues + [designator, airport_id])
-
-
-    def insert_into_db_table_radio(self, radio):
+    def insert_into_db_table_waypoints(self, waypoint):
         c = self.dbConn.cursor()
         columns = ""
         values = ""
-        for item in radio:
-            if(item not in self.TABLES["radio"]):
-                "Unknown item '{0}' when inserting row into radio table".format(item)
 
-        query = "INSERT INTO radio ({0}) VALUES ({1})".format(", ".join(radio.keys()),
-                                                                 ", ".join("?"*len(radio)))
-        c.execute(query, radio.values())
+        latitude = waypoint.pop("latitude")
+        longitude = waypoint.pop("longitude")
+        location = "GeomFromText('POINT({0} {1})', 4326)".format(longitude, latitude)
+
+        for item in waypoint:
+            if(item not in self.TABLES["waypoints"]):
+                "Unknown item '{0}' when inserting row into waypoints table".format(item)
+
+        query = "INSERT INTO waypoints ({0}, location) VALUES ({1}, {2})".format(
+            ", ".join(waypoint.keys()), ", ".join("?"*len(waypoint)), location)
+
+        try:
+            c.execute(query, waypoint.values())
+        except:
+            print "Failed to add row to 'waypoints':"
+            print waypoint.values()
         c.close()
 
-    def update_radio_db_with_frequency(self, radio):
+    def insert_into_db_table_awos(self, awos):
         c = self.dbConn.cursor()
-        radio_comm_id = radio.pop("id")
+        columns = ""
+        values = ""
 
-        queryNames = []
-        queryValues = []
-        for item in radio:
-            if(item not in self.TABLES["radio"]):
-                "Unknown item '{0}' when updating row in radio table".format(item)
-            else:
-                queryNames.append("{0} = ?".format(item))
-                queryValues.append(radio[item])
+        latitude = awos.pop("latitude")
+        longitude = awos.pop("longitude")
+        location = "GeomFromText('POINT({0} {1})', 4326)".format(longitude, latitude)
 
-        queryValues.append(radio_comm_id)
+        for item in awos:
+            if(item not in self.TABLES["awos"]):
+                "Unknown item '{0}' when inserting row into awos table".format(item)
 
-        if(len(queryNames) != 0):
-            query = "UPDATE radio SET {0} WHERE id = ?".format(", ".join(queryNames))
-            c.execute(query, queryValues)
+        query = "INSERT INTO awos ({0}, location) VALUES ({1}, {2})".format(
+            ", ".join(awos.keys()), ", ".join("?"*len(awos)), location)
+
+        try:
+            c.execute(query, awos.values())
+        except:
+            print "Failed to add row to 'awos':"
+            print awos.values()
+        c.close()
+
 
     def insert_terminal_procedure_url(self, chart):
         c = self.dbConn.cursor()
@@ -519,7 +566,7 @@ class Database():
         airport_id = None
 
         c = self.dbConn.cursor()
-        query = "SELECT id FROM airports WHERE designator = ?;"
+        query = "SELECT id FROM airports WHERE location_identifier = ?;"
         c.execute(query, (designator,))
 
         result = c.fetchone()
@@ -966,7 +1013,7 @@ class FAA_NASR_Data():
 
     NASR_PRODUCT_AIXM = "aixm5.1.zip"
     NASR_PRODUCT_AIRSPACE_SHAPES = "class_airspace_shape_files.zip"
-    NASR_PRODUCTS_TXT = ["TWR", "FIX", "APT"]
+    NASR_PRODUCTS_TXT = ["TWR", "FIX", "APT", "AWOS"]
 
     NASR_CYCLE_START = datetime.datetime(2016, 7, 21)
     NASR_CYCLE_DURATION = datetime.timedelta(56)  # 56-days
@@ -1233,7 +1280,7 @@ class XML_Parser():
 
 
 class Generic_Legacy_Parser(object):
-    COORDINATES_REGEX = re.compile("(?P<deg>[0-9]{2,3})(?:\-)(?P<min>[0-9]{2})(?:\-)(?P<sec>[0-9.]{7})(?P<dir>[NSEW]{1})")
+    COORDINATES_REGEX = re.compile("(?P<deg>[0-9]{2,3})(?:\-)(?P<min>[0-9]{2})(?:\-)(?P<sec>[0-9.]{5,9})(?P<dir>[NSEW]{1})")
 
     def __init__(self, filename):
         self.mapping = {}
@@ -1267,7 +1314,7 @@ class Generic_Legacy_Parser(object):
                 print "ERROR: Unknown record type '{0}'".format(record_type)
                 continue
 
-            fields = {"type":record_type}
+            fields = {"_internal_type_": record_type}
             for field in self.mapping[record_type]:
                 value = self.get_field(line, field[1], field[2])
 
@@ -1295,7 +1342,7 @@ class Generic_Legacy_Parser(object):
             if((m.group("dir") == "S") or (m.group("dir") == "W")):
                 direction = -1
 
-            decimal_degrees = (degrees + (minutes/60) + (seconds / 3600)) * direction
+            decimal_degrees = (degrees + (minutes / 60.0) + (seconds / 3600.0)) * direction
 
         return decimal_degrees
 
@@ -1346,6 +1393,9 @@ class Generic_Legacy_Parser(object):
             result = int(epochDelta.total_seconds())
         return result
 
+    def helper_location_surveyed(self, surveyed):
+        return (surveyed == "S")
+
 class Legacy_FIX_Parser(Generic_Legacy_Parser):
     def register_mapping(self):
         self.record_id_length = 4
@@ -1354,55 +1404,55 @@ class Legacy_FIX_Parser(Generic_Legacy_Parser):
             "FIX1": [
                 # NOTE! FAA Layout Diagrams are 1-indexed! WTF!?
                 # Field                    Start, End Index
-                ("id",                       4,  33),
-                ("state_name",              34,  63),
+                ("id",                       4,  34),
+                ("state_name",              34,  64),
                 ("region_code",             64,  65),
-                ("latitude",                66,  79),
-                ("longitude",               80,  93),
-                ("type",                    94,  96),
-                ("mls_direction",           97, 118),
-                ("radar_distance",         119, 140),
-                ("previous_name",          141, 173),
-                ("charting_info",          174, 211),
-                ("to_be_published",        212, 212),
-                ("fix_use",                213, 227),
-                ("nas_identifier",         228, 232),
-                ("high_artcc",             233, 236),
-                ("low_artcc",              237, 240),
-                ("country_name",           241, 270),
-                ("pitch",                  271, 271),
-                ("catch",                  272, 272),
-                ("sua-atcaa",              273, 273)
+                ("latitude",                66,  80, self.helper_coordinates),
+                ("longitude",               80,  94, self.helper_coordinates),
+                ("type",                    94,  97),
+                ("mls_component",           97, 119),
+                ("radar_component",         119, 141),
+                ("previous_name",          141, 174),
+                ("charting_info",          174, 212),
+                ("to_be_published",        212, 213, self.helper_boolean),
+                ("fix_use",                213, 228),
+                ("nas_identifier",         228, 233),
+                ("high_artcc",             233, 237),
+                ("low_artcc",              237, 241),
+                ("country_name",           241, 271),
+                ("pitch",                  271, 272, self.helper_boolean),
+                ("catch",                  272, 273, self.helper_boolean),
+                ("sua_atcaa",              273, 274, self.helper_boolean)
             ],
-            "FIX2": [
-                # Field                     Start, End Index
-                ("record_identifier",        4,  33),
-                ("state_name",              34,  63),
-                ("region_code",             64,  65),
-                ("navaid_used",             66,  88)
-            ],
-            "FIX3": [
-                # Field                     Start, End Index
-                ("record_identifier",        4,  33),
-                ("state_name",              34,  63),
-                ("region_code",             64,  65),
-                ("ils_component",           66,  88)
-            ],
-            "FIX4": [
-                # Field                     Start, End Index
-                ("record_identifier",        4,  33),
-                ("state_name",              34,  63),
-                ("region_code",             64,  65),
-                ("field_label",             66, 165),
-                ("remark",                 166,  -1),
-            ],
-            "FIX5": [
-                # Field                     Start, End Index
-                ("record_identifier",        4,  33),
-                ("state_name",              34,  63),
-                ("region_code",             64,  65),
-                ("depicted_chart",          66,  87),
-            ]
+            "FIX2": [],
+            #     # Field                     Start, End Index
+            #     ("record_identifier",        4,  33),
+            #     ("state_name",              34,  63),
+            #     ("region_code",             64,  65),
+            #     ("navaid_used",             66,  88)
+            # ],
+            "FIX3": [],
+            #     # Field                     Start, End Index
+            #     ("record_identifier",        4,  33),
+            #     ("state_name",              34,  63),
+            #     ("region_code",             64,  65),
+            #     ("ils_component",           66,  88)
+            # ],
+            "FIX4": [],
+            #     # Field                     Start, End Index
+            #     ("record_identifier",        4,  33),
+            #     ("state_name",              34,  63),
+            #     ("region_code",             64,  65),
+            #     ("field_label",             66, 165),
+            #     ("remark",                 166,  -1),
+            # ],
+            "FIX5": []
+            #     # Field                     Start, End Index
+            #     ("record_identifier",        4,  33),
+            #     ("state_name",              34,  63),
+            #     ("region_code",             64,  65),
+            #     ("depicted_chart",          66,  87),
+            # ]
         }
 
 
@@ -1586,7 +1636,7 @@ class Legacy_APT_Parser(Generic_Legacy_Parser):
                 ("recip_reil_avail", 467, 468, self.helper_boolean),
                 ("recip_center_lights_avail", 468, 469, self.helper_boolean),
                 ("recip_touchdown_lights_avail", 469, 470, self.helper_boolean),
-                ("recip_obstance_description", 470, 481),
+                ("recip_obstacle_description", 470, 481),
                 ("recip_obstacle_lighting", 481, 485),
                 ("recip_obstacle_category", 485, 490),
                 ("recip_obstacle_slope", 490, 492, self.helper_int),
@@ -1649,46 +1699,6 @@ class Legacy_APT_Parser(Generic_Legacy_Parser):
             ]
         }
 
-    def run(self):
-        airports = {}
-        for field in self.all_fields:
-            if(field["type"] == "APT"):
-                airportId = field.pop("id")
-                airports[airportId] = field
-
-            if(field["type"] == "ATT"):
-                airportId = field.pop("airport_id")
-
-                if(airportId in airports):
-                    airports[airportId].update(field)
-                else:
-                    print "COULD NOT FIND AIRPORT FOR 'ATT'"
-
-            if(field["type"] == "RWY"):
-                airportId = field.pop("airport_id")
-
-                if(airportId in airports):
-                    if("runways" not in airports[airportId]):
-                        airports[airportId]["runways"] = []
-                    airports[airportId]["runways"].append(field)
-                else:
-                    print "COULD NOT FIND AIRPORT FOR 'RWY'"
-
-            if(field["type"] == "RMK"):
-                airportId = field.pop("airport_id")
-
-                if(airportId in airports):
-                    if("remarks" not in airports[airportId]):
-                        airports[airportId]["remarks"] = []
-                    airports[airportId]["remarks"].append(field)
-                else:
-                    print "COULD NOT FIND AIRPORT FOR 'RMK'"
-
-        return airports
-
-    def helper_location_surveyed(self, surveyed):
-        return (surveyed == "S")
-
     def helper_magnetic_variation(self, magvar):
         result = None
         if(magvar is not None and magvar != ""):
@@ -1742,6 +1752,34 @@ class Legacy_APT_Parser(Generic_Legacy_Parser):
         return result
 
 
+class Legacy_AWOS_Parser(Generic_Legacy_Parser):
+    def register_mapping(self):
+        self.record_id_length = 5
+
+        self.mapping = {
+            "AWOS1": [
+                # NOTE! FAA Layout Diagrams are 1-indexed! WTF!?
+                # Field                    Start, End Index
+                ("id",                       5,   9),
+                ("type",                     9,  19),
+                ("commissioning",           19,  20, self.helper_boolean),
+                ("commissioning_date",      20,  30, self.helper_date),
+                ("latitude",                31,  45, self.helper_coordinates),
+                ("longitude",               45,  60, self.helper_coordinates),
+                ("elevation",               60,  67, self.helper_float),
+                ("surveyed",                67,  68, self.helper_location_surveyed),
+                ("frequency",               68,  75, self.helper_float),
+                ("frequency2",              75,  82, self.helper_float),
+                ("phone_number",            82,  96),
+                ("phone_number2",           96, 110),
+                ("associated_facility",    110, 121),
+                ("city",                   121, 161),
+                ("state",                  161, 163),
+                ("effective_date",         163, 173, self.helper_date),
+
+            ],
+            "AWOS2": [],
+        }
 
 
 class Shapefile():

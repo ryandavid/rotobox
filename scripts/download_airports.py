@@ -77,17 +77,47 @@ db.verify_tables(fix=True)
 # NASR 56 Day Subscription Data
 if(db.get_product_updated_cycle("nasr") != nasr.get_current_cycle()):
     nasr.update_legacy_products()
+    db.reset_tables(["airports", "runways", "waypoints"])
 
+    #APT parser
     apt_filepath = nasr.get_filepath_legacy_products("APT")
     apt_parser = Rotobox.Legacy_APT_Parser(apt_filepath)
-    apt_parser.run()
 
-    #db.set_table_updated_cycle("nasr", nasr.get_current_cycle());
+    for field in apt_parser.run():
+        field_type = field.pop("_internal_type_")
+
+        if(field_type == "APT"):
+            db.insert_into_db_table_airports(field)
+        elif(field_type == "RWY"):
+            db.insert_into_db_table_runways(field)
+
+
+    # FIX Parser
+    fix_filepath = nasr.get_filepath_legacy_products("FIX")
+    fix_parser = Rotobox.Legacy_FIX_Parser(fix_filepath)
+
+    for field in fix_parser.run():
+        field.pop("_internal_type_")
+        if(field == {}):
+            continue
+        db.insert_into_db_table_waypoints(field)
+
+    # AWOS Parser
+    awos_filepath = nasr.get_filepath_legacy_products("AWOS")
+    awos_parser = Rotobox.Legacy_AWOS_Parser(awos_filepath)
+
+    for field in awos_parser.run():
+        field.pop("_internal_type_")
+        if(field == {}):
+            continue
+        db.insert_into_db_table_awos(field)
+
+    db.set_table_updated_cycle("nasr", nasr.get_current_cycle());
     db.commit()
 else:
     print " => DB is already up to date with AIXM data!"
 print " => Done!"
-sys.exit()
+
 
 # D-TPP, mainly interested in the airport diagrams
 if(db.get_product_updated_cycle("dtpp") != str(nasr.get_procedures_cycle())):
@@ -137,16 +167,6 @@ if(db.get_product_updated_cycle("airspaces") != nasr.get_current_cycle()):
 else:
     print " => Already have the latest airspace shapefiles!"
 print " => Done!"
-
-# Legacy Products
-if(db.get_product_updated_cycle("twr") != nasr.get_current_cycle()):
-    nasr.update_legacy_products()
-    parser = Rotobox.Legacy_FIX_Parser(nasr.get_filepath_legacy_products("FIX"))
-    results = parser.run()
-
-    for fix in results:
-        print results[fix].keys()
-        break
 
 db.commit()
 db.close()

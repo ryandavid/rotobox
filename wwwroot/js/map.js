@@ -1,4 +1,5 @@
 var markerArray = new Array();
+var runwayArray = new Array();
 var map;
 var ownshipIcon;
 
@@ -82,7 +83,7 @@ function update_airport_markers(data){
             sidebar_showAirportResult(this.options.airport_id, false);
         })
         markerArray.push(marker);
-        map.addLayer(markerArray[i]);
+        map.addLayer(marker);
     }
 }
 
@@ -314,7 +315,13 @@ function sidebar_showAirportResult(airport_id, center){
     }
   });
 
+  // Clear out the previous runways
+  for (var i = 0; i < runwayArray.length; i++) {
+      map.removeLayer(runwayArray[i]);
+  }
+  runwayArray.length = 0;
   $("ul#airport-runways").empty();
+
   rotobox_api(API_AIRPORT_RUNWAYS, {"id": airport_id}, function(data){
     for (var i = 0; i < data.length; i++) {
       var item = "<li class='list-group-item'>" + data[i].name
@@ -328,8 +335,27 @@ function sidebar_showAirportResult(airport_id, center){
       //  item += "<span class='badge rp-badge'>RP</span>\n";
       //}
       item += "</li>\n";
-
       $("ul#airport-runways").append(item);
+
+      // Lets also draw the runways if available.
+      if((data[i].base_latitude != "(null)") && (data[i].base_latitude != "(null)") &&
+        (data[i].recip_latitude != "(null)") && (data[i].recip_latitude != "(null)")) {
+        var points = [
+          new L.LatLng(data[i].base_latitude, data[i].base_longitude),
+          new L.LatLng(data[i].recip_latitude, data[i].recip_longitude)
+        ];
+
+        var options = {
+          color: "#000000",
+          weight: 6,
+          opacity: 0.7,
+          lineCap: "butt"
+        }
+
+        var polyline = new L.Polyline(points, options);
+        runwayArray.push(polyline)
+        map.addLayer(polyline);
+      }
     }
   });
 

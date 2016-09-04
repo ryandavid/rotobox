@@ -75,7 +75,7 @@ function update_airport_markers(data){
         var marker = L.marker([data[i].latitude, data[i].longitude],
             {
                 icon: airportIcon,
-                title: data[i].name,
+                title: data[i].facility_name,
                 airport_id: data[i].id
             });
         marker.on("click", function(){
@@ -280,32 +280,32 @@ function sidebar_showAirportResult(airport_id, center){
   $("div.sidebar-scrollable").empty().append(html);
 
   rotobox_api(API_AIRPORT_ID, {"id": airport_id}, function(data){
-    $("#airport-name").text(data[0].name);
-    if(data[0].icao_name == "(null)") {
-      $("#airport-identifiers").text(data[0].designator);
+    $("#airport-name").text(data[0].facility_name);
+    if(data[0].icao_identifier == "(null)") {
+      $("#airport-identifiers").text(data[0].location_identifier);
     } else {
-      $("#airport-identifiers").text(data[0].icao_name + " (" + data[0].designator + ")");
+      $("#airport-identifiers").text(data[0].icao_identifier + " (" + data[0].location_identifier + ")");
     }
-    $("dd.field-elevation").text(data[0].field_elevation + "'");
-    $("#airport-remarks").text(data[0].remarks);
+    $("dd.field-elevation").text(data[0].elevation + "'");
+    //$("#airport-remarks").text(data[0].remarks);
 
     $("h5.airport-tags").empty();
     // TODO: Fix bool values having to be strings
-    if(data[0].traffic_control_tower_on_airport == "1") {
+    if(data[0].tower_onsite == "1") {
       $("h5.airport-tags").append("<span class='label label-primary'>Towered</span>\n");
     } else {
       $("h5.airport-tags").append("<span class='label label-default'>Nontowered</span>\n");
     }
 
-    if(data[0].segmented_circle_marker_on_airport == "1") {
+    if(data[0].segmented_circle == "1") {
       $("h5.airport-tags").append("<span class='label label-info'>Segmented Circle</span>\n");
     }
 
-    if(data[0].wind_direction_indicator == "1") {
+    if(data[0].wind_indicator != "N") {
       $("h5.airport-tags").append("<span class='label label-info'>Windsock</span>\n");
     }
 
-    if(data[0].private_use == "1") {
+    if(data[0].facility_use != "PU") {
       $("h5.airport-tags").append("<span class='label label-danger'>Private</span>\n");
     }
 
@@ -317,13 +317,16 @@ function sidebar_showAirportResult(airport_id, center){
   $("ul#airport-runways").empty();
   rotobox_api(API_AIRPORT_RUNWAYS, {"id": airport_id}, function(data){
     for (var i = 0; i < data.length; i++) {
-      var item = "<li class='list-group-item'>" + data[i].designator
+      var item = "<li class='list-group-item'>" + data[i].name
       if((data[i].length != "(null)") && (data[i].width != "(null)")){
         item += "<span class='badge'>" + Math.round(data[i].width) + "' x " + Math.round(data[i].length) + "'</span>\n";
       }
-      if(data[i].right_traffic_pattern != "1"){
-        item += "<span class='badge rp-badge'>RP</span>\n";
-      }
+
+      //base_rh_traffic
+      //recip_rh_traffic
+      //if(data[i].right_traffic_pattern != "1"){
+      //  item += "<span class='badge rp-badge'>RP</span>\n";
+      //}
       item += "</li>\n";
 
       $("ul#airport-runways").append(item);
@@ -332,7 +335,9 @@ function sidebar_showAirportResult(airport_id, center){
 
   rotobox_api(API_AIRPORT_RADIO, {"id": airport_id}, function(data){
     if(data.length != 0) {
-      $("dd.ctaf-frequency").text(data[0].tx_frequency);
+      $("dd.ctaf-frequency").text(data[0].ctaf_freq);
+      $("dd.unicom-frequency").text(data[0].unicom_freq);
+      $("dd.awos-frequency").text(data[0].awos_freq + " (" + data[0].awos_phone + ")");
     }
   });
 

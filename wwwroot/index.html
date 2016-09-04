@@ -195,6 +195,10 @@
       <dl class="dl-horizontal">
         <dt>CTAF</dt>
         <dd class="ctaf-frequency"></dd>
+        <dt>Unicom</dt>
+        <dd class="unicom-frequency"></dd>
+        <dt>AWOS</dt>
+        <dd class="awos-frequency"></dd>
         <dt>Field Elevation</dt>
         <dd class="field-elevation"></dd>
       </dl>
@@ -224,12 +228,12 @@
     <script id="sidebar-airportResultListItem" type="text/x-jsrender">
       <a href="#" class="list-group-item" onclick="sidebar_showAirportResult('{{:id}}', true)">
         <h4 class="list-group-item-heading">
-          {{:designator}}
+          {{:location_identifier}}
           {{if distance}}
           <span class='badge'>{{metersToNauticalMiles:distance}}nm</span>
           {{/if}}
         </h4>
-        <p class="list-group-item-text">{{:name}}</p>
+        <p class="list-group-item-text">{{:facility_name}}</p>
       </a>
     </script>
 

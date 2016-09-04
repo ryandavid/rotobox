@@ -5,7 +5,7 @@ static sqlite3_stmt *stmt;
 void *spatialite_cache;
 
 static void database_trace(void *arg1, const char* string) {
-    fprintf(stdout, "[SQL] %s\n", string);
+    //fprintf(stdout, "[SQL] %s\n", string);
 }
 
 
@@ -77,9 +77,11 @@ double database_column_double(int i) {
 }
 
 void database_search_radio_by_airport_id(const char* airport_id) {
-    const char *query = "SELECT radio.* " \
-                        "FROM radio " \
-                        "WHERE airport_id = ?;";
+    const char *query = "SELECT airports.ctaf_freq, airports.unicom_freq, " \
+                        "       awos.frequency awos_freq, awos.phone_number awos_phone " \
+                        "FROM airports " \
+                        "LEFT JOIN awos ON awos.associated_facility = airports.id " \
+                        "WHERE airports.id = ?;";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
@@ -88,12 +90,29 @@ void database_search_radio_by_airport_id(const char* airport_id) {
 void database_search_airport_by_id(const char* airport_id) {
     // There's gotta be a better way....
     const char *query = "SELECT " \
-                        "served_city, lighting_schedule, magnetic_variation, name, private_use, " \
-                        "sectional_chart, activated, beacon_lighting_schedule, designator, " \
-                        "traffic_control_tower_on_airport, segmented_circle_marker_on_airport, " \
-                        "attendance_schedule, wind_direction_indicator, marker_lens_color, " \
-                        "field_elevation, remarks, type, id, control_type, icao_name, " \
-                        "X(geometry) as longitude, Y(geometry) as latitude " \
+                        "X(location) as longitude, Y(location) as latitude, " \
+                        "landing_facility_type, location_identifier, effective_date, region_code, " \
+                        "faa_district_code, state_code, state_name, county_name, county_state, " \
+                        "city_name, facility_name, ownership_type, facility_use, owner_name, " \
+                        "owner_address, owner_address2, owner_phone, manager_name, manager_address, " \
+                        "manager_address2, manager_phone, location_surveyed, elevation, elevation_surveyed, " \
+                        "magnetic_variation, magnetic_epoch_year, tpa, sectional, associated_city_distance, " \
+                        "associated_city_direction, land_covered, boundary_artcc_id, " \
+                        "boundary_artcc_computer_id, boundary_artcc_name, responsible_artcc_id, " \
+                        "responsible_artcc_computer_id, responsible_artcc_name, fss_on_site, " \
+                        "fss_id, fss_name, fss_admin_phone, fss_pilot_phone, alt_fss_id, alt_fss_name, " \
+                        "alt_fss_pilot_phone, notam_facility_id, notam_d_avail, activation_date, " \
+                        "status_code, arff_certification_type, agreements_code, airspace_analysis_det, " \
+                        "entry_for_customs, landing_rights, mil_civ_joint_use, mil_landing_rights, " \
+                        "inspection_method, inspection_agency, inspection_date, information_request_date, " \
+                        "fuel_types_avail, airframe_repair_avail, powerplant_repair_avail, oxygen_avail, " \
+                        "bulk_oxygen_avail, lighting_schedule, beacon_schedule, tower_onsite, segmented_circle, " \
+                        "beacon_lens_color, non_commerical_ldg_fee, medical_use, num_se_aircraft, num_me_aircraft, " \
+                        "num_jet_aircraft, num_helicopters, num_gliders, num_mil_aircraft, num_ultralight, " \
+                        "ops_commerical, ops_commuter, ops_air_taxi, ops_general_local, ops_general_iternant, " \
+                        "ops_military, operations_date, position_source, position_date, elevation_source, " \
+                        "elevation_date, contract_fuel_avail, transient_storage_facilities, other_services, " \
+                        "wind_indicator, icao_identifier, attendance_schedule " \
                         "FROM airports " \
                         "WHERE id = ? " \
                         "LIMIT 1;";
@@ -103,7 +122,45 @@ void database_search_airport_by_id(const char* airport_id) {
 }
 
 void database_search_runways_by_airport_id(const char* airport_id) {
-    const char *query = "SELECT * " \
+    const char *query = "SELECT " \
+                        "name, length, width, surface_type, surface_treatment, pavement_classification, " \
+                        "lights_intensity, base_id, base_true_hdg, base_ils_type, base_rh_traffic, " \
+                        "base_markings, base_markings_condition, X(base_location) base_longitude, " \
+                        "Y(base_location) base_latitude, base_threshold_height, base_glide_angle, " \
+                        "X(base_disp_threshold_location) base_disp_threshold_longitude, " \
+                        "Y(base_disp_threshold_location) base_disp_threshold_latitude, " \
+                        "base_disp_threshold_elevation, base_disp_threshold_distance, " \
+                        "base_touchdown_elevation, base_glideslope_indicators, base_visual_range_equip, " \
+                        "base_visual_range_avail, base_app_lighting, base_reil_avail, base_center_lights_avail, " \
+                        "base_touchdown_lights_avail, base_obstacle_description, base_obstacle_lighting, " \
+                        "base_obstacle_category, base_obstacle_slope, base_obstacle_height, " \
+                        "base_obstacle_distance, base_obstacle_offset, recip_id, recip_true_hdg, " \
+                        "recip_ils_type, recip_rh_traffic, recip_markings, recip_markings_condition, " \
+                        "X(recip_location) recip_longitude, Y(recip_location) recip_latitude, recip_elevation, " \
+                        "recip_threshold_height, recip_glide_angle, X(recip_disp_threshold_location) " \
+                        "recip_disp_threshold_longitude, Y(recip_disp_threshold_location) " \
+                        "recip_disp_threshold_latitude, recip_disp_threshold_elevation, " \
+                        "recip_disp_threshold_distance, recip_touchdown_elevation, recip_glideslope_indicators, " \
+                        "recip_visual_range_equip, recip_visual_range_avail, recip_app_lighting, " \
+                        "recip_reil_avail, recip_center_lights_avail, recip_touchdown_lights_avail, " \
+                        "recip_obstacle_description, recip_obstacle_lighting, recip_obstacle_category, " \
+                        "recip_obstacle_slope, recip_obstacle_height, recip_obstacle_distance, " \
+                        "recip_obstacle_offset, length_source, length_source_date, weight_cap_single_wheel, " \
+                        "weight_cap_dual_wheel, weight_cap_two_dual_wheel, weight_cap_tandem_dual_wheel, " \
+                        "base_gradient, base_position_source, base_position_source_date, base_elevation_source, " \
+                        "base_elevation_source_date, base_disp_threshold_source, base_disp_threshold_source_date, " \
+                        "base_disp_threshold_elevation_source, base_disp_threshold_elevation_source_date, " \
+                        "base_takeoff_run, base_takeoff_distance, base_aclt_stop_distance, base_landing_distance, " \
+                        "base_lahso_distance, base_intersecting_runway_id, base_hold_short_description, " \
+                        "X(base_lahso_position) base_lahso_longitude, Y(base_lahso_position) " \
+                        "base_lahso_latitude, base_lahso_source, base_lahso_source_date, recip_gradient, " \
+                        "recip_position_source, recip_position_source_date, recip_elevation_source, " \
+                        "recip_elevation_source_date, recip_disp_threshold_source, recip_disp_threshold_source_date, " \
+                        "recip_disp_threshold_elevation_source, recip_disp_threshold_elevation_source_date, "\
+                        "recip_takeoff_run, recip_takeoff_distance, recip_aclt_stop_distance, " \
+                        "recip_landing_distance, recip_lahso_distance, recip_intersecting_runway_id, " \
+                        "recip_hold_short_description, X(recip_lahso_position) recip_lahso_longitude, " \
+                        "Y(recip_lahso_position) recip_lahso_latitude, recip_lahso_source, recip_lahso_source_date "
                         "FROM runways " \
                         "WHERE airport_id = ?;";
 
@@ -122,10 +179,10 @@ void database_search_charts_by_airport_id(const char* airport_id) {
 
 void database_search_airports_within_window(float latMin, float latMax,
                                             float lonMin, float lonMax) {
-    const char *query = "SELECT id, name, designator, designator, X(geometry) as longitude, " \
-                        "Y(geometry) as latitude " \
+    const char *query = "SELECT id, facility_name, location_identifier, X(location) longitude, " \
+                        "Y(location) latitude " \
                         "FROM airports " \
-                        "WHERE MbrWithin(geometry, BuildMbr(?, ?, ?, ?, 4326))";
+                        "WHERE MbrWithin(location, BuildMbr(?, ?, ?, ?, 4326))";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_double(stmt, 1, lonMin);
@@ -135,12 +192,12 @@ void database_search_airports_within_window(float latMin, float latMax,
 }
 
 void database_search_airports_by_name(const char* name) {
-    const char *query = "SELECT id, name, designator, X(geometry) as longitude, "\
-                        "Y(geometry) as latitude " \
+    const char *query = "SELECT id, facility_name, location_identifier, X(location) as longitude, "\
+                        "Y(location) as latitude " \
                         "FROM airports " \
-                        "WHERE (icao_name LIKE ?) " \
-                        "OR (name LIKE '%' || ? || '%') " \
-                        "OR (designator LIKE ?);";
+                        "WHERE (icao_identifier LIKE ?) " \
+                        "OR (facility_name LIKE '%' || ? || '%') " \
+                        "OR (location_identifier LIKE ?);";
 
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, name, strlen(name), SQLITE_STATIC);
@@ -163,8 +220,8 @@ void database_get_airspace_geojson_by_class(const char* class) {
 }
 
 void database_find_nearest_airports(float lat, float lon) {
-    const char *query = "SELECT id, name, designator, "\
-                        "ST_Distance(geometry, MakePoint(?, ?, 4326), 1) AS distance " \
+    const char *query = "SELECT id, facility_name, location_identifier, "\
+                        "ST_Distance(location, MakePoint(?, ?, 4326), 1) AS distance " \
                         "FROM airports " \
                         "ORDER BY distance ASC " \
                         "LIMIT 10";

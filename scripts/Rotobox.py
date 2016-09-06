@@ -300,6 +300,18 @@ class Database():
             "product": ["VARCHAR(32)"],
             "cycle": ["VARCHAR(32)"],
             "updated": ["DATETIME", "DEFAULT", "CURRENT_TIMESTAMP"],
+        },
+        "charts": {
+            "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
+            "chart_type": ["VARCHAR(32)"],
+            "chart_name": ["VARCHAR(32)"],
+            "current_date": ["INTEGER"],
+            "current_number": ["INTEGER"],
+            "current_url": ["VARCHAR(256)"],
+            "next_date": ["INTEGER"],
+            "next_number": ["INTEGER"],
+            "next_url": ["VARCHAR(256)"],
+            "to_download": ["BOOLEAN"]
         }
     }
 
@@ -561,6 +573,67 @@ class Database():
                           feature["type"],
                           feature["geometry"]))
         c.close()
+
+    def upsert_into_db_table_charts(self, chart):
+        c = self.dbConn.cursor()
+        columns = ""
+        values = ""
+
+        query = "SELECT id FROM charts WHERE chart_type = ? AND chart_name = ?;"
+        c.execute(query, (chart["chart_type"], chart["chart_name"]))
+        result = c.fetchone()
+
+        if(result is None):
+            for item in chart:
+                if(item not in self.TABLES["charts"]):
+                    "Unknown item '{0}' when inserting row into charts table".format(item)
+
+            query = "INSERT INTO charts ({0}) VALUES ({1})".format(", ".join(chart.keys()),
+                                                                     ", ".join("?"*len(chart)))
+            c.execute(query, chart.values())
+        else:
+            query = """
+                    UPDATE charts
+                    SET current_number = ?, current_date = ?, current_url = ?,
+                    next_number = ?, next_date = ?, next_url = ?
+                    WHERE id = ?
+                    """
+            c.execute(query, (chart["current_number"], chart["current_date"], chart["current_url"],
+                              chart["next_number"], chart["next_date"], chart["next_url"],
+                              result[0]))
+        c.close()
+
+    def get_chart_list_to_be_downloaded(self):
+        charts = []
+        c = self.dbConn.cursor()
+
+        query = """
+                SELECT chart_name, chart_type, current_date, current_number, current_url,
+                next_date, next_number, next_url
+                FROM charts
+                WHERE to_download = 1
+                """
+
+        c.execute(query)
+        result = c.fetchall()
+
+        if(result is not None):
+            for row in result:
+                charts.append({
+                    "chart_name": row[0],
+                    "chart_type": row[1],
+                    "current_date": row[2],
+                    "current_number": row[3],
+                    "current_url": row[4],
+                    "next_date": row[5],
+                    "next_number": row[6],
+                    "next_url": row[7]
+                })
+
+        c.close()
+        return charts
+
+
 
     def fetch_airport_id_for_designator(self, designator):
         airport_id = None
@@ -1268,40 +1341,29 @@ class FAA_Charts():
     def __init__(self, chart_directory):
         self.chart_directory = chart_directory
         self.chart_config_file = os.path.join(self.chart_directory, self.CHART_CONFIG_FILENAME)
-        self.config = {"offline_charts" : []}
-
-        # Read the user's chart configuration file. Defaults to something empty.
-        if(os.path.exists(self.chart_config_file)):
-            with open(self.chart_config_file, "r") as fHandle:
-                self.config = json.load(fHandle)
-        else:
-            print "WARN: No chart configuration found!"
         
 
     def flush_configuration_file(self):
         with open(self.chart_config_file, "w") as fHandle:
             json.dump(self.config, fHandle, indent=4, sort_keys=True)
 
-    def update_vfr_chart_list(self):
-        self.config["available_charts"] = {}
+    def get_latest_chart_info(self):
+        available_charts = {}
 
         page = requests.get(self.URL_VFR_RASTER_CHARTS)
         tree = html.fromstring(page.content)
 
         for chart in self.CHART_TYPES:
             print " => Updating {0} charts.".format(chart)
-            self.config["available_charts"][chart] = self.scrape_html_table(tree, chart)
+            available_charts[chart] = self.scrape_html_table(tree, chart)
 
-        self.config["updated"] = datetime.datetime.now().isoformat()
-        self.flush_configuration_file()
-
-        return self.config["available_charts"]
+        return available_charts
 
     def extract_edition_info_from_cells(self, cell):
         edition = cell.text_content().encode("ascii", errors="ignore")
         if(("discontinued" in edition.lower()) | ("tbd" in edition.lower())):
             edition_number = None
-            edition_date = None
+            epoch_seconds = None
             edition_link = None
         else:
             edition = edition.split("  ")
@@ -1314,8 +1376,14 @@ class FAA_Charts():
                 edition_date = edition_date[0:pos]
 
             if (("zip" in edition_date.lower())):
-                chop_pos = edition_date.find(" (")
-                edition_date = edition_date[0:chop_pos]
+                pos = edition_date.find(" (")
+                edition_date = edition_date[0:pos]
+
+            edition_date = edition_date.replace(" *", "")
+
+            edition_date = datetime.datetime.strptime(edition_date, "%b %d %Y")
+            epoch_delta = edition_date - datetime.datetime(1970, 1, 1)
+            epoch_seconds = int(epoch_delta.total_seconds())
 
             for element, attribute, link, pos in cell.iterlinks():
                 edition_link = link.encode("ascii", errors="ignore")
@@ -1323,7 +1391,7 @@ class FAA_Charts():
 
         values = {
                     "number": edition_number,
-                    "date": edition_date,
+                    "date": epoch_seconds,
                     "url": edition_link
                 }
         return values
@@ -1350,46 +1418,30 @@ class FAA_Charts():
             
         return charts
 
-    def update(self, force_download=False):
+    def fetch_charts(self, requested_charts, force_download=False):
         localCharts = {}
-        # Logic to determine if we need to re-download the list of current charts
-        # TODO: Be smarter when we know a subscription cycle is going to expire
-        if(force_download is True):
-            self.update_vfr_chart_list()
-        elif("updated" in self.config):
-            lastUpdated = datetime.datetime.strptime(self.config["updated"], "%Y-%m-%dT%H:%M:%S.%f")
-            if((datetime.datetime.now() - lastUpdated) > datetime.timedelta(self.REFRESH_DAYS)):
-                self.update_vfr_chart_list()
-        elif("available_charts" not in self.config):
-            self.update_vfr_chart_list()
 
         # Iterate through the desired charts.  Make sure they are real as compared to our index.
-        for chartType in self.config["offline_charts"]:
-            if(chartType in self.CHART_TYPES):
-                for chart in self.config["offline_charts"][chartType]:
-                    if(chart not in self.config["available_charts"][chartType]):
-                        print "ERROR: Unknown {0} chart '{1}'... skipping!".format(chartType, chart)
-                    else:
-                        availableChartInfo = self.config["available_charts"][chartType][chart]
-                        currentNumber = availableChartInfo["current_edition"]["number"]
+        for chart in requested_charts:
+            currentNumber = chart["current_number"]
 
-                        expectedFilename = "{0}_{1}_{2}.tif".format(
-                            self.chart_filename_escape(chart),
-                            self.CHART_TYPES[chartType]["filename_suffix"],
-                            currentNumber)
-                        expectedFilepath = os.path.join(self.chart_directory, expectedFilename)
+            expectedFilename = "{0}_{1}_{2}.tif".format(
+                self.chart_filename_escape(chart["chart_name"]),
+                self.CHART_TYPES[chart["chart_type"]]["filename_suffix"],
+                currentNumber)
+            expectedFilepath = os.path.join(self.chart_directory, expectedFilename)
 
-                        if((os.path.exists(expectedFilepath) is False) or (force_download is True)):
-                            print " => Downloading/Extracting {0} chart!".format(chart)
-                            url = availableChartInfo["current_edition"]["url"]
-                            self.download_chart(url, expectedFilepath)
-                        else:
-                            print " => Current {0} chart is already downloaded!".format(chart)
+            if((os.path.exists(expectedFilepath) is False) or (force_download is True)):
+                print " => Downloading/Extracting {0} chart!".format(chart)
+                url = chart["current_url"]
+                self.download_chart(url, expectedFilepath)
+            else:
+                print " => Current {0} chart is already downloaded!".format(chart["chart_name"])
 
-                        # Finally, append the charts we have locally to a dict.
-                        if(chartType not in localCharts):
-                            localCharts[chartType] = []
-                        localCharts[chartType].append(expectedFilepath)
+            # Finally, append the charts we have locally to a dict.
+            if(chart["chart_type"] not in localCharts):
+                localCharts[chart["chart_type"]] = []
+            localCharts[chart["chart_type"]].append(expectedFilepath)
 
         return localCharts
 
@@ -1422,7 +1474,6 @@ class FAA_Charts():
                     success = True
                     break
         return success
-
 
 class XML_Parser():
     def __init__(self, filename):

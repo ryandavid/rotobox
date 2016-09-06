@@ -46,5 +46,7 @@ void database_search_airports_by_name(const char* name);
 void database_available_airspace_shapefiles();
 void database_get_airspace_geojson_by_class(const char* class);
 void database_find_nearest_airports(float lat, float lon);
+void database_get_available_faa_charts();
+void database_set_faa_chart_download_flag(int chart_id, bool to_download);
 
 #endif  // DATABASE_H_

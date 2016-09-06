@@ -282,7 +282,7 @@ function sidebar_showAirportResult(airport_id, center){
 
   rotobox_api(API_AIRPORT_ID, {"id": airport_id}, function(data){
     $("#airport-name").text(data[0].facility_name);
-    if(data[0].icao_identifier == "(null)") {
+    if(data[0].icao_identifier == null) {
       $("#airport-identifiers").text(data[0].location_identifier);
     } else {
       $("#airport-identifiers").text(data[0].icao_identifier + " (" + data[0].location_identifier + ")");
@@ -325,7 +325,7 @@ function sidebar_showAirportResult(airport_id, center){
   rotobox_api(API_AIRPORT_RUNWAYS, {"id": airport_id}, function(data){
     for (var i = 0; i < data.length; i++) {
       var item = "<li class='list-group-item'>" + data[i].name
-      if((data[i].length != "(null)") && (data[i].width != "(null)")){
+      if((data[i].length != null) && (data[i].width != null)){
         item += "<span class='badge'>" + Math.round(data[i].width) + "' x " + Math.round(data[i].length) + "'</span>\n";
       }
 
@@ -338,8 +338,8 @@ function sidebar_showAirportResult(airport_id, center){
       $("ul#airport-runways").append(item);
 
       // Lets also draw the runways if available.
-      if((data[i].base_latitude != "(null)") && (data[i].base_latitude != "(null)") &&
-        (data[i].recip_latitude != "(null)") && (data[i].recip_latitude != "(null)")) {
+      if((data[i].base_latitude != null) && (data[i].base_latitude != null) &&
+        (data[i].recip_latitude != null) && (data[i].recip_latitude != null)) {
         var points = [
           new L.LatLng(data[i].base_latitude, data[i].base_longitude),
           new L.LatLng(data[i].recip_latitude, data[i].recip_longitude)

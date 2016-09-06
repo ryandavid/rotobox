@@ -231,3 +231,15 @@ void database_find_nearest_airports(float lat, float lon) {
     sqlite3_bind_double(stmt, 2, lat);
 }
 
+void database_get_available_faa_charts() {
+    const char *query = "SELECT * FROM charts;";
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+}
+
+void database_set_faa_chart_download_flag(int chart_id, bool to_download) {
+    const char *query = "UPDATE charts SET to_download = ? WHERE id = ?;";
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, to_download);
+    sqlite3_bind_int(stmt, 2, chart_id);
+}
+

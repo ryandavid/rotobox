@@ -168,8 +168,11 @@ static void generic_api_db_dump(struct mg_connection *nc){
                     mg_printf(nc, "%f", database_column_double(i));
                     break;
 
-                case(TYPE_BLOB):
                 case(TYPE_NULL):
+                    mg_printf(nc, "null");
+                    break;
+
+                case(TYPE_BLOB):
                 case(TYPE_TEXT):
                 default:
                     if (isGeo == true) {
@@ -325,6 +328,30 @@ static void api_airspace_geojson_by_class(struct mg_connection *nc, int ev, void
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
+static void api_available_faa_charts(struct mg_connection *nc, int ev, void *ev_data) {
+    database_get_available_faa_charts();
+    generic_api_db_dump(nc);
+    database_finish_query();
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
+static void api_set_faa_chart_download_flag(struct mg_connection *nc, int ev, void *ev_data) {
+    struct http_message *message = (struct http_message *)ev_data;
+    int chart_id;
+    int to_download;
+
+    if((get_argument_int(&message->query_string, "id", &chart_id) == true) &&
+       (get_argument_int(&message->query_string, "download", &to_download) == true)) {
+        database_set_faa_chart_download_flag(chart_id, (bool)(to_download == 1));
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
+        api_send_empty_result(nc);
+    }
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
 void handle_sigint() {
     fprintf(stdout, "Caught SIGINT!\n");
     exitRequested = true;
@@ -388,6 +415,8 @@ int main(int argc, char **argv) {
         mg_register_http_endpoint(nc, "/api/airports/nearest", api_airport_find_nearest);
         mg_register_http_endpoint(nc, "/api/airspace", api_available_airspace_shapefiles);
         mg_register_http_endpoint(nc, "/api/airspace/geojson", api_airspace_geojson_by_class);
+        mg_register_http_endpoint(nc, "/api/charts", api_available_faa_charts);
+        mg_register_http_endpoint(nc, "/api/charts/download", api_set_faa_chart_download_flag);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", s_http_port);
     }

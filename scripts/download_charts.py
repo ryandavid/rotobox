@@ -13,9 +13,11 @@ import sys
 SCRIPT_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(SCRIPT_DIR)
 
-CHART_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "charts")
+ROTOBOX_ROOT = os.path.dirname(SCRIPT_DIR)
+AIRPORT_DB = os.path.join(ROTOBOX_ROOT, "rotobox.sqlite")
+CHART_DIRECTORY = os.path.join(ROTOBOX_ROOT, "charts")
 SHAPEFILES_DIRECTORY = os.path.join(CHART_DIRECTORY, "shapefiles")
-CHART_PROCESSED_DIRECTORY = os.path.join(os.path.dirname(SCRIPT_DIR), "wwwroot", "charts")
+CHART_PROCESSED_DIRECTORY = os.path.join(ROTOBOX_ROOT, "wwwroot", "charts")
 
 # Ensure the chart directory exists.
 if(os.path.exists(CHART_DIRECTORY) is False):
@@ -28,17 +30,36 @@ if(os.path.exists(CHART_PROCESSED_DIRECTORY) is False):
 print "Chart Directory:\t{0}".format(CHART_DIRECTORY)
 print "Chart Output:\t\t{0}".format(CHART_PROCESSED_DIRECTORY)
 
-# Make sure our charts are up-to-date.
-charts = Rotobox.FAA_Charts(CHART_DIRECTORY)
-chartsDownloaded = charts.update()
+db = Rotobox.Database(AIRPORT_DB)
 
+charts = Rotobox.FAA_Charts(CHART_DIRECTORY)
+chartList = charts.get_latest_chart_info()
+
+# Update the DB with the latest chart info.
+for chartType in chartList:
+    for chart in chartList[chartType]:
+        row = {
+            "chart_type": chartType,
+            "chart_name": chart,
+            "current_date": chartList[chartType][chart]["current_edition"]["date"],
+            "current_number": chartList[chartType][chart]["current_edition"]["number"],
+            "current_url": chartList[chartType][chart]["current_edition"]["url"],
+            "next_date": chartList[chartType][chart]["next_edition"]["date"],
+            "next_number": chartList[chartType][chart]["next_edition"]["number"],
+            "next_url": chartList[chartType][chart]["next_edition"]["url"],
+        }
+
+        db.upsert_into_db_table_charts(row)
+db.commit()
+
+chartsToDownload = db.get_chart_list_to_be_downloaded()
+localCharts = charts.fetch_charts(chartsToDownload)
 croppedCharts = {}
 
 # Iterate over every type (ie, sectional) of chart specified in the configuration
-for chartType in chartsDownloaded:
+for type in localCharts:
+    for chart in localCharts[type]:
 
-    # Iterate over every requested chart name (ie, 'San Francisco') within this type
-    for chart in chartsDownloaded[chartType]:
         chartBasename = os.path.splitext(os.path.basename(chart))[0]
         chartBasenameStripped = re.sub("(_[0-9]+)", "", chartBasename)
         shapeFilepath = os.path.join(SHAPEFILES_DIRECTORY, chartBasenameStripped + ".shp")
@@ -73,9 +94,10 @@ for chartType in chartsDownloaded:
         else:
             print " => Legend is already cropped on chart {0}".format(chartBasename)
 
-        if(chartType not in croppedCharts):
-            croppedCharts[chartType] = []
-        croppedCharts[chartType].append(croppedFilename)
+        if(type not in croppedCharts):
+            croppedCharts[type] = []
+        croppedCharts[type].append(croppedFilename)
+
 
 for chartType in croppedCharts:
     print " => Building VRT"

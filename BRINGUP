@@ -1,5 +1,5 @@
 Install dependencies
-	sudo apt-get install build-essential libncurses-dev subversion git cmake libusb-1.0-0-dev socat python-pip libxml2-dev libxslt-dev libproj-dev
+	sudo apt-get install build-essential libncurses-dev subversion git cmake libusb-1.0-0-dev socat python-pip libxml2-dev libxslt-dev libproj-dev scons
 
 Python dependencies
 	sudo pip install lxml requests clint

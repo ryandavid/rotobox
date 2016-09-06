@@ -3,6 +3,7 @@
 from clint.textui import progress
 import datetime
 import json
+from lxml import html
 import ogr
 import os
 import pyspatialite.dbapi2 as sqlite3
@@ -1244,6 +1245,184 @@ class FAA_NASR_Data():
     def get_procedures_cycle(self):
         self.update_dtpp_cycle()
         return self.procedures_cycle
+
+class FAA_Charts():
+    URL_VFR_RASTER_CHARTS = "https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/vfr/"
+    CHART_TYPES = {
+        "sectional": {
+            "filename_suffix": "SEC"
+        },
+        "terminalArea": {
+            "filename_suffix": "TAC"
+        },
+        "world": {
+            "filename_suffix": "WOR"
+        },
+        "helicopter": {
+            "filename_suffix": "HEL"
+        },
+    }
+    CHART_CONFIG_FILENAME = "chart_config.json"
+    REFRESH_DAYS = 7
+
+    def __init__(self, chart_directory):
+        self.chart_directory = chart_directory
+        self.chart_config_file = os.path.join(self.chart_directory, self.CHART_CONFIG_FILENAME)
+        self.config = {"offline_charts" : []}
+
+        # Read the user's chart configuration file. Defaults to something empty.
+        if(os.path.exists(self.chart_config_file)):
+            with open(self.chart_config_file, "r") as fHandle:
+                self.config = json.load(fHandle)
+        else:
+            print "WARN: No chart configuration found!"
+        
+
+    def flush_configuration_file(self):
+        with open(self.chart_config_file, "w") as fHandle:
+            json.dump(self.config, fHandle, indent=4, sort_keys=True)
+
+    def update_vfr_chart_list(self):
+        self.config["available_charts"] = {}
+
+        page = requests.get(self.URL_VFR_RASTER_CHARTS)
+        tree = html.fromstring(page.content)
+
+        for chart in self.CHART_TYPES:
+            print " => Updating {0} charts.".format(chart)
+            self.config["available_charts"][chart] = self.scrape_html_table(tree, chart)
+
+        self.config["updated"] = datetime.datetime.now().isoformat()
+        self.flush_configuration_file()
+
+        return self.config["available_charts"]
+
+    def extract_edition_info_from_cells(self, cell):
+        edition = cell.text_content().encode("ascii", errors="ignore")
+        if(("discontinued" in edition.lower()) | ("tbd" in edition.lower())):
+            edition_number = None
+            edition_date = None
+            edition_link = None
+        else:
+            edition = edition.split("  ")
+            edition_number = edition[0]
+            edition_date = edition[1].strip()
+            edition_link = None
+
+            if("geo" in edition_date.lower()):
+                pos = edition_date.lower().find('geo')
+                edition_date = edition_date[0:pos]
+
+            if (("zip" in edition_date.lower())):
+                chop_pos = edition_date.find(" (")
+                edition_date = edition_date[0:chop_pos]
+
+            for element, attribute, link, pos in cell.iterlinks():
+                edition_link = link.encode("ascii", errors="ignore")
+                break
+
+        values = {
+                    "number": edition_number,
+                    "date": edition_date,
+                    "url": edition_link
+                }
+        return values
+
+    def scrape_html_table(self, page, chart_type):
+        charts = {}
+        # There are two tables within each section:
+        # [0] - GEO-TIFF files
+        # [1] - PDF's
+        sectionalTables = page.xpath('//div[@id="' + chart_type + '"]//table[@class="striped"]//tbody')
+
+        for elem in sectionalTables[0].iter("tr"):
+            cells = elem.getchildren()
+            cell_chart_name = cells[0]
+            cell_current_edition = cells[1]
+            cell_next_edition = cells[2]
+
+            chart_name = cell_chart_name.text_content().encode("ascii", errors="ignore")            
+
+            charts[chart_name] = {
+                "current_edition": self.extract_edition_info_from_cells(cell_current_edition),
+                "next_edition": self.extract_edition_info_from_cells(cell_next_edition)
+            }
+            
+        return charts
+
+    def update(self, force_download=False):
+        localCharts = {}
+        # Logic to determine if we need to re-download the list of current charts
+        # TODO: Be smarter when we know a subscription cycle is going to expire
+        if(force_download is True):
+            self.update_vfr_chart_list()
+        elif("updated" in self.config):
+            lastUpdated = datetime.datetime.strptime(self.config["updated"], "%Y-%m-%dT%H:%M:%S.%f")
+            if((datetime.datetime.now() - lastUpdated) > datetime.timedelta(self.REFRESH_DAYS)):
+                self.update_vfr_chart_list()
+        elif("available_charts" not in self.config):
+            self.update_vfr_chart_list()
+
+        # Iterate through the desired charts.  Make sure they are real as compared to our index.
+        for chartType in self.config["offline_charts"]:
+            if(chartType in self.CHART_TYPES):
+                for chart in self.config["offline_charts"][chartType]:
+                    if(chart not in self.config["available_charts"][chartType]):
+                        print "ERROR: Unknown {0} chart '{1}'... skipping!".format(chartType, chart)
+                    else:
+                        availableChartInfo = self.config["available_charts"][chartType][chart]
+                        currentNumber = availableChartInfo["current_edition"]["number"]
+
+                        expectedFilename = "{0}_{1}_{2}.tif".format(
+                            self.chart_filename_escape(chart),
+                            self.CHART_TYPES[chartType]["filename_suffix"],
+                            currentNumber)
+                        expectedFilepath = os.path.join(self.chart_directory, expectedFilename)
+
+                        if((os.path.exists(expectedFilepath) is False) or (force_download is True)):
+                            print " => Downloading/Extracting {0} chart!".format(chart)
+                            url = availableChartInfo["current_edition"]["url"]
+                            self.download_chart(url, expectedFilepath)
+                        else:
+                            print " => Current {0} chart is already downloaded!".format(chart)
+
+                        # Finally, append the charts we have locally to a dict.
+                        if(chartType not in localCharts):
+                            localCharts[chartType] = []
+                        localCharts[chartType].append(expectedFilepath)
+
+        return localCharts
+
+
+    # TODO: Cover more naughty characters here
+    def chart_filename_escape(self, chartName):
+        return chartName.replace(" ", "_")
+
+    # Download with progress bar
+    # http://stackoverflow.com/a/20943461
+    def download_chart(self, url, target_path):
+        success = False
+        temp_path = os.path.join(self.chart_directory, "temp.zip")
+
+        r = requests.get(url, stream=True)
+        with open(temp_path, 'wb') as f:
+            total_length = int(r.headers.get('content-length'))
+            for chunk in progress.bar(r.iter_content(chunk_size=1024),
+                                      expected_size=(total_length/1024) + 1): 
+                if chunk:
+                    f.write(chunk)
+                    f.flush()
+        
+        with zipfile.ZipFile(temp_path) as zf:
+            for name in zf.namelist():
+                if(".tif" in name):
+                    filename = zf.extract(name)
+                    shutil.move(filename, target_path)
+                    os.remove(temp_path)
+                    success = True
+                    break
+        return success
+
 
 class XML_Parser():
     def __init__(self, filename):

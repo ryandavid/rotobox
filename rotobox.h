@@ -5,6 +5,7 @@
 #include "fec.h"
 #include "uat_decode.h"
 
+#define WEBSERVER_PORT              ("80")
 
 #define RECEIVER_GAIN_TENTHS_DB     (48 * 10)
 #define RECEIVER_CENTER_FREQ_HZ_978 (978UL * 1000000UL)

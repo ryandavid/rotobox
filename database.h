@@ -33,7 +33,7 @@ void database_execute_query(const char * query);
 int database_num_columns();
 enum database_column_type_t database_column_type(int i);
 const char* database_column_name(int i);
-const char* database_column_text(int i);
+const unsigned char* database_column_text(int i);
 int database_column_int(int i);
 double database_column_double(int i);
 

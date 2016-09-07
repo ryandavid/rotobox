@@ -64,7 +64,7 @@ const char* database_column_name(int i) {
     return sqlite3_column_name(stmt, i);
 }
 
-const char* database_column_text(int i) {
+const unsigned char* database_column_text(int i) {
     return sqlite3_column_text(stmt, i);
 }
 

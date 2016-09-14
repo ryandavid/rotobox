@@ -312,6 +312,14 @@ class Database():
             "next_number": ["INTEGER"],
             "next_url": ["VARCHAR(256)"],
             "to_download": ["BOOLEAN"]
+        },
+        "uat_text": {
+            "id": ["INTEGER", "PRIMARY KEY", "UNIQUE"],
+            "received": ["TEXT"],
+            "valid": ["TEXT"],
+            "type": ["VARCHAR(16)"],
+            "location": ["VARCHAR(16)"],
+            "report": ["VARCHAR(512)"]
         }
     }
 

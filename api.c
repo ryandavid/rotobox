@@ -88,6 +88,8 @@ static void generic_api_db_dump(struct mg_connection *nc) {
 void api_location(struct mg_connection *nc, int ev, void *ev_data) {
     (void) ev;
     (void) ev_data;
+
+    pthread_mutex_lock(&gps_mutex);
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n" \
         "{\n" \
         "    \"status\": %d,\n" \
@@ -122,6 +124,8 @@ void api_location(struct mg_connection *nc, int ev, void *ev_data) {
         rx_gps_data.fix.epv, \
         rx_gps_data.fix.eps);
 
+    pthread_mutex_unlock(&gps_mutex);
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
 
@@ -130,6 +134,8 @@ void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
     (void) ev_data;
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n{\n");
     mg_printf(nc, "\"satellites\": [\n");
+
+    pthread_mutex_lock(&gps_mutex);
     for (int i = 0; i < rx_gps_data.satellites_visible; i++) {
         mg_printf(nc, \
             "    {\n" \
@@ -155,6 +161,8 @@ void api_satellites(struct mg_connection *nc, int ev, void *ev_data) {
                   rx_gps_data.satellites_visible, \
                   rx_gps_data.satellites_used);
     mg_printf(nc, "}\n");
+
+    pthread_mutex_unlock(&gps_mutex);
 
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
@@ -311,5 +319,31 @@ void api_set_faa_chart_download_flag(struct mg_connection *nc, int ev, void *ev_
         fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
         api_send_empty_result(nc);
     }
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
+void api_uat_get_winds(struct mg_connection *nc, int ev, void *ev_data) {
+    (void) ev;
+    (void) ev_data;
+    database_get_recent_winds();
+    generic_api_db_dump(nc);
+    database_finish_query();
+
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+
+void api_metar_by_airport_id(struct mg_connection *nc, int ev, void *ev_data) {
+    struct http_message *message = (struct http_message *)ev_data;
+    char id[256];
+
+    if(get_argument_text(&message->query_string, "id", &id[0], sizeof(id)) == true) {
+        database_get_metar_by_airport_id(&id[0]);
+        generic_api_db_dump(nc);
+        database_finish_query();
+    } else {
+        fprintf(stdout, "%s\n", "ERROR: Could not find 'id'");
+        api_send_empty_result(nc);
+    }
+
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }

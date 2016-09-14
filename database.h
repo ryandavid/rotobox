@@ -48,5 +48,9 @@ void database_get_airspace_geojson_by_class(const char* class);
 void database_find_nearest_airports(float lat, float lon);
 void database_get_available_faa_charts();
 void database_set_faa_chart_download_flag(int chart_id, bool to_download);
+void database_insert_uat_text_product(char* receivedTime, char* productType, char* productTime,
+                                      char* location, char* report);
+void database_get_recent_winds();
+void database_get_metar_by_airport_id(const char* airport_id);
 
 #endif  // DATABASE_H_

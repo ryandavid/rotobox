@@ -243,3 +243,75 @@ void database_set_faa_chart_download_flag(int chart_id, bool to_download) {
     sqlite3_bind_int(stmt, 2, chart_id);
 }
 
+void database_insert_uat_text_product(char* receivedTime, char* productType, char* productTime,
+                                      char* location, char* report) {
+    int32_t row_id = -1;
+
+    // First find out if we are are updating an existing record.
+    const char* query = "SELECT id " \
+                        "FROM uat_text " \
+                        "WHERE type = ? " \
+                        "AND valid = ? " \
+                        "AND location = ?;";
+
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, productType, strlen(productType), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, productTime, strlen(productTime), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, location, strlen(location), SQLITE_STATIC);
+    if(database_fetch_row() == true) {
+        row_id = database_column_int(0);
+    }
+
+    database_execute_query("BEGIN TRANSACTION;");
+
+    if(row_id == -1) {
+        query = "INSERT INTO uat_text(received, valid, type, location, report) " \
+                "VALUES(?, ?, ?, ?, ?);";
+
+        sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, receivedTime, strlen(receivedTime), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, productTime, strlen(productTime), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 3, productType, strlen(productType), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 4, location, strlen(location), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 5, report, strlen(report), SQLITE_STATIC);
+    } else {
+        query = "UPDATE uat_text " \
+                "SET received = ?, valid = ?, type = ?, location = ?, report = ? " \
+                "WHERE id = ? " \
+                "LIMIT 1;";
+
+        sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, receivedTime, strlen(receivedTime), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, productTime, strlen(productTime), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 3, productType, strlen(productType), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 4, location, strlen(location), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 5, report, strlen(report), SQLITE_STATIC);
+        sqlite3_bind_int(stmt, 6, row_id);
+    }
+
+    // Roundabout way of calling sqlite3_step
+    database_fetch_row();
+
+    database_execute_query("END TRANSACTION;");
+}
+
+void database_get_recent_winds() {
+    const char *query = "SELECT received, valid, location, report, " \
+                        "(julianday('now') - julianday(received)) * 24 * 60 age_minutes "\
+                        "FROM uat_text " \
+                        "WHERE type = 'WINDS' " \
+                        "ORDER BY location, valid ASC;";
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+}
+
+void database_get_metar_by_airport_id(const char* airport_id) {
+    const char *query = "SELECT ut.received, ut.valid, ut.location, ut.report, " \
+                        "(julianday('now') - julianday(ut.received)) * 24 * 60 age_minutes " \
+                        "FROM uat_text ut " \
+                        "JOIN airports a ON ut.location = a.icao_identifier " \
+                        "WHERE a.id = ? " \
+                        "AND ut.type IN ('METAR', 'SPECI') " \
+                        "ORDER BY ut.valid DESC;";
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
+}

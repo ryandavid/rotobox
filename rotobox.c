@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <gps.h>
@@ -15,17 +16,21 @@
 #include "api.h"
 #include "database.h"
 #include "dump1090.h"
+#include "dump978.h"
 #include "gdl90.h"
 #include "mongoose.h"
 #include "rotobox.h"
+#include "uat_decode.h"
 
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
+
+pthread_mutex_t gps_mutex;
 struct gps_data_t rx_gps_data;
 
 static struct mg_serve_http_opts s_http_server_opts;
 
-// Define an event handler function
+// Define an SIGINT handler.
 static void ev_handler(struct mg_connection *nc, int ev, void *p) {
   if (ev == MG_EV_HTTP_REQUEST) {
     mg_serve_http(nc, (struct http_message *) p, s_http_server_opts);
@@ -97,6 +102,8 @@ int main(int argc, char **argv) {
         mg_register_http_endpoint(nc, "/api/airspace/geojson", api_airspace_geojson_by_class);
         mg_register_http_endpoint(nc, "/api/charts", api_available_faa_charts);
         mg_register_http_endpoint(nc, "/api/charts/download", api_set_faa_chart_download_flag);
+        mg_register_http_endpoint(nc, "/api/uat/winds", api_uat_get_winds);
+        mg_register_http_endpoint(nc, "/api/uat/metar_by_id", api_metar_by_airport_id);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", WEBSERVER_PORT);
     }
@@ -126,7 +133,9 @@ int main(int argc, char **argv) {
     while(exitRequested == false) {
         mg_mgr_poll(&mgr, 500);
         if(gpsd_available == true) {
+            pthread_mutex_lock(&gps_mutex);
             gps_read(&rx_gps_data);
+            pthread_mutex_unlock(&gps_mutex);
         }
     }
 
@@ -225,37 +234,6 @@ void *dump978_worker() {
     pthread_exit(NULL);
 }
 
-/*
-static uat_uplink_mdb_ll_t * upsert_uplink_mdb_frame(struct uat_uplink_mdb *mdb){
-    int count = 0;
-
-    uat_uplink_mdb_ll_t *tail = uplink_mdb_head;
-    uat_uplink_mdb_ll_t *following = NULL;
-
-    // Special case if this is the first frame.
-    if(uplink_mdb_head == NULL) {
-        uplink_mdb_head = malloc(sizeof(uat_uplink_mdb_ll_t));
-        tail = uplink_mdb_head;
-        following = NULL;
-        count += 1;
-
-    } else {
-        while(tail->next != NULL){
-            if(tail->mdb.)
-            tail = tail->next;
-            count += 1;
-        }
-
-        tail->next = malloc(sizeof(uat_uplink_mdb_ll_t));
-        tail->next->next = NULL;
-    }
-
-
-
-    fprintf(stdout, "Count = %d\n", count);
-    return tail;
-}*/
-
 
 void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, frame_type_t type) {
     fprintf(stdout, "\nts=%llu, rs=%d\n", timestamp, receiveErrors);
@@ -263,7 +241,7 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
     if(type == FRAME_TYPE_ADSB) {
         struct uat_adsb_mdb mdb;
         uat_decode_adsb_mdb(buffer, &mdb);
-        uat_display_adsb_mdb(&mdb, stdout);
+        //uat_display_adsb_mdb(&mdb, stdout);
     } else if(type == FRAME_TYPE_UAT) {
         struct uat_uplink_mdb mdb;
         uat_decode_uplink_mdb(buffer, &mdb);
@@ -271,17 +249,122 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
         for(uint32_t i = 0; i < mdb.num_info_frames; i++) {
             fprintf(stdout, "Rx Type: %d (%d bytes)\n", mdb.info_frames[i].type, mdb.info_frames[i].length);
             if(mdb.info_frames[i].type == 0){
-                fprintf(stdout, "Product ID: %d\n", mdb.info_frames[i].fisb.product_id);
+                fprintf(stdout, "FIS-B Product ID: %d \n", mdb.info_frames[i].fisb.product_id);
+                if(mdb.info_frames[i].fisb.product_id == 413) {
+                    handle_uat_text_product(timestamp,
+                                            &(mdb.info_frames[i].fisb.data[0]),
+                                            mdb.info_frames[i].fisb.length);
+                }
 
-                
             }
         }
-        //uat_uplink_mdb_ll_t *mdb_ll = upsert_uplink_mdb_frame(&mdb);
         
-        //uat_display_uplink_mdb(&(mdb_ll->mdb), stdout);
+        //uat_display_uplink_mdb(&mdb, stdout);
     } else {
         fprintf(stdout, "ERROR: Received unknown message type %d!\n", type);
     }
+}
+
+// Modified copy of dump978's uat_display_fisb_frame.
+void handle_uat_text_product(uint64_t timestamp, uint8_t * data, uint16_t length) {
+    const char *report = decode_dlac(data, length);
+    
+    char report_buf[1024];
+    const char *next_report;
+    char *p, *r;
+
+    struct tm tm;
+    time_t rawtime;
+    struct tm* current_tm;
+
+    char* product_type = NULL;
+    char* location = NULL;
+    char* productTime = NULL;
+    char* message = NULL;
+
+    char receivedTime[32];
+    char formattedTime[32];
+
+    // Derivative of 'uat_decode.c' -> 'uat_display_fisb_frame'.
+    memset(&report_buf[0], 0, sizeof(report_buf));
+    while (!report_buf[0]) {
+        next_report = strchr(report, '\x1e'); // RS
+        if (!next_report) {
+            next_report = strchr(report, '\x03'); // ETX
+        }
+
+        if (next_report) {
+            memcpy(report_buf, report, next_report - report);
+            report_buf[next_report - report] = 0;
+            report = next_report + 1;
+        } else {
+            strcpy(report_buf, report);
+            break;
+        }
+    }
+
+    // Init with the beginning of the buffer.    
+    r = &(report_buf[0]);
+
+    // Product Type.
+    p = strchr(&(report_buf[0]), ' ');
+    if(p != NULL) {
+        *p = 0;
+        product_type = r;
+        r = p + 1;
+    }
+    
+    // Product Location.
+    p = strchr(r, ' ');
+    if(p != NULL) {
+        *p = 0;
+        location = r;
+        r = p + 1;
+    }
+    
+    // Product Time.
+    p = strchr(r, ' ');
+    if(p != NULL) {
+        *p = 0;
+        productTime = r;
+        r = p + 1;
+    }
+
+    // Contents of report.
+    message = r;
+
+    // Assumption is that time we received contains HHMMSSZ.
+    strptime(productTime, "%d%H%M%Z", &tm);
+
+    // Snag the current time, for both assembling the current product time and recording when we
+    // received this product.
+    time(&rawtime);
+    current_tm = gmtime(&rawtime);
+    strftime(&receivedTime[0], sizeof(receivedTime), "%F %T", current_tm);
+
+    // Copy over the received hour and minute from the product valid time.
+    current_tm->tm_hour = tm.tm_hour;
+    current_tm->tm_min = tm.tm_min;
+    current_tm->tm_sec = 0;
+    current_tm->tm_isdst = -1;
+
+    // Check if the day rolled over.
+    if(current_tm->tm_mday != tm.tm_mday) {
+        current_tm->tm_mday++;
+    }
+    
+    // Fix any overflows from the fudging above.  Dump it in a format that SQLite can work with.
+    mktime(current_tm);
+    strftime(&formattedTime[0], sizeof(formattedTime), "%F %T", current_tm);
+
+    // Hacky, but strip any trailing newline.
+    uint16_t len = strlen(message);
+    if(message[len - 1] == 0x0A) {
+        message[len - 1] = 0x00;
+    }
+
+    database_insert_uat_text_product(&receivedTime[0], product_type, &formattedTime[0],
+                                     location, message);
 }
 
 void init_dump978() {

@@ -2,10 +2,12 @@
 #define API_H_
 
 #include <gps.h>
+#include <pthread.h>
 
 #include "database.h"
 #include "mongoose.h"
 
+extern pthread_mutex_t gps_mutex;
 extern struct gps_data_t rx_gps_data;
 
 void api_location(struct mg_connection *nc, int ev, void *ev_data);
@@ -21,5 +23,7 @@ void api_available_airspace_shapefiles(struct mg_connection *nc, int ev, void *e
 void api_airspace_geojson_by_class(struct mg_connection *nc, int ev, void *ev_data);
 void api_available_faa_charts(struct mg_connection *nc, int ev, void *ev_data);
 void api_set_faa_chart_download_flag(struct mg_connection *nc, int ev, void *ev_data);
+void api_uat_get_winds(struct mg_connection *nc, int ev, void *ev_data);
+void api_metar_by_airport_id(struct mg_connection *nc, int ev, void *ev_data);
 
 #endif  // API_H_

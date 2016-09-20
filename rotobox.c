@@ -280,7 +280,8 @@ void handle_uat_text_product(uint64_t timestamp, uint8_t * data, uint16_t length
     char* product_type = NULL;
     char* location = NULL;
     char* productTime = NULL;
-    char* message = NULL;
+
+    char message[1024];
 
     char receivedTime[32];
     char formattedTime[32];
@@ -313,6 +314,9 @@ void handle_uat_text_product(uint64_t timestamp, uint8_t * data, uint16_t length
         product_type = r;
         r = p + 1;
     }
+
+    // Now that we skipped the type, we will make a copy the rest of the message in it's entirely.
+    strcpy(&message[0], r);
     
     // Product Location.
     p = strchr(r, ' ');
@@ -329,9 +333,6 @@ void handle_uat_text_product(uint64_t timestamp, uint8_t * data, uint16_t length
         productTime = r;
         r = p + 1;
     }
-
-    // Contents of report.
-    message = r;
 
     // Assumption is that time we received contains HHMMSSZ.
     strptime(productTime, "%d%H%M%Z", &tm);

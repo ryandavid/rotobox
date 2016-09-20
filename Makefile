@@ -1,5 +1,5 @@
 #CFLAGS+=-O2 -g -Wall -Werror -Ifec
-CFLAGS+=-O2 -g -Wall -Ifec
+CFLAGS+=-O2 -g -Wall -Ifec -Wno-unknown-pragmas
 LDFLAGS=
 LIBS=-lm -lpthread -lgps -ldl
 LIBS_RTL=`pkg-config --libs librtlsdr libusb-1.0 sqlite3 spatialite`
@@ -25,6 +25,10 @@ DUMP1090_DEPENDS=dump1090/dump1090.o dump1090/convert.o dump1090/anet.o dump1090
 
 MONGOOSE_DEPENDS=mongoose/mongoose.o
 
+MDSPLIB_DEPENDS=mdsplib/src/decode_metar.o mdsplib/src/antoi.o mdsplib/src/charcmp.o \
+				mdsplib/src/decode_metar_remark.o mdsplib/src/fracpart.c mdsplib/src/print_decoded_metar.o \
+				mdsplib/src/stspack2.o mdsplib/src/stspack3.o
+
 ALL_SUBDIRS=$(LIBRTLSDR_BUILDDIR) $(DUMP978_SUBDIR) $(DUMP1090_SUBDIR)
 
 ifeq ($(UNAME), Darwin)
@@ -39,7 +43,7 @@ all: librtlsdr dump978 dump1090 rotobox
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-rotobox: rotobox.o gdl90.o database.o api.o $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
+rotobox: rotobox.o gdl90.o database.o api.o $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS) $(MDSPLIB_DEPENDS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_RTL)
 
 librtlsdr: $(LIBRTLSDR_MAKEFILE)

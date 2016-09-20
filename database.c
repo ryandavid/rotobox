@@ -25,6 +25,9 @@ bool database_init() {
     // We must make sure to call this at least once for new DBs.  Subsequent calling is harmless.
     database_execute_query("SELECT InitSpatialMetaData();");
 
+    // Clear out any old received METAR's. TAF's, etc.
+    database_empty_old_uat_text(UAT_TEXT_MAX_AGE_HOURS);
+
     fprintf(stdout, "DB Path: %s\n", DATABASE_FILEPATH);
     fprintf(stdout, "SQLite version: %s\n", sqlite3_libversion());
     fprintf(stdout, "SpatiaLite version: %s\n", spatialite_version());
@@ -314,4 +317,18 @@ void database_get_metar_by_airport_id(const char* airport_id) {
                         "ORDER BY ut.valid DESC;";
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, airport_id, strlen(airport_id), SQLITE_STATIC);
+}
+
+void database_empty_old_uat_text(uint16_t age_hours) {
+    database_execute_query("BEGIN TRANSACTION;");
+
+    const char* query = "DELETE FROM uat_text " \
+                        "WHERE (julianday('now') - julianday(valid)) * 24 > ?;";
+
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_int(stmt, 1, age_hours);
+    // Roundabout way of calling sqlite3_step
+    database_fetch_row();
+
+    database_execute_query("END TRANSACTION;");
 }

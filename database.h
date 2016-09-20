@@ -15,6 +15,8 @@
 #define DATABASE_FILEPATH       "./rotobox.sqlite"
 #define DATABASE_WILDCARD       '%'
 
+#define UAT_TEXT_MAX_AGE_HOURS  (36)    // Remove old UAT text rows older than this (hours).
+
 enum database_column_type_t {
     TYPE_INTEGER    = SQLITE_INTEGER,
     TYPE_FLOAT      = SQLITE_FLOAT,
@@ -52,5 +54,6 @@ void database_insert_uat_text_product(char* receivedTime, char* productType, cha
                                       char* location, char* report);
 void database_get_recent_winds();
 void database_get_metar_by_airport_id(const char* airport_id);
+void database_empty_old_uat_text(uint16_t age_hours);
 
 #endif  // DATABASE_H_

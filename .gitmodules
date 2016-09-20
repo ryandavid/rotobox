@@ -13,3 +13,6 @@
 [submodule "gpsd"]
 	path = gpsd
 	url = https://github.com/ryandavid/gpsd.git
+[submodule "mdsplib"]
+	path = mdsplib
+	url = https://github.com/flightaware/mdsplib.git

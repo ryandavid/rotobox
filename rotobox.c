@@ -247,15 +247,37 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
         uat_decode_uplink_mdb(buffer, &mdb);
 
         for(uint32_t i = 0; i < mdb.num_info_frames; i++) {
-            fprintf(stdout, "Rx Type: %d (%d bytes)\n", mdb.info_frames[i].type, mdb.info_frames[i].length);
-            if(mdb.info_frames[i].type == 0){
-                fprintf(stdout, "FIS-B Product ID: %d \n", mdb.info_frames[i].fisb.product_id);
-                if(mdb.info_frames[i].fisb.product_id == 413) {
+            // If we received a UAT Service Status Management Message, then disregard.
+            if(mdb.info_frames[i].type != UAT_TYPE_FISB_ADPU) {
+                fprintf(stdout, "Type %d Service Status (%d bytes)\n", mdb.info_frames[i].type, mdb.info_frames[i].length);
+                continue;
+            }
+
+            // Otherwise start handling the data product as necessary.
+            fprintf(stdout, "ADPU Product %d: %s (%d bytes)\n",
+                    mdb.info_frames[i].fisb.product_id,
+                    get_fisb_product_name(mdb.info_frames[i].fisb.product_id),
+                    mdb.info_frames[i].fisb.length);
+
+            switch(mdb.info_frames[i].fisb.product_id) {
+                // Handle METARs, WINDs, PIREPs, TAFs.
+                case(FIS_B_ADPU_TEXT_FORMAT_2):
                     handle_uat_text_product(timestamp,
                                             &(mdb.info_frames[i].fisb.data[0]),
                                             mdb.info_frames[i].fisb.length);
-                }
+                break;
 
+                // Handle NOTAMs and TFRs.
+                case(FIS_B_ADPU_NOTAM):
+                    for(uint16_t j = 0; j < mdb.info_frames[i].fisb.length; j++) {
+                        fprintf(stdout, "%02x", mdb.info_frames[i].fisb.data[j]);
+                    }
+                    fprintf(stdout, "\n");
+
+                    break;
+
+                default:
+                    break;
             }
         }
         
@@ -266,7 +288,7 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
 }
 
 // Modified copy of dump978's uat_display_fisb_frame.
-void handle_uat_text_product(uint64_t timestamp, uint8_t * data, uint16_t length) {
+void handle_uat_text_product(uint64_t timestamp, uint8_t* data, uint16_t length) {
     const char *report = decode_dlac(data, length);
     
     char report_buf[1024];

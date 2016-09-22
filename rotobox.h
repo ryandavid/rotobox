@@ -19,20 +19,15 @@
 
 #define LIBRTLSDR_MIN_READ_SIZE     512  // At minimum, the read size in bytes
 
-#define TIME_STRING_LEN         10
-#define TYPE_STRING_LEN         10
-#define LOCATION_STRING_LEN     10
-#define REPORT_STRING_LEN       256
+// Types of UAT Frames we can receive.
+#define UAT_TYPE_FISB_ADPU          (0)
+#define UAT_TYPE_SERVICE_STATUS     (15)
 
+// Types of FIS-B products we can receive.
+#define FIS_B_ADPU_NOTAM            (8)
+#define FIS_B_ADPU_AIRMET           (11)
+#define FIS_B_ADPU_TEXT_FORMAT_2    (413)
 
-#define MAX_DECODED_UAT_TEXT    (256)
-struct uat_decoded_text_frame_t {
-    uint64_t rx_timestamp;
-    char time[TIME_STRING_LEN];
-    char type[TYPE_STRING_LEN];
-    char location[LOCATION_STRING_LEN];
-    char report[REPORT_STRING_LEN];
-};
 
 rtlsdr_dev_t *init_SDR(const char *serialNumber, long centerFrequency, int samplingFreq);
 

@@ -158,7 +158,7 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
 
     for(i = 0; i < MAX_RUNWAYS; i++ ) {
       if( metar->RRVR[i].runway_designator[0] != '\0') {
-        mg_printf(nc, "        {\n");
+        mg_printf(nc, "        %s{\n", i > 0 ? ",\n" : "");
         mg_printf(nc, "            \"runway_designator\": \"%s\",\n", metar->RRVR[i].runway_designator);
       } else {
         continue;
@@ -188,7 +188,7 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
          mg_printf(nc, "            \"min_vis_range_ft\": %d,\n", metar->RRVR[i].Min_visRange);
       }
       mg_printf(nc, "            \"rvr\": %d\n", i);
-      mg_printf(nc, "        }%s\n", i == MAX_RUNWAYS - 1 ? "" : ",");
+      mg_printf(nc, "        }");
     }
     mg_printf(nc, "],\n");
 
@@ -226,7 +226,7 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
     mg_printf(nc, "        \"partial_obscurations\": [");
     for(i = 0; i < MAX_PARTIAL_OBSCURATIONS; i++) {
         if(metar->PartialObscurationAmt[i][0] != '\0') {
-            mg_printf(nc, "        {\n");
+            mg_printf(nc, "        %s{\n", i > 0 ? ",\n" : "");
             mg_printf(nc, "            \"obscuration_amount\": \"%s\",\n", metar->PartialObscurationAmt[i]);
         } else {
             continue;
@@ -235,31 +235,34 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
         if(metar->PartialObscurationPhenom[i][0] != '\0') {
             mg_printf(nc, "        \"obscuration_phenom\": \"%s\",\n", metar->PartialObscurationPhenom[i]);
         }
-        mg_printf(nc, "        },\n");
+        mg_printf(nc, "            \"partial_obscuration\": %d\n", i);
+        mg_printf(nc, "        }");
     }
     mg_printf(nc, "],\n");
 
     mg_printf(nc, "        \"cloud_groups\": [");
     for(i = 0; (metar->cloudGroup[ i ].cloud_type[0] != '\0') && (i < MAX_CLOUD_GROUPS); i++) {
-        if(metar->cloudGroup[ i ].cloud_type[0] != '\0') {
-            mg_printf(nc, "{\n");
+        if(metar->cloudGroup[i].cloud_type[0] != '\0') {
+            mg_printf(nc, "        %s{\n", i > 0 ? ",\n" : "");
             mg_printf(nc, "            \"cloud_cover\": \"%s\",\n", metar->cloudGroup[ i ].cloud_type);
         } else {
             continue;
         }
 
-        if(metar->cloudGroup[ i ].cloud_hgt_char[0] != '\0') {
-            mg_printf(nc, "            \"cloud_height_str\": \"%s\",\n", metar->cloudGroup[ i ].cloud_hgt_char);
+        if(metar->cloudGroup[i].cloud_hgt_char[0] != '\0') {
+            mg_printf(nc, "            \"cloud_height_str\": \"%s\",\n", metar->cloudGroup[i].cloud_hgt_char);
         }
 
-        if(metar->cloudGroup[ i ].cloud_hgt_meters != INT_MAX) {
-            mg_printf(nc, "            \"cloud_height_m\": %d,\n", metar->cloudGroup[ i ].cloud_hgt_meters);
+        if(metar->cloudGroup[i].cloud_hgt_meters != INT_MAX) {
+            mg_printf(nc, "            \"cloud_height_m\": %d,\n", metar->cloudGroup[i].cloud_hgt_meters);
         }
 
-        if(metar->cloudGroup[ i ].other_cld_phenom[0] != '\0') {
-            mg_printf(nc, "            \"other_cloud_phenom\": \"%s\",\n", metar->cloudGroup[ i ].other_cld_phenom);
+        if(metar->cloudGroup[i].other_cld_phenom[0] != '\0') {
+            mg_printf(nc, "            \"other_cloud_phenom\": \"%s\",\n", metar->cloudGroup[i].other_cld_phenom);
         }
-        mg_printf(nc, "        },\n");
+
+        mg_printf(nc, "            \"cloud_group\": %d\n", i);
+        mg_printf(nc, "        }");
     }
     mg_printf(nc, "],\n");
 
@@ -396,7 +399,7 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
     i = 0;
     mg_printf(nc, "        \"recent_weather\": [");
     while((i < 3) && (metar->ReWx[ i ].Recent_weather[0] != '\0')) {
-      mg_printf(nc, "{\n");
+      mg_printf(nc, "        %s{\n", i > 0 ? ",\n" : "");
       mg_printf(nc, "            \"description\": \"%s\",\n", metar->ReWx[i].Recent_weather);
 
       if(metar->ReWx[i].Bhh != INT_MAX) {
@@ -412,7 +415,8 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
       if(metar->ReWx[i].Emm != INT_MAX) {
          mg_printf(nc, "            \"end_mm\": %d,\n",metar->ReWx[i].Emm);
       }
-      mg_printf(nc, "},\n");
+      mg_printf(nc, "            \"recent_weather\": %d\n", i);
+      mg_printf(nc, "}\n");
       i++;
     }
     mg_printf(nc, "],\n");
@@ -483,7 +487,7 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
     mg_printf(nc, "        \"surface_obscurations\": [");
     for(i = 0; i < MAX_SURFACE_OBSCURATIONS; i++) {
       if( metar->SfcObscuration[i][0] != '\0') {
-         mg_printf(nc, "\"%s\",\n", metar->SfcObscuration[i]);
+         mg_printf(nc, "%s\"%s\"", i > 0 ? ", " : "", metar->SfcObscuration[i]);
       }
     }
     mg_printf(nc, "],\n");
@@ -707,9 +711,8 @@ static void generic_api_metar_dump(struct mg_connection *nc, Decoded_METAR* meta
     }
 
     // Hacky way to make sure the last entry never gets a trailing comma.
-    mg_printf(nc, "        \"end\": true\n");
+    mg_printf(nc, "        \"decoded\": true\n");
 }
-
 
 void api_location(struct mg_connection *nc, int ev, void *ev_data) {
     (void) ev;
@@ -984,7 +987,7 @@ void api_metar_by_airport_id(struct mg_connection *nc, int ev, void *ev_data) {
                 mg_printf(nc, "        \"%s\": ", database_column_name(i));
 
                 if(strcmp(database_column_name(i), "report") == 0) {
-                    decode_metar_success = decode_metar(database_column_text(i), &metar);
+                    decode_metar_success = decode_metar((char*)database_column_text(i), &metar);
                 }
 
                 switch (database_column_type(i)) {
@@ -1006,11 +1009,11 @@ void api_metar_by_airport_id(struct mg_connection *nc, int ev, void *ev_data) {
                         mg_printf(nc, "\"%s\"", database_column_text(i));
                 }
 
-                // If this is the last column, then don't put a comma!
-                if (i < numColumns - 1) {
-                    mg_printf(nc, ",\n");
-                } else {
+                // If this is the last column and the METAR failed to decode, don't put a comma!
+                if((i == numColumns - 1) && (decode_metar_success != 0)) {
                     mg_printf(nc, "\n");
+                } else {
+                    mg_printf(nc, ",\n");
                 }
             }
 

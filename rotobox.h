@@ -29,6 +29,9 @@
 #define FIS_B_ADPU_TEXT_FORMAT_2    (413)
 
 
+#define MAX_TRACKED_TRAFFIC         (128)
+
+
 rtlsdr_dev_t *init_SDR(const char *serialNumber, long centerFrequency, int samplingFreq);
 
 void init_dump978();
@@ -36,6 +39,7 @@ void *dump978_worker();
 void dump978_callback(uint64_t, uint8_t *, int, frame_type_t);
 void cleanup_dump978();
 
+void handle_uat_traffic(struct uat_adsb_mdb* mdb);
 void handle_uat_text_product(uint64_t timestamp, uint8_t * data, uint16_t length);
 
 void init_dump1090();

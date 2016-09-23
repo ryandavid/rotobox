@@ -303,7 +303,7 @@ void database_get_recent_winds() {
                         "(julianday('now') - julianday(received)) * 24 * 60 age_minutes "\
                         "FROM uat_text " \
                         "WHERE type = 'WINDS' " \
-                        "ORDER BY location, valid ASC;";
+                        "ORDER BY location, valid DESC;";
     sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
 }
 

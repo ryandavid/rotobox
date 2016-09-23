@@ -25,8 +25,13 @@
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;
 
+// GPS position solution.
 pthread_mutex_t gps_mutex;
 struct gps_data_t rx_gps_data;
+
+// Tracked traffic.
+pthread_mutex_t uat_traffic_mutex;
+struct uat_adsb_mdb tracked_traffic[MAX_TRACKED_TRAFFIC];
 
 static struct mg_serve_http_opts s_http_server_opts;
 
@@ -48,6 +53,9 @@ int main(int argc, char **argv) {
     struct mg_mgr mgr;
     struct mg_connection *nc;
     char gpsd_address[GPSD_ADDRESS_BUFFER_SIZE];
+
+    // Clear out the tracked traffic.
+    memset(&tracked_traffic, 0x00, sizeof(tracked_traffic));
 
     // By default, use 'localhost' for the GPSD address
     snprintf(&gpsd_address[0], GPSD_ADDRESS_BUFFER_SIZE, "%s", "localhost");
@@ -104,6 +112,7 @@ int main(int argc, char **argv) {
         mg_register_http_endpoint(nc, "/api/charts/download", api_set_faa_chart_download_flag);
         mg_register_http_endpoint(nc, "/api/uat/winds", api_uat_get_winds);
         mg_register_http_endpoint(nc, "/api/uat/metar_by_id", api_metar_by_airport_id);
+        mg_register_http_endpoint(nc, "/api/traffic", api_get_traffic);
     } else {
         fprintf(stdout, "ERROR: Could not bind to port %s\n", WEBSERVER_PORT);
     }
@@ -137,6 +146,10 @@ int main(int argc, char **argv) {
             gps_read(&rx_gps_data);
             pthread_mutex_unlock(&gps_mutex);
         }
+
+        // Clear out old traffic.
+        pthread_mutex_lock(&uat_traffic_mutex);
+        pthread_mutex_unlock(&uat_traffic_mutex);
     }
 
     if(thread_978 != NULL) {
@@ -242,6 +255,9 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
         struct uat_adsb_mdb mdb;
         uat_decode_adsb_mdb(buffer, &mdb);
         //uat_display_adsb_mdb(&mdb, stdout);
+        fprintf(stdout, "Traffic: %02x\n", mdb.address);
+        handle_uat_traffic(&mdb);
+
     } else if(type == FRAME_TYPE_UAT) {
         struct uat_uplink_mdb mdb;
         uat_decode_uplink_mdb(buffer, &mdb);
@@ -265,25 +281,44 @@ void dump978_callback(uint64_t timestamp, uint8_t *buffer, int receiveErrors, fr
                     handle_uat_text_product(timestamp,
                                             &(mdb.info_frames[i].fisb.data[0]),
                                             mdb.info_frames[i].fisb.length);
-                break;
+                    break;
 
                 // Handle NOTAMs and TFRs.
                 case(FIS_B_ADPU_NOTAM):
-                    for(uint16_t j = 0; j < mdb.info_frames[i].fisb.length; j++) {
-                        fprintf(stdout, "%02x", mdb.info_frames[i].fisb.data[j]);
-                    }
-                    fprintf(stdout, "\n");
-
                     break;
 
                 default:
                     break;
             }
         }
-        
-        //uat_display_uplink_mdb(&mdb, stdout);
     } else {
         fprintf(stdout, "ERROR: Received unknown message type %d!\n", type);
+    }
+}
+
+void handle_uat_traffic(struct uat_adsb_mdb* mdb) {
+    bool success = false;
+
+    pthread_mutex_lock(&uat_traffic_mutex);
+    for(size_t i = 0; i < MAX_TRACKED_TRAFFIC; i++) {
+        // We've encountered an empty slot, pop it in!
+        if(tracked_traffic[i].address == 0) {
+            fprintf(stdout, "Adding new entry for address %04x\n", mdb->address);
+            memcpy(&tracked_traffic[i], mdb, sizeof(tracked_traffic[i]));
+            success = true;
+            break;
+
+        } else if(tracked_traffic[i].address == mdb->address) {
+            fprintf(stdout, "Updating entry for address %04x\n", mdb->address);
+            memcpy(&tracked_traffic[i], mdb, sizeof(tracked_traffic[i]));
+            success = true;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&uat_traffic_mutex);
+
+    if(success == false) {
+        fprintf(stdout, "ERROR: Ran out of room for traffic.  Max = %d.\n", MAX_TRACKED_TRAFFIC);
     }
 }
 

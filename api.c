@@ -1,5 +1,12 @@
 #include "api.h"
 #include "mdsplib/include/metar.h"
+#include "uat_decode.h"
+
+extern pthread_mutex_t gps_mutex;
+extern struct gps_data_t rx_gps_data;
+
+extern pthread_mutex_t uat_traffic_mutex;
+extern struct uat_adsb_mdb tracked_traffic[20];
 
 static bool get_argument_text(struct mg_str *args, const char *name, char *buf, int buflen) {
     return mg_get_http_var(args, name, buf, buflen) > 0;
@@ -1037,3 +1044,70 @@ void api_metar_by_airport_id(struct mg_connection *nc, int ev, void *ev_data) {
 
     nc->flags |= MG_F_SEND_AND_CLOSE;
 }
+
+// Based on uat_decode.c printf's.
+void api_get_traffic(struct mg_connection *nc, int ev, void *ev_data) {
+    struct http_message *message = (struct http_message *)ev_data;
+
+    pthread_mutex_lock(&uat_traffic_mutex);
+    mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
+    for(size_t i = 0; i < 128; i++) {
+        mg_printf(nc, "%s    {\n", i > 0 ? ",\n" : "");
+        mg_printf(nc, "        \"mdb_type\": %d,\n", tracked_traffic[i].mdb_type);
+        mg_printf(nc, "        \"address\": %06x,\n", tracked_traffic[i].address);
+
+        mg_printf(nc, "        \"has_sv\": %d,\n", tracked_traffic[i].has_sv);
+        if(tracked_traffic[i].has_sv == true) {
+            mg_printf(nc, "        \"nic\": %d,\n", tracked_traffic[i].nic);
+            mg_printf(nc, "        \"latitude\": %+.6f,\n", tracked_traffic[i].lat);
+            mg_printf(nc, "        \"longitude\": %+.6f,\n", tracked_traffic[i].lon);
+            mg_printf(nc, "        \"pos_valid\": %d,\n", tracked_traffic[i].position_valid);
+            mg_printf(nc, "        \"altitude\": %+.1f,\n", tracked_traffic[i].altitude);
+            mg_printf(nc, "        \"altitude_type\": %d,\n", tracked_traffic[i].altitude_type);
+            mg_printf(nc, "        \"ns_vel\": %+.1f,\n", tracked_traffic[i].ns_vel);
+            mg_printf(nc, "        \"ns_vel_valid\": %d,\n", tracked_traffic[i].ns_vel_valid);
+            mg_printf(nc, "        \"ew_vel\": %+.1f,\n", tracked_traffic[i].ew_vel);
+            mg_printf(nc, "        \"ew_vel_valid\": %d,\n", tracked_traffic[i].ew_vel_valid);
+            mg_printf(nc, "        \"track_type\": %d,\n", tracked_traffic[i].track_type);
+            mg_printf(nc, "        \"speed\": %+.1f,\n", tracked_traffic[i].speed);
+            mg_printf(nc, "        \"speed_valid\": %d,\n", tracked_traffic[i].speed_valid);
+            mg_printf(nc, "        \"vert_rate_source\": %d,\n", tracked_traffic[i].vert_rate_source);
+            mg_printf(nc, "        \"dimensions_valid\": %d,\n", tracked_traffic[i].dimensions_valid);
+            mg_printf(nc, "        \"length\": %+.1f,\n", tracked_traffic[i].length);
+            mg_printf(nc, "        \"width\": %+.1f,\n", tracked_traffic[i].width);
+            mg_printf(nc, "        \"position_offset\": %d,\n", tracked_traffic[i].position_offset);
+            mg_printf(nc, "        \"utc_coupled\": %d,\n", tracked_traffic[i].utc_coupled);
+            mg_printf(nc, "        \"tisb_site_id\": %d,\n", tracked_traffic[i].tisb_site_id);
+        }
+
+        mg_printf(nc, "        \"has_ms\": %d,\n", tracked_traffic[i].has_ms);
+        if(tracked_traffic[i].has_ms == true) {
+            mg_printf(nc, "        \"emitter_category\": %d,\n", tracked_traffic[i].emitter_category);
+            mg_printf(nc, "        \"callsign_type\": %d,\n", tracked_traffic[i].callsign_type);
+            if(tracked_traffic[i].callsign_type != CS_INVALID) {
+                mg_printf(nc, "        \"callsign\": \"%s\",\n", tracked_traffic[i].callsign);
+            }
+            mg_printf(nc, "        \"emergency_status\": %d,\n", tracked_traffic[i].emergency_status);
+            mg_printf(nc, "        \"uat_version\": %d,\n", tracked_traffic[i].uat_version);
+            mg_printf(nc, "        \"sil\": %d,\n", tracked_traffic[i].sil);
+            mg_printf(nc, "        \"transmit_mso\": %d,\n", tracked_traffic[i].transmit_mso);
+            mg_printf(nc, "        \"nac_p\": %d,\n", tracked_traffic[i].nac_p);
+            mg_printf(nc, "        \"nac_v\": %d,\n", tracked_traffic[i].nac_v);
+            mg_printf(nc, "        \"nic_baro\": %d,\n", tracked_traffic[i].nic_baro);
+            mg_printf(nc, "        \"has_cdti\": %d,\n", tracked_traffic[i].has_cdti);
+            mg_printf(nc, "        \"has_acas\": %d,\n", tracked_traffic[i].has_acas);
+            mg_printf(nc, "        \"acas_ra_active\": %d,\n", tracked_traffic[i].acas_ra_active);
+            mg_printf(nc, "        \"ident_active\": %d,\n", tracked_traffic[i].ident_active);
+            mg_printf(nc, "        \"atc_services\": %d,\n", tracked_traffic[i].atc_services);
+            mg_printf(nc, "        \"heading_type\": %d,\n", tracked_traffic[i].heading_type);
+        }
+
+        mg_printf(nc, "        \"index\": %lu\n", i);
+        mg_printf(nc, "    }");
+    }
+    mg_printf(nc, "\n]\n");
+    pthread_mutex_unlock(&uat_traffic_mutex);
+
+    nc->flags |= MG_F_SEND_AND_CLOSE;
+}
+

@@ -1,7 +1,9 @@
 var markerArray = new Array();
 var runwayArray = new Array();
+var trafficArray = new Array();
 var map;
 var ownshipIcon;
+var trafficIcon;
 
 const airspace_styles = {
   "class_b": {
@@ -87,6 +89,40 @@ function update_airport_markers(data){
     }
 }
 
+function update_traffic_locations() {
+  rotobox_api(API_TRAFFIC, {}, function(results) {
+
+    // First clear out the old traffic icons.
+    for (var i = 0; i < trafficArray.length; i++) {
+        map.removeLayer(trafficArray[i]);
+    }
+    trafficArray.length = 0;
+
+    results.forEach(function(traffic, index) {
+      if(traffic.has_sv == true) {
+        var trafficName = traffic.address;
+        if(traffic.callsign_type > 0) {
+          trafficName = traffic.callsign;
+        }
+
+        // TODO: Actually work this through.
+        var rotation = traffic.track;
+
+        var marker = L.marker([traffic.latitude, traffic.longitude],
+            {
+                icon: trafficIcon,
+                title: trafficName,
+                traffic_address: traffic.address,
+                rotationAngle: rotation
+            });
+        trafficArray.push(marker);
+        map.addLayer(marker);
+      }
+    });
+
+  });
+}
+
 function text_search_airports(query){
   rotobox_api(API_AIRPORT_SEARCH, {"name": query}, function(results){
     if(results.length == 1) {
@@ -138,6 +174,12 @@ function map_init(){
 
   ownshipIcon = L.icon({
       iconUrl: 'img/helicopter-top.png',
+      iconSize: [48, 48],
+      iconAnchor: [24, 24],
+  });
+
+  trafficIcon = L.icon({
+      iconUrl: 'img/black-plane.png',
       iconSize: [48, 48],
       iconAnchor: [24, 24],
   });
@@ -252,6 +294,8 @@ function map_init(){
       }
     });
   }
+
+  update_traffic_locations();
 }
 
 function sidebar_showAirportSearchResults(results) {

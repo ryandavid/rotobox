@@ -1052,36 +1052,42 @@ void api_get_traffic(struct mg_connection *nc, int ev, void *ev_data) {
     pthread_mutex_lock(&uat_traffic_mutex);
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
     for(size_t i = 0; i < 128; i++) {
+        // Short circuit if we've reached the end of the list.
+        if(tracked_traffic[i].address == 0) {
+            break;
+        }
+
         mg_printf(nc, "%s    {\n", i > 0 ? ",\n" : "");
         mg_printf(nc, "        \"mdb_type\": %d,\n", tracked_traffic[i].mdb_type);
-        mg_printf(nc, "        \"address\": %06x,\n", tracked_traffic[i].address);
+        mg_printf(nc, "        \"address\": \"%06X\",\n", tracked_traffic[i].address);
 
-        mg_printf(nc, "        \"has_sv\": %d,\n", tracked_traffic[i].has_sv);
-        if(tracked_traffic[i].has_sv == true) {
+        mg_printf(nc, "        \"has_sv\": %d,\n", tracked_traffic[i].has_sv != 0);
+        if(tracked_traffic[i].has_sv  != 0) {
             mg_printf(nc, "        \"nic\": %d,\n", tracked_traffic[i].nic);
-            mg_printf(nc, "        \"latitude\": %+.6f,\n", tracked_traffic[i].lat);
-            mg_printf(nc, "        \"longitude\": %+.6f,\n", tracked_traffic[i].lon);
-            mg_printf(nc, "        \"pos_valid\": %d,\n", tracked_traffic[i].position_valid);
-            mg_printf(nc, "        \"altitude\": %+.1f,\n", tracked_traffic[i].altitude);
+            mg_printf(nc, "        \"latitude\": %.6f,\n", tracked_traffic[i].lat);
+            mg_printf(nc, "        \"longitude\": %.6f,\n", tracked_traffic[i].lon);
+            mg_printf(nc, "        \"pos_valid\": %d,\n", tracked_traffic[i].position_valid != 0);
+            mg_printf(nc, "        \"altitude\": %.1f,\n", tracked_traffic[i].altitude);
             mg_printf(nc, "        \"altitude_type\": %d,\n", tracked_traffic[i].altitude_type);
-            mg_printf(nc, "        \"ns_vel\": %+.1f,\n", tracked_traffic[i].ns_vel);
-            mg_printf(nc, "        \"ns_vel_valid\": %d,\n", tracked_traffic[i].ns_vel_valid);
-            mg_printf(nc, "        \"ew_vel\": %+.1f,\n", tracked_traffic[i].ew_vel);
-            mg_printf(nc, "        \"ew_vel_valid\": %d,\n", tracked_traffic[i].ew_vel_valid);
+            mg_printf(nc, "        \"ns_vel\": %.1f,\n", tracked_traffic[i].ns_vel);
+            mg_printf(nc, "        \"ns_vel_valid\": %d,\n", tracked_traffic[i].ns_vel_valid != 0);
+            mg_printf(nc, "        \"ew_vel\": %.1f,\n", tracked_traffic[i].ew_vel);
+            mg_printf(nc, "        \"ew_vel_valid\": %d,\n", tracked_traffic[i].ew_vel_valid != 0);
             mg_printf(nc, "        \"track_type\": %d,\n", tracked_traffic[i].track_type);
-            mg_printf(nc, "        \"speed\": %+.1f,\n", tracked_traffic[i].speed);
-            mg_printf(nc, "        \"speed_valid\": %d,\n", tracked_traffic[i].speed_valid);
+            mg_printf(nc, "        \"track\": %d,\n", tracked_traffic[i].track);
+            mg_printf(nc, "        \"speed\": %.1f,\n", tracked_traffic[i].speed);
+            mg_printf(nc, "        \"speed_valid\": %d,\n", tracked_traffic[i].speed_valid != 0);
             mg_printf(nc, "        \"vert_rate_source\": %d,\n", tracked_traffic[i].vert_rate_source);
-            mg_printf(nc, "        \"dimensions_valid\": %d,\n", tracked_traffic[i].dimensions_valid);
-            mg_printf(nc, "        \"length\": %+.1f,\n", tracked_traffic[i].length);
-            mg_printf(nc, "        \"width\": %+.1f,\n", tracked_traffic[i].width);
+            mg_printf(nc, "        \"dimensions_valid\": %d,\n", tracked_traffic[i].dimensions_valid != 0);
+            mg_printf(nc, "        \"length\": %.1f,\n", tracked_traffic[i].length);
+            mg_printf(nc, "        \"width\": %.1f,\n", tracked_traffic[i].width);
             mg_printf(nc, "        \"position_offset\": %d,\n", tracked_traffic[i].position_offset);
             mg_printf(nc, "        \"utc_coupled\": %d,\n", tracked_traffic[i].utc_coupled);
             mg_printf(nc, "        \"tisb_site_id\": %d,\n", tracked_traffic[i].tisb_site_id);
         }
 
-        mg_printf(nc, "        \"has_ms\": %d,\n", tracked_traffic[i].has_ms);
-        if(tracked_traffic[i].has_ms == true) {
+        mg_printf(nc, "        \"has_ms\": %d,\n", tracked_traffic[i].has_ms != 0);
+        if(tracked_traffic[i].has_ms  != 0) {
             mg_printf(nc, "        \"emitter_category\": %d,\n", tracked_traffic[i].emitter_category);
             mg_printf(nc, "        \"callsign_type\": %d,\n", tracked_traffic[i].callsign_type);
             if(tracked_traffic[i].callsign_type != CS_INVALID) {
@@ -1094,8 +1100,8 @@ void api_get_traffic(struct mg_connection *nc, int ev, void *ev_data) {
             mg_printf(nc, "        \"nac_p\": %d,\n", tracked_traffic[i].nac_p);
             mg_printf(nc, "        \"nac_v\": %d,\n", tracked_traffic[i].nac_v);
             mg_printf(nc, "        \"nic_baro\": %d,\n", tracked_traffic[i].nic_baro);
-            mg_printf(nc, "        \"has_cdti\": %d,\n", tracked_traffic[i].has_cdti);
-            mg_printf(nc, "        \"has_acas\": %d,\n", tracked_traffic[i].has_acas);
+            mg_printf(nc, "        \"has_cdti\": %d,\n", tracked_traffic[i].has_cdti != 0);
+            mg_printf(nc, "        \"has_acas\": %d,\n", tracked_traffic[i].has_acas != 0);
             mg_printf(nc, "        \"acas_ra_active\": %d,\n", tracked_traffic[i].acas_ra_active);
             mg_printf(nc, "        \"ident_active\": %d,\n", tracked_traffic[i].ident_active);
             mg_printf(nc, "        \"atc_services\": %d,\n", tracked_traffic[i].atc_services);

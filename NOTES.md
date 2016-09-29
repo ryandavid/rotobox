@@ -51,3 +51,18 @@ The leaflet map expects map tiles under 'wwwroot/charts' directory.  The followi
 # Run the update script
 ./scripts/download_airports.py
 ````
+
+## Programming SDR serial numbers
+```
+rtl_eeprom -d 0 -s 1090
+```
+
+## Calibrating SDR
+Build/install http://www.fftw.org/fftw-3.3.5.tar.gz
+https://github.com/steve-m/kalibrate-rtl
+
+```
+kal -s GSM850
+kal -c 130
+```
+Where 130 is a strong channel.

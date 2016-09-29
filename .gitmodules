@@ -16,3 +16,12 @@
 [submodule "mdsplib"]
 	path = mdsplib
 	url = https://github.com/flightaware/mdsplib.git
+[submodule "libusb"]
+	path = libusb
+	url = https://github.com/libusb/libusb.git
+[submodule "libgeos"]
+	path = libgeos
+	url = https://github.com/libgeos/libgeos.git
+[submodule "proj.4"]
+	path = proj.4
+	url = https://github.com/OSGeo/proj.4.git

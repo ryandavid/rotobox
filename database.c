@@ -19,27 +19,31 @@ bool database_init() {
         sqlite3_trace(db, database_trace, NULL);
     }
 
+    spatialite_initialize();
     spatialite_cache = spatialite_alloc_connection();
     spatialite_init_ex(db, spatialite_cache, 0);
 
     // We must make sure to call this at least once for new DBs.  Subsequent calling is harmless.
-    database_execute_query("SELECT InitSpatialMetaData();");
+    fprintf(stdout, "Setting up table metadata. This may take a minute...\n");
+    database_execute_query("SELECT InitSpatialMetaData(1);");
 
-    // Clear out any old received METAR's. TAF's, etc.
+    // Clear out any old received METAR's, TAF's, etc.
     database_empty_old_uat_text(UAT_TEXT_MAX_AGE_HOURS);
 
     fprintf(stdout, "DB Path: %s\n", DATABASE_FILEPATH);
     fprintf(stdout, "SQLite version: %s\n", sqlite3_libversion());
     fprintf(stdout, "SpatiaLite version: %s\n", spatialite_version());
+    fprintf(stdout, "RasterLite2 version: %s\n", rl2_version());
+    fprintf(stdout, "GEOS version: %s\n", GEOSversion());
+    fprintf(stdout, "PROJ version: %s\n", pj_get_release());
     fprintf(stdout, "\n\n");
 
     return success;
 }
 
 bool database_close() {
-    sqlite3_close(db);
     spatialite_cleanup_ex(spatialite_cache);
-    spatialite_shutdown();
+    sqlite3_close(db);
     return true;
 }
 

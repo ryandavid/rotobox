@@ -8,9 +8,11 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <geos_c.h>
+#include <proj_api.h>
+#include <rasterlite2/rasterlite2.h>
 #include <sqlite3.h>
 #include <spatialite.h>
-#include <spatialite/gaiageo.h>
 
 #define DATABASE_FILEPATH       "./rotobox.sqlite"
 #define DATABASE_WILDCARD       '%'

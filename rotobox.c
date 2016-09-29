@@ -118,8 +118,9 @@ int main(int argc, char **argv) {
     }
 
 
-    // Init 978MHz receiver
-    device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
+    // Init 978MHz receiver.
+    //device978 = init_SDR("0978", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
+    device978 = init_SDR("1090", RECEIVER_CENTER_FREQ_HZ_978, RECEIVER_SAMPLING_HZ_978);
     if(device978 != NULL) {
         init_dump978();
         if(pthread_create(&thread_978, NULL, dump978_worker, NULL) != 0) {

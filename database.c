@@ -1,4 +1,5 @@
 #include "database.h"
+#include "database_verify.h"
 
 static sqlite3 *db;
 static sqlite3_stmt *stmt;
@@ -26,6 +27,9 @@ bool database_init() {
     // We must make sure to call this at least once for new DBs.  Subsequent calling is harmless.
     fprintf(stdout, "Setting up table metadata. This may take a minute...\n");
     database_execute_query("SELECT InitSpatialMetaData(1);");
+
+    // Verify all the rotobox tables are present.
+    database_verify(true);
 
     // Clear out any old received METAR's, TAF's, etc.
     database_empty_old_uat_text(UAT_TEXT_MAX_AGE_HOURS);
@@ -81,6 +85,10 @@ int database_column_int(int i) {
 
 double database_column_double(int i) {
     return sqlite3_column_double(stmt, i);
+}
+
+void database_verify_tables() {
+
 }
 
 void database_search_radio_by_airport_id(const char* airport_id) {

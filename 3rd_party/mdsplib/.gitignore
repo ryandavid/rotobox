@@ -1,0 +1,3 @@
+*.a
+src/*.o
+metar_test

@@ -7,33 +7,33 @@ MAKE=make
 CMAKE=cmake
 ECHO=echo
 UNAME=$(shell uname -s)
-CPPFLAGS= -I./dump978 -I./dump1090 -I./mongoose -I./ -DMAKE_DUMP_978_LIB -DMAKE_DUMP_1090_LIB `pkg-config --cflags librtlsdr libusb-1.0 spatialite rasterlite2 sqlite3 proj`
+CPPFLAGS= -I3rd_party/dump978 -I3rd_party/dump1090 -I3rd_party/mongoose -DMAKE_DUMP_978_LIB -DMAKE_DUMP_1090_LIB `pkg-config --cflags librtlsdr libusb-1.0 spatialite rasterlite2 sqlite3 proj`
 
-DUMP978_SUBDIR=dump978
-DUMP1090_SUBDIR=dump1090
-LIBRTLSDR_SUBDIR=librtlsdr
+DUMP978_SUBDIR=3rd_party/dump978
+DUMP1090_SUBDIR=3rd_party/dump1090
+LIBRTLSDR_SUBDIR=3rd_party/librtlsdr
 LIBRTLSDR_BUILDDIR=$(LIBRTLSDR_SUBDIR)/build
 LIBRTLSDR_MAKEFILE=$(LIBRTLSDR_BUILDDIR)/Makefile
 
-DUMP978_DEPENDS=dump978/dump978.o dump978/uat_decode.o dump978/fec.o dump978/fec/init_rs_char.o \
-				dump978/fec/decode_rs_char.o
-DUMP1090_DEPENDS=dump1090/dump1090.o dump1090/convert.o dump1090/anet.o dump1090/cpr.o \
-				dump1090/demod_2400.o dump1090/icao_filter.o dump1090/interactive.o \
-				dump1090/mode_ac.o dump1090/mode_s.o dump1090/net_io.o dump1090/stats.o \
-				dump1090/track.o dump1090/util.o dump1090/crc.o
+DUMP978_DEPENDS=3rd_party/dump978/dump978.o 3rd_party/dump978/uat_decode.o 3rd_party/dump978/fec.o 3rd_party/dump978/fec/init_rs_char.o \
+				3rd_party/dump978/fec/decode_rs_char.o
+DUMP1090_DEPENDS=3rd_party/dump1090/dump1090.o 3rd_party/dump1090/convert.o 3rd_party/dump1090/anet.o 3rd_party/dump1090/cpr.o \
+				3rd_party/dump1090/demod_2400.o 3rd_party/dump1090/icao_filter.o 3rd_party/dump1090/interactive.o \
+				3rd_party/dump1090/mode_ac.o 3rd_party/dump1090/mode_s.o 3rd_party/dump1090/net_io.o 3rd_party/dump1090/stats.o \
+				3rd_party/dump1090/track.o 3rd_party/dump1090/util.o 3rd_party/dump1090/crc.o
 
-MONGOOSE_DEPENDS=mongoose/mongoose.o
+MONGOOSE_DEPENDS=3rd_party/mongoose/mongoose.o
 
-MDSPLIB_DEPENDS=mdsplib/src/decode_metar.o mdsplib/src/antoi.o mdsplib/src/charcmp.o \
-				mdsplib/src/decode_metar_remark.o mdsplib/src/fracpart.c mdsplib/src/print_decoded_metar.o \
-				mdsplib/src/stspack2.o mdsplib/src/stspack3.o
+MDSPLIB_DEPENDS=3rd_party/mdsplib/src/decode_metar.o 3rd_party/mdsplib/src/antoi.o 3rd_party/mdsplib/src/charcmp.o \
+				3rd_party/mdsplib/src/decode_metar_remark.o 3rd_party/mdsplib/src/fracpart.c 3rd_party/mdsplib/src/print_decoded_metar.o \
+				3rd_party/mdsplib/src/stspack2.o 3rd_party/mdsplib/src/stspack3.o
 
 ALL_SUBDIRS=$(LIBRTLSDR_BUILDDIR) $(DUMP978_SUBDIR) $(DUMP1090_SUBDIR)
 
 ifeq ($(UNAME), Darwin)
 # TODO: Putting GCC in C11 mode breaks things.
 CFLAGS+=-std=c11 -DMISSING_GETTIME -DMISSING_NANOSLEEP
-DUMP1090_DEPENDS+=dump1090/compat/clock_gettime/clock_gettime.o dump1090/compat/clock_nanosleep/clock_nanosleep.o
+DUMP1090_DEPENDS+=3rd_party/dump1090/compat/clock_gettime/clock_gettime.o 3rd_party/dump1090/compat/clock_nanosleep/clock_nanosleep.o
 endif
 
 all: librtlsdr dump978 dump1090 rotobox
@@ -42,7 +42,7 @@ all: librtlsdr dump978 dump1090 rotobox
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-rotobox: rotobox.o gdl90.o database.o database_verify.o api.o $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS) $(MDSPLIB_DEPENDS)
+rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS) $(MDSPLIB_DEPENDS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS)
 
 librtlsdr: $(LIBRTLSDR_MAKEFILE)

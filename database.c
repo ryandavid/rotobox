@@ -1,5 +1,5 @@
 #include "database.h"
-#include "database_verify.h"
+#include "database_maintenance.h"
 
 static sqlite3 *db;
 static sqlite3_stmt *stmt;
@@ -29,7 +29,7 @@ bool database_init() {
     database_execute_query("SELECT InitSpatialMetaData(1);");
 
     // Verify all the rotobox tables are present.
-    database_verify(true);
+    database_maintenance(true);
 
     // Clear out any old received METAR's, TAF's, etc.
     database_empty_old_uat_text(UAT_TEXT_MAX_AGE_HOURS);

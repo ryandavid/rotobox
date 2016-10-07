@@ -8,7 +8,7 @@
 #define ENABLE_GEOPACKAGE 1
 
 /* Should be defined in order to enable LIBXML2 support. */
-#define ENABLE_LIBXML2 1
+/* #undef ENABLE_LIBXML2 */
 
 /* Should be defined in order to enable LWGEOM support. */
 /* #undef ENABLE_LWGEOM */

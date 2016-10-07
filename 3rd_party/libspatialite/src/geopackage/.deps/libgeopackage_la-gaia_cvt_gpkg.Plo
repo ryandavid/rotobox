@@ -40,7 +40,7 @@ libgeopackage_la-gaia_cvt_gpkg.lo: gaia_cvt_gpkg.c ../../config.h \
   /usr/include/stdio.h /usr/include/sys/_types/_va_list.h \
   /usr/include/sys/stdio.h /usr/include/sys/_types/_off_t.h \
   /usr/include/secure/_stdio.h ../../src/headers/spatialite/sqlite.h \
-  /usr/local/include/sqlite3.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
   ../../src/headers/spatialite/debug.h ../../src/headers/spatialite.h \
   ../../src/headers/spatialite/gaiageo.h \
@@ -230,7 +230,7 @@ libgeopackage_la-gaia_cvt_gpkg.lo: gaia_cvt_gpkg.c ../../config.h \
 
 ../../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 

@@ -1,4 +1,4 @@
-prefix=/usr/local
+prefix=/Users/ryan/src/rotobox/3rd_party_build
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include/libpng16

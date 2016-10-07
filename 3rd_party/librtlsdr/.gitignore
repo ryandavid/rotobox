@@ -31,6 +31,7 @@ Doxyfile
 .*.swp
 
 doc/
+build/
 
 src/rtl_sdr
 src/rtl_tcp

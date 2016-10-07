@@ -41,7 +41,8 @@ gaia_cutter.lo: gaia_cutter.c /usr/include/stdlib.h \
   /usr/include/secure/_string.h /usr/include/time.h \
   /usr/include/sys/_types/_clock_t.h /usr/include/sys/_types/_time_t.h \
   /usr/include/sys/_types/_timespec.h ../../config.h \
-  ../../src/headers/spatialite/sqlite.h /usr/local/include/sqlite3.h \
+  ../../src/headers/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
   ../../src/headers/spatialite/debug.h ../../src/headers/spatialite.h \
   ../../src/headers/spatialite/gaiageo.h \
@@ -242,7 +243,7 @@ gaia_cutter.lo: gaia_cutter.c /usr/include/stdlib.h \
 
 ../../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 

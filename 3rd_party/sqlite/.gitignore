@@ -44,3 +44,5 @@ cmake/project-config*.cmake
 
 .deps
 .libs
+
+sqlite3

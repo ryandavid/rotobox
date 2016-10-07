@@ -68,7 +68,8 @@ gaiaexif_la-gaia_exif.lo: gaia_exif.c /usr/include/sys/types.h \
   /usr/include/secure/_string.h /usr/include/math.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/float.h \
   ../../config.h ../../src/headers/spatialite/sqlite.h \
-  /usr/local/include/sqlite3ext.h /usr/local/include/sqlite3.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
   ../../src/headers/spatialite/gaiageo.h \
   ../../src/headers/spatialite/gg_const.h \
@@ -303,9 +304,9 @@ gaiaexif_la-gaia_exif.lo: gaia_exif.c /usr/include/sys/types.h \
 
 ../../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3ext.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 

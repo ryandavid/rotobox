@@ -82,17 +82,18 @@ wmslite.o: wmslite.c /usr/include/stdlib.h /usr/include/Availability.h \
   /usr/include/sys/_types/_seek_set.h /usr/include/sys/select.h \
   /usr/include/sys/_types/_uuid_t.h /usr/include/gethostuuid.h \
   /usr/include/signal.h ../headers/rasterlite2/rasterlite2.h \
-  /opt/local/include/sqlite3.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
-  /usr/local/include/spatialite/gaiageo.h \
-  /usr/local/include/spatialite/gg_const.h \
-  /usr/local/include/spatialite/gg_structs.h \
-  /usr/local/include/spatialite/gg_core.h \
-  /usr/local/include/spatialite/gg_mbr.h \
-  /usr/local/include/spatialite/gg_formats.h \
-  /usr/local/include/spatialite/gg_dynamic.h \
-  /usr/local/include/spatialite/gg_advanced.h \
-  /usr/local/include/spatialite/gg_xml.h /usr/local/include/spatialite.h
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gaiageo.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_const.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_structs.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_core.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_mbr.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_formats.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_dynamic.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_advanced.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_xml.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite.h
 
 /usr/include/stdlib.h:
 
@@ -370,26 +371,26 @@ wmslite.o: wmslite.c /usr/include/stdlib.h /usr/include/Availability.h \
 
 ../headers/rasterlite2/rasterlite2.h:
 
-/opt/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 
-/usr/local/include/spatialite/gaiageo.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gaiageo.h:
 
-/usr/local/include/spatialite/gg_const.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_const.h:
 
-/usr/local/include/spatialite/gg_structs.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_structs.h:
 
-/usr/local/include/spatialite/gg_core.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_core.h:
 
-/usr/local/include/spatialite/gg_mbr.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_mbr.h:
 
-/usr/local/include/spatialite/gg_formats.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_formats.h:
 
-/usr/local/include/spatialite/gg_dynamic.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_dynamic.h:
 
-/usr/local/include/spatialite/gg_advanced.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_advanced.h:
 
-/usr/local/include/spatialite/gg_xml.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_xml.h:
 
-/usr/local/include/spatialite.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite.h:

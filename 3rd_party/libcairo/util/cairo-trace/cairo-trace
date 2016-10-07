@@ -1,6 +1,6 @@
 #!/bin/sh
 
-prefix=/usr/local
+prefix=/Users/ryan/src/rotobox/3rd_party_build
 exec_prefix=${prefix}
 
 nofile=

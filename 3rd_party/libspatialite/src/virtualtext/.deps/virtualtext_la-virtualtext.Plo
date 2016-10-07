@@ -39,8 +39,9 @@ virtualtext_la-virtualtext.lo: virtualtext.c /usr/include/stdlib.h \
   /usr/include/string.h /usr/include/sys/_types/_rsize_t.h \
   /usr/include/sys/_types/_errno_t.h /usr/include/strings.h \
   /usr/include/secure/_string.h ../../config.h \
-  ../../src/headers/spatialite/sqlite.h /usr/local/include/sqlite3ext.h \
-  /usr/local/include/sqlite3.h \
+  ../../src/headers/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
   ../../src/headers/spatialite/debug.h \
   ../../src/headers/spatialite/spatialite.h \
@@ -236,9 +237,9 @@ virtualtext_la-virtualtext.lo: virtualtext.c /usr/include/stdlib.h \
 
 ../../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3ext.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 

@@ -43,3 +43,9 @@ test-driver
 stamp-h1
 pngtest
 pngcp
+.libs/
+pngfix
+pngimage
+pngstest
+pngunknown
+pngvalid

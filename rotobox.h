@@ -1,9 +1,9 @@
 #ifndef ROTOBOX_H_
 #define ROTOBOX_H_
 
-#include "dump978.h"
-#include "fec.h"
-#include "uat_decode.h"
+#include "3rd_party/dump978/dump978.h"
+#include "3rd_party/dump978/fec.h"
+#include "3rd_party/dump978/uat_decode.h"
 
 #define WEBSERVER_PORT              ("80")
 

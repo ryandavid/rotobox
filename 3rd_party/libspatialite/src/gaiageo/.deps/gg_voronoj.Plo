@@ -75,16 +75,18 @@ gg_voronoj.lo: gg_voronoj.c /usr/include/sys/types.h \
   /usr/include/sys/unistd.h /usr/include/sys/_types/_posix_vdisable.h \
   /usr/include/sys/_types/_seek_set.h /usr/include/sys/select.h \
   /usr/include/sys/_select.h /usr/include/sys/_types/_uuid_t.h \
-  /usr/include/gethostuuid.h ../../src/headers/spatialite/sqlite.h \
-  /usr/local/include/sqlite3.h ../../src/headers/spatialite/gaiageo.h \
-  ../../src/headers/spatialite/gg_const.h \
-  ../../src/headers/spatialite/gg_structs.h \
-  ../../src/headers/spatialite/gg_core.h \
-  ../../src/headers/spatialite/gg_mbr.h \
-  ../../src/headers/spatialite/gg_formats.h \
-  ../../src/headers/spatialite/gg_dynamic.h \
-  ../../src/headers/spatialite/gg_advanced.h \
-  ../../src/headers/spatialite/gg_xml.h
+  /usr/include/gethostuuid.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gaiageo.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_const.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_structs.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_core.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_mbr.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_formats.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_dynamic.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_advanced.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_xml.h
 
 /usr/include/sys/types.h:
 
@@ -330,24 +332,24 @@ gg_voronoj.lo: gg_voronoj.c /usr/include/sys/types.h \
 
 /usr/include/gethostuuid.h:
 
-../../src/headers/spatialite/sqlite.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
-../../src/headers/spatialite/gaiageo.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gaiageo.h:
 
-../../src/headers/spatialite/gg_const.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_const.h:
 
-../../src/headers/spatialite/gg_structs.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_structs.h:
 
-../../src/headers/spatialite/gg_core.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_core.h:
 
-../../src/headers/spatialite/gg_mbr.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_mbr.h:
 
-../../src/headers/spatialite/gg_formats.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_formats.h:
 
-../../src/headers/spatialite/gg_dynamic.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_dynamic.h:
 
-../../src/headers/spatialite/gg_advanced.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_advanced.h:
 
-../../src/headers/spatialite/gg_xml.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_xml.h:

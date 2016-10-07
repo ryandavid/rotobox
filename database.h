@@ -8,11 +8,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <geos_c.h>
-#include <proj_api.h>
-#include <rasterlite2/rasterlite2.h>
-#include <sqlite3.h>
-#include <spatialite.h>
+#include "geos_c.h"
+#include "proj_api.h"
+#include "rasterlite2/rasterlite2.h"
+#include "sqlite3.h"
+#include "spatialite.h"
 
 #define DATABASE_FILEPATH       "./rotobox.sqlite"
 #define DATABASE_WILDCARD       '%'
@@ -40,6 +40,7 @@ const char* database_column_name(int i);
 const unsigned char* database_column_text(int i);
 int database_column_int(int i);
 double database_column_double(int i);
+void database_alter_table(const char* table_name, const char* column_name, const char* column_type);
 
 void database_search_airport_by_id(const char* airport_id);
 void database_search_radio_by_airport_id(const char* airport_id);

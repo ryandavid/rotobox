@@ -1,5 +1,6 @@
 versioninfo/version.lo: versioninfo/version.c ../config.h \
-  ../src/headers/spatialite/sqlite.h /usr/local/include/sqlite3.h \
+  ../src/headers/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
   ../src/headers/spatialite.h ../src/headers/spatialite/gaiageo.h \
   /usr/include/stdio.h /usr/include/sys/cdefs.h \
@@ -65,7 +66,7 @@ versioninfo/version.lo: versioninfo/version.c ../config.h \
 
 ../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 

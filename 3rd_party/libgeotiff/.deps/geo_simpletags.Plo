@@ -1,7 +1,10 @@
 geo_simpletags.lo: geo_simpletags.c geotiff.h geo_config.h geokeys.h \
-  geokeys.inc geo_simpletags.h geo_tiffp.h libxtiff/xtiffio.h \
-  /usr/local/include/tiffio.h /usr/local/include/tiff.h \
-  /usr/local/include/tiffconf.h /usr/local/include/tiffvers.h \
+  geokeys.inc geo_simpletags.h geo_tiffp.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/xtiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiff.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h \
   /usr/include/stdio.h /usr/include/sys/cdefs.h \
   /usr/include/sys/_symbol_aliasing.h \
   /usr/include/sys/_posix_availability.h /usr/include/Availability.h \
@@ -58,15 +61,15 @@ geo_simpletags.h:
 
 geo_tiffp.h:
 
-libxtiff/xtiffio.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/xtiffio.h:
 
-/usr/local/include/tiffio.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h:
 
-/usr/local/include/tiff.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiff.h:
 
-/usr/local/include/tiffconf.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h:
 
-/usr/local/include/tiffvers.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h:
 
 /usr/include/stdio.h:
 

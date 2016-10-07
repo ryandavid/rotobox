@@ -10,17 +10,18 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <gps.h>
-#include <rtl-sdr.h>
+#include "gps.h"
+#include "rtl-sdr.h"
+
+#include "3rd_party/dump1090/dump1090.h"
+#include "3rd_party/dump978/dump978.h"
+#include "3rd_party/dump978/uat_decode.h"
+#include "3rd_party/mongoose/mongoose.h"
 
 #include "api.h"
 #include "database.h"
-#include "dump1090.h"
-#include "dump978.h"
 #include "gdl90.h"
-#include "mongoose.h"
 #include "rotobox.h"
-#include "uat_decode.h"
 
 volatile bool exitRequested = false;
 rtlsdr_dev_t *device978, *device1090;

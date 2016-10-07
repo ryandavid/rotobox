@@ -38,5 +38,5 @@ cmake/project-config*.cmake
 /m4/ltversion.m4
 /m4/lt~obsolete.m4
 
-libgeotiff/.libs
-libgeotiff/.deps
+libgeotiff/.libs/
+libgeotiff/.deps/

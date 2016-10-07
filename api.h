@@ -5,7 +5,7 @@
 #include <pthread.h>
 
 #include "database.h"
-#include "mongoose.h"
+#include "3rd_party/mongoose/mongoose.h"
 
 void api_location(struct mg_connection *nc, int ev, void *ev_data);
 void api_satellites(struct mg_connection *nc, int ev, void *ev_data);

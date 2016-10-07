@@ -1,7 +1,10 @@
-xtiff.lo: xtiff.c xtiffio.h /usr/local/include/tiffio.h \
-  /usr/local/include/tiff.h /usr/local/include/tiffconf.h \
-  /usr/local/include/tiffvers.h /usr/include/stdio.h \
-  /usr/include/sys/cdefs.h /usr/include/sys/_symbol_aliasing.h \
+xtiff.lo: xtiff.c xtiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiff.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h \
+  /usr/include/stdio.h /usr/include/sys/cdefs.h \
+  /usr/include/sys/_symbol_aliasing.h \
   /usr/include/sys/_posix_availability.h /usr/include/Availability.h \
   /usr/include/AvailabilityInternal.h /usr/include/_types.h \
   /usr/include/sys/_types.h /usr/include/machine/_types.h \
@@ -46,13 +49,13 @@ xtiff.lo: xtiff.c xtiffio.h /usr/local/include/tiffio.h \
 
 xtiffio.h:
 
-/usr/local/include/tiffio.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h:
 
-/usr/local/include/tiff.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiff.h:
 
-/usr/local/include/tiffconf.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h:
 
-/usr/local/include/tiffvers.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h:
 
 /usr/include/stdio.h:
 

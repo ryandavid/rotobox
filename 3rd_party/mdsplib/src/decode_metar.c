@@ -1297,10 +1297,11 @@ static MDSP_BOOL isVisibility( char **visblty, Decoded_METAR *Mptr,
       return FALSE;
  
 }
- 
-#pragma subtitle(" ")
-#pragma page(1)
-#pragma subtitle("subtitle - description                       ")
+
+
+// #pragma subtitle(" ")
+// #pragma page(1)
+// #pragma subtitle("subtitle - description                       ")
 /********************************************************************/
 /*                                                                  */
 /*  Title:         variableVisibility                               */
@@ -1322,13 +1323,11 @@ static MDSP_BOOL isVisibility( char **visblty, Decoded_METAR *Mptr,
 /*                 None.                                            */
 /*                                                                  */
 /********************************************************************/
-#pragma page(1)
+/*#pragma page(1)
 static MDSP_BOOL variableVisibility( char *string1, char *string2,
                       Decoded_METAR *Mptr, int *NDEX )
 {
    char buf[ 32 ];
-   int numerator,
-       denominator;
    char *slash,
         *V_char,
         *temp;
@@ -1397,7 +1396,7 @@ static MDSP_BOOL variableVisibility( char *string1, char *string2,
       }
    }
  
-}
+}*/
  
  
 #pragma subtitle(" ")
@@ -1744,9 +1743,9 @@ static MDSP_BOOL isTempGroup( char *token, Decoded_METAR *Mptr, int *NDEX)
  
  
  
-#pragma subtitle(" ")
-#pragma page(1)
-#pragma subtitle("subtitle - description                       ")
+//#pragma subtitle(" ")
+//#pragma page(1)
+//#pragma subtitle("subtitle - description                       ")
 /********************************************************************/
 /*                                                                  */
 /*  Title:         isWxToken                                        */
@@ -1768,7 +1767,7 @@ static MDSP_BOOL isTempGroup( char *token, Decoded_METAR *Mptr, int *NDEX)
 /*                 None.                                            */
 /*                                                                  */
 /********************************************************************/
-#pragma page(1)
+/*#pragma page(1)
  
 static MDSP_BOOL isWxToken( char *token )
 {
@@ -1783,7 +1782,7 @@ static MDSP_BOOL isWxToken( char *token )
          return FALSE;
    }
    return TRUE;
-}
+}*/
  
  
 #pragma subtitle(" ")
@@ -2416,13 +2415,8 @@ int decode_metar( char *string , Decoded_METAR *Mptr )
                                       SaveStartGroup,
                                       MetarGroup;
  
-   WindStruct *WinDataPtr;
- 
    int    ndex,
-          NDEX,
-          i,
-          jkj,
-          j;
+          NDEX;
  
  
    char   **token,

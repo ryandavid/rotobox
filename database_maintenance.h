@@ -10,4 +10,4 @@
 
 bool database_maintenance(bool rebuild);
 
-#endif	// DATABASE_MAINTENANCE_H
+#endif  // DATABASE_MAINTENANCE_H

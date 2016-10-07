@@ -67,10 +67,11 @@ gaiageo_la-gg_relations.lo: gg_relations.c /usr/include/sys/types.h \
   /usr/include/string.h /usr/include/strings.h \
   /usr/include/secure/_string.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/float.h \
-  ../../config.h /usr/local/include/geos_c.h \
+  ../../config.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/geos_c.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stddef.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/__stddef_max_align_t.h \
-  /usr/local/include/geos/export.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/geos/export.h \
   ../../src/headers/spatialite_private.h /usr/include/time.h \
   /usr/include/sys/_types/_timespec.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
@@ -78,17 +79,19 @@ gaiageo_la-gg_relations.lo: gg_relations.c /usr/include/sys/types.h \
   /usr/include/sys/unistd.h /usr/include/sys/_types/_posix_vdisable.h \
   /usr/include/sys/_types/_seek_set.h /usr/include/sys/select.h \
   /usr/include/sys/_select.h /usr/include/sys/_types/_uuid_t.h \
-  /usr/include/gethostuuid.h ../../src/headers/spatialite/sqlite.h \
-  /usr/local/include/sqlite3ext.h /usr/local/include/sqlite3.h \
-  ../../src/headers/spatialite/gaiageo.h \
-  ../../src/headers/spatialite/gg_const.h \
-  ../../src/headers/spatialite/gg_structs.h \
-  ../../src/headers/spatialite/gg_core.h \
-  ../../src/headers/spatialite/gg_mbr.h \
-  ../../src/headers/spatialite/gg_formats.h \
-  ../../src/headers/spatialite/gg_dynamic.h \
-  ../../src/headers/spatialite/gg_advanced.h \
-  ../../src/headers/spatialite/gg_xml.h
+  /usr/include/gethostuuid.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gaiageo.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_const.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_structs.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_core.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_mbr.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_formats.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_dynamic.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_advanced.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_xml.h
 
 /usr/include/sys/types.h:
 
@@ -304,13 +307,13 @@ gaiageo_la-gg_relations.lo: gg_relations.c /usr/include/sys/types.h \
 
 ../../config.h:
 
-/usr/local/include/geos_c.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/geos_c.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stddef.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/__stddef_max_align_t.h:
 
-/usr/local/include/geos/export.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/geos/export.h:
 
 ../../src/headers/spatialite_private.h:
 
@@ -340,26 +343,26 @@ gaiageo_la-gg_relations.lo: gg_relations.c /usr/include/sys/types.h \
 
 /usr/include/gethostuuid.h:
 
-../../src/headers/spatialite/sqlite.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3ext.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
-../../src/headers/spatialite/gaiageo.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gaiageo.h:
 
-../../src/headers/spatialite/gg_const.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_const.h:
 
-../../src/headers/spatialite/gg_structs.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_structs.h:
 
-../../src/headers/spatialite/gg_core.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_core.h:
 
-../../src/headers/spatialite/gg_mbr.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_mbr.h:
 
-../../src/headers/spatialite/gg_formats.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_formats.h:
 
-../../src/headers/spatialite/gg_dynamic.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_dynamic.h:
 
-../../src/headers/spatialite/gg_advanced.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_advanced.h:
 
-../../src/headers/spatialite/gg_xml.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/spatialite/gg_xml.h:

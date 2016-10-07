@@ -2,10 +2,11 @@ All libraries under the '3rd_party' are licensed as shown in the table below.  M
 
 |Project|Project Page|License|Modifications|
 |-------|------------|-------|-------------|
+|curl|https://curl.haxx.se|MIT/X||
 |dump1090 (fork)|https://github.com/mutability/dump1090|GPLv2|Added 'MAKE_DUMP_1090_LIB' flag to allow use as a lib|
 |dump978 (fork)|https://github.com/mutability/dump978|GPLv2|Added 'MAKE_DUMP_978_LIB' flag to allow use as a lib|
 |giflib|http://giflib.sourceforge.net|MIT||
-|gpsd|http://catb.org/gpsd/|BSD||
+|gpsd|http://catb.org/gpsd/|BSD|Comment out device reset on disconnect|
 |libcairo|https://www.cairographics.org|LGPL2.1, MPL1.1||
 |libgeos|https://trac.osgeo.org/geos|LGPL||
 |libgeotiff|https://trac.osgeo.org/geotiff/|Public Domain, MIT||
@@ -17,7 +18,8 @@ All libraries under the '3rd_party' are licensed as shown in the table below.  M
 |libtiff|http://libtiff.maptools.org|BSD-like||
 |libusb|http://www.libusb.org|GPLv2.1||
 |libwebp|https://developers.google.com/speed/webp/|BSD||
-|mdsplib (fork)|https://github.com/flightaware/mdsplib|GPLv2.1||
+|libxml2|http://xmlsoft.org|MIT||
+|mdsplib (fork)|https://github.com/flightaware/mdsplib|GPLv2.1|Removal of unused variables to silence compiler|
 |mongoose|https://github.com/cesanta/mongoose|GPLv2||
 |pixman|http://www.pixman.org|MIT||
 |proj.4|https://github.com/OSGeo/proj.4|MIT||

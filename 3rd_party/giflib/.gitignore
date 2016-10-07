@@ -40,3 +40,18 @@ cmake/project-config*.cmake
 
 util/.libs
 util/.deps
+
+util/gif2rgb
+util/gifbg
+util/gifbuild
+util/gifclrmp
+util/gifcolor
+util/gifecho
+util/giffilter
+util/giffix
+util/gifhisto
+util/gifinto
+util/gifsponge
+util/giftext
+util/giftool
+util/gifwedge

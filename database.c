@@ -6,7 +6,7 @@ static sqlite3_stmt *stmt;
 void *spatialite_cache;
 
 static void database_trace(void *arg1, const char* string) {
-    //fprintf(stdout, "[SQL] %s\n", string);
+    fprintf(stdout, "[SQL] %s\n", string);
 }
 
 
@@ -87,8 +87,14 @@ double database_column_double(int i) {
     return sqlite3_column_double(stmt, i);
 }
 
-void database_verify_tables() {
+void database_alter_table(const char* table_name, const char* column_name, const char* column_type) {
+    const char* query = "ALTER TABLE ? ADD COLUMN ? ?;";
 
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, table_name, strlen(table_name), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, column_name, strlen(column_name), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, column_type, strlen(column_type), SQLITE_STATIC);
+    database_finish_query();
 }
 
 void database_search_radio_by_airport_id(const char* airport_id) {

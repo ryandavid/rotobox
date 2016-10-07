@@ -41,8 +41,9 @@ wfs_la-wfs_in.lo: wfs_in.c /usr/include/stdlib.h \
   /usr/include/secure/_string.h /usr/include/time.h \
   /usr/include/sys/_types/_clock_t.h /usr/include/sys/_types/_time_t.h \
   /usr/include/sys/_types/_timespec.h ../../config.h \
-  ../../src/headers/spatialite/sqlite.h /usr/local/include/sqlite3ext.h \
-  /usr/local/include/sqlite3.h \
+  ../../src/headers/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
   ../../src/headers/spatialite/debug.h \
   ../../src/headers/spatialite/gaiaaux.h \
@@ -85,32 +86,7 @@ wfs_la-wfs_in.lo: wfs_in.c /usr/include/stdlib.h \
   /usr/include/sys/_types/_posix_vdisable.h \
   /usr/include/sys/_types/_seek_set.h /usr/include/sys/select.h \
   /usr/include/sys/_select.h /usr/include/sys/_types/_uuid_t.h \
-  /usr/include/gethostuuid.h /opt/local/include/libxml2/libxml/parser.h \
-  /opt/local/include/libxml2/libxml/xmlversion.h \
-  /opt/local/include/libxml2/libxml/xmlexports.h \
-  /opt/local/include/libxml2/libxml/tree.h \
-  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/limits.h \
-  /usr/include/limits.h /usr/include/machine/limits.h \
-  /usr/include/i386/limits.h /usr/include/i386/_limits.h \
-  /usr/include/sys/syslimits.h \
-  /opt/local/include/libxml2/libxml/xmlstring.h \
-  /opt/local/include/libxml2/libxml/xmlregexp.h \
-  /opt/local/include/libxml2/libxml/dict.h \
-  /opt/local/include/libxml2/libxml/hash.h \
-  /opt/local/include/libxml2/libxml/valid.h \
-  /opt/local/include/libxml2/libxml/xmlerror.h \
-  /opt/local/include/libxml2/libxml/list.h \
-  /opt/local/include/libxml2/libxml/xmlautomata.h \
-  /opt/local/include/libxml2/libxml/entities.h \
-  /opt/local/include/libxml2/libxml/encoding.h /usr/include/iconv.h \
-  /opt/local/include/libxml2/libxml/xmlIO.h \
-  /opt/local/include/libxml2/libxml/globals.h \
-  /opt/local/include/libxml2/libxml/SAX.h \
-  /opt/local/include/libxml2/libxml/xlink.h \
-  /opt/local/include/libxml2/libxml/SAX2.h \
-  /opt/local/include/libxml2/libxml/xmlmemory.h \
-  /opt/local/include/libxml2/libxml/threads.h \
-  /opt/local/include/libxml2/libxml/nanohttp.h
+  /usr/include/gethostuuid.h
 
 /usr/include/stdlib.h:
 
@@ -270,9 +246,9 @@ wfs_la-wfs_in.lo: wfs_in.c /usr/include/stdlib.h \
 
 ../../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3ext.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 
@@ -383,61 +359,3 @@ wfs_la-wfs_in.lo: wfs_in.c /usr/include/stdlib.h \
 /usr/include/sys/_types/_uuid_t.h:
 
 /usr/include/gethostuuid.h:
-
-/opt/local/include/libxml2/libxml/parser.h:
-
-/opt/local/include/libxml2/libxml/xmlversion.h:
-
-/opt/local/include/libxml2/libxml/xmlexports.h:
-
-/opt/local/include/libxml2/libxml/tree.h:
-
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/limits.h:
-
-/usr/include/limits.h:
-
-/usr/include/machine/limits.h:
-
-/usr/include/i386/limits.h:
-
-/usr/include/i386/_limits.h:
-
-/usr/include/sys/syslimits.h:
-
-/opt/local/include/libxml2/libxml/xmlstring.h:
-
-/opt/local/include/libxml2/libxml/xmlregexp.h:
-
-/opt/local/include/libxml2/libxml/dict.h:
-
-/opt/local/include/libxml2/libxml/hash.h:
-
-/opt/local/include/libxml2/libxml/valid.h:
-
-/opt/local/include/libxml2/libxml/xmlerror.h:
-
-/opt/local/include/libxml2/libxml/list.h:
-
-/opt/local/include/libxml2/libxml/xmlautomata.h:
-
-/opt/local/include/libxml2/libxml/entities.h:
-
-/opt/local/include/libxml2/libxml/encoding.h:
-
-/usr/include/iconv.h:
-
-/opt/local/include/libxml2/libxml/xmlIO.h:
-
-/opt/local/include/libxml2/libxml/globals.h:
-
-/opt/local/include/libxml2/libxml/SAX.h:
-
-/opt/local/include/libxml2/libxml/xlink.h:
-
-/opt/local/include/libxml2/libxml/SAX2.h:
-
-/opt/local/include/libxml2/libxml/xmlmemory.h:
-
-/opt/local/include/libxml2/libxml/threads.h:
-
-/opt/local/include/libxml2/libxml/nanohttp.h:

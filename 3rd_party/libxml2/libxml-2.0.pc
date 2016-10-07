@@ -1,0 +1,13 @@
+prefix=/Users/ryan/src/rotobox/3rd_party_build
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+modules=1
+
+Name: libXML
+Version: 2.9.4
+Description: libXML library version2.
+Requires:
+Libs: -L${libdir} -lxml2
+Libs.private:  -lpthread -lz -L/Users/ryan/src/rotobox/3rd_party_build/lib -llzma  -liconv -lm  
+Cflags: -I${includedir}/libxml2 

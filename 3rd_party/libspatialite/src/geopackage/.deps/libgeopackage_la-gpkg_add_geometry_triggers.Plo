@@ -1,6 +1,7 @@
 libgeopackage_la-gpkg_add_geometry_triggers.lo: \
   gpkg_add_geometry_triggers.c ../../src/headers/spatialite/geopackage.h \
-  ../../src/headers/spatialite/sqlite.h /usr/local/include/sqlite3.h \
+  ../../src/headers/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
   ../../src/headers/spatialite/gaiageo.h /usr/include/stdio.h \
   /usr/include/sys/cdefs.h /usr/include/sys/_symbol_aliasing.h \
@@ -97,7 +98,7 @@ libgeopackage_la-gpkg_add_geometry_triggers.lo: \
 
 ../../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 

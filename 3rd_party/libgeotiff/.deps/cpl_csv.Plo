@@ -40,9 +40,11 @@ cpl_csv.lo: cpl_csv.c cpl_serv.h geo_config.h /usr/include/stdio.h \
   /usr/include/sys/_types/_u_int32_t.h \
   /usr/include/sys/_types/_u_int64_t.h /usr/include/sys/_types/_dev_t.h \
   /usr/include/sys/_types/_mode_t.h geo_tiffp.h geotiff.h geokeys.h \
-  geokeys.inc libxtiff/xtiffio.h /usr/local/include/tiffio.h \
-  /usr/local/include/tiff.h /usr/local/include/tiffconf.h \
-  /usr/local/include/tiffvers.h \
+  geokeys.inc /Users/ryan/src/rotobox/3rd_party_build/include/xtiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiff.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h
 
 cpl_serv.h:
@@ -205,14 +207,14 @@ geokeys.h:
 
 geokeys.inc:
 
-libxtiff/xtiffio.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/xtiffio.h:
 
-/usr/local/include/tiffio.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h:
 
-/usr/local/include/tiff.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiff.h:
 
-/usr/local/include/tiffconf.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h:
 
-/usr/local/include/tiffvers.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:

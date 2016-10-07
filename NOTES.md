@@ -5,7 +5,7 @@ Should be identical to the steps outlined in BRINGUP.md, ignoring the ones that 
 ## Compiling on OS X
 ````
 # Install dependencies via MacPorts
-sudo port install cmake libusb pkgconfig sqlite3 spatialite
+sudo port install cmake pkgconfig
 
 # Need to add /opt/local/lib to dylib
 nano ~/.profile

@@ -64,8 +64,7 @@
 /* Define to 1 if you have the <windows.h> header file. */
 /* #undef HAVE_WINDOWS_H */
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
 
 /* Name of package */
@@ -124,7 +123,7 @@
 /* #undef WEBP_HAVE_NEON_RTCD */
 
 /* Set to 1 if PNG library is installed */
-#define WEBP_HAVE_PNG 1
+/* #undef WEBP_HAVE_PNG */
 
 /* Set to 1 if SSE2 is supported */
 #define WEBP_HAVE_SSE2 1
@@ -133,7 +132,7 @@
 #define WEBP_HAVE_SSE41 1
 
 /* Set to 1 if TIFF library is installed */
-#define WEBP_HAVE_TIFF 1
+/* #undef WEBP_HAVE_TIFF */
 
 /* Undefine this to disable thread support. */
 #define WEBP_USE_THREAD 1

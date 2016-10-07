@@ -1,8 +1,11 @@
 geo_get.lo: geo_get.c geotiff.h geo_config.h geokeys.h geokeys.inc \
-  geo_tiffp.h libxtiff/xtiffio.h /usr/local/include/tiffio.h \
-  /usr/local/include/tiff.h /usr/local/include/tiffconf.h \
-  /usr/local/include/tiffvers.h /usr/include/stdio.h \
-  /usr/include/sys/cdefs.h /usr/include/sys/_symbol_aliasing.h \
+  geo_tiffp.h /Users/ryan/src/rotobox/3rd_party_build/include/xtiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiff.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h \
+  /usr/include/stdio.h /usr/include/sys/cdefs.h \
+  /usr/include/sys/_symbol_aliasing.h \
   /usr/include/sys/_posix_availability.h /usr/include/Availability.h \
   /usr/include/AvailabilityInternal.h /usr/include/_types.h \
   /usr/include/sys/_types.h /usr/include/machine/_types.h \
@@ -55,15 +58,15 @@ geokeys.inc:
 
 geo_tiffp.h:
 
-libxtiff/xtiffio.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/xtiffio.h:
 
-/usr/local/include/tiffio.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffio.h:
 
-/usr/local/include/tiff.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiff.h:
 
-/usr/local/include/tiffconf.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffconf.h:
 
-/usr/local/include/tiffvers.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/tiffvers.h:
 
 /usr/include/stdio.h:
 

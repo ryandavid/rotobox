@@ -52,35 +52,12 @@ connection_cache_la-alloc_cache.lo: alloc_cache.c /usr/include/stdlib.h \
   /usr/include/sys/_pthread/_pthread_rwlockattr_t.h \
   /usr/include/sys/_pthread/_pthread_t.h /usr/include/pthread/qos.h \
   /usr/include/sys/qos.h /usr/include/sys/_types/_mach_port_t.h \
-  ../../config.h /opt/local/include/libxml2/libxml/parser.h \
+  ../../config.h ../../src/headers/spatialite/sqlite.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h \
-  /opt/local/include/libxml2/libxml/xmlversion.h \
-  /opt/local/include/libxml2/libxml/xmlexports.h \
-  /opt/local/include/libxml2/libxml/tree.h \
-  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/limits.h \
-  /usr/include/limits.h /usr/include/machine/limits.h \
-  /usr/include/i386/limits.h /usr/include/i386/_limits.h \
-  /usr/include/sys/syslimits.h \
-  /opt/local/include/libxml2/libxml/xmlstring.h \
-  /opt/local/include/libxml2/libxml/xmlregexp.h \
-  /opt/local/include/libxml2/libxml/dict.h \
-  /opt/local/include/libxml2/libxml/hash.h \
-  /opt/local/include/libxml2/libxml/valid.h \
-  /opt/local/include/libxml2/libxml/xmlerror.h \
-  /opt/local/include/libxml2/libxml/list.h \
-  /opt/local/include/libxml2/libxml/xmlautomata.h \
-  /opt/local/include/libxml2/libxml/entities.h \
-  /opt/local/include/libxml2/libxml/encoding.h /usr/include/iconv.h \
-  /opt/local/include/libxml2/libxml/xmlIO.h \
-  /opt/local/include/libxml2/libxml/globals.h \
-  /opt/local/include/libxml2/libxml/SAX.h \
-  /opt/local/include/libxml2/libxml/xlink.h \
-  /opt/local/include/libxml2/libxml/SAX2.h \
-  /opt/local/include/libxml2/libxml/xmlmemory.h \
-  /opt/local/include/libxml2/libxml/threads.h \
-  ../../src/headers/spatialite/sqlite.h /usr/local/include/sqlite3ext.h \
-  /usr/local/include/sqlite3.h ../../src/headers/spatialite/debug.h \
-  ../../src/headers/spatialite.h ../../src/headers/spatialite/gaiageo.h \
+  ../../src/headers/spatialite/debug.h ../../src/headers/spatialite.h \
+  ../../src/headers/spatialite/gaiageo.h \
   ../../src/headers/spatialite/gg_const.h \
   ../../src/headers/spatialite/gg_structs.h /usr/include/sys/types.h \
   /usr/include/sys/_types/_blkcnt_t.h \
@@ -110,10 +87,11 @@ connection_cache_la-alloc_cache.lo: alloc_cache.c /usr/include/stdlib.h \
   /usr/include/sys/_types/_seek_set.h /usr/include/sys/select.h \
   /usr/include/sys/_select.h /usr/include/sys/_types/_uuid_t.h \
   /usr/include/gethostuuid.h ../../src/headers/spatialite/gaiamatrix.h \
-  /usr/local/include/geos_c.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/geos_c.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stddef.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/__stddef_max_align_t.h \
-  /usr/local/include/geos/export.h /usr/local/include/proj_api.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/geos/export.h \
+  /Users/ryan/src/rotobox/3rd_party_build/include/proj_api.h \
   /usr/include/math.h
 
 /usr/include/stdlib.h:
@@ -302,69 +280,13 @@ connection_cache_la-alloc_cache.lo: alloc_cache.c /usr/include/stdlib.h \
 
 ../../config.h:
 
-/opt/local/include/libxml2/libxml/parser.h:
-
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
-
-/opt/local/include/libxml2/libxml/xmlversion.h:
-
-/opt/local/include/libxml2/libxml/xmlexports.h:
-
-/opt/local/include/libxml2/libxml/tree.h:
-
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/limits.h:
-
-/usr/include/limits.h:
-
-/usr/include/machine/limits.h:
-
-/usr/include/i386/limits.h:
-
-/usr/include/i386/_limits.h:
-
-/usr/include/sys/syslimits.h:
-
-/opt/local/include/libxml2/libxml/xmlstring.h:
-
-/opt/local/include/libxml2/libxml/xmlregexp.h:
-
-/opt/local/include/libxml2/libxml/dict.h:
-
-/opt/local/include/libxml2/libxml/hash.h:
-
-/opt/local/include/libxml2/libxml/valid.h:
-
-/opt/local/include/libxml2/libxml/xmlerror.h:
-
-/opt/local/include/libxml2/libxml/list.h:
-
-/opt/local/include/libxml2/libxml/xmlautomata.h:
-
-/opt/local/include/libxml2/libxml/entities.h:
-
-/opt/local/include/libxml2/libxml/encoding.h:
-
-/usr/include/iconv.h:
-
-/opt/local/include/libxml2/libxml/xmlIO.h:
-
-/opt/local/include/libxml2/libxml/globals.h:
-
-/opt/local/include/libxml2/libxml/SAX.h:
-
-/opt/local/include/libxml2/libxml/xlink.h:
-
-/opt/local/include/libxml2/libxml/SAX2.h:
-
-/opt/local/include/libxml2/libxml/xmlmemory.h:
-
-/opt/local/include/libxml2/libxml/threads.h:
-
 ../../src/headers/spatialite/sqlite.h:
 
-/usr/local/include/sqlite3ext.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3ext.h:
 
-/usr/local/include/sqlite3.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/sqlite3.h:
+
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stdarg.h:
 
 ../../src/headers/spatialite/debug.h:
 
@@ -454,14 +376,14 @@ connection_cache_la-alloc_cache.lo: alloc_cache.c /usr/include/stdlib.h \
 
 ../../src/headers/spatialite/gaiamatrix.h:
 
-/usr/local/include/geos_c.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/geos_c.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/stddef.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/8.0.0/include/__stddef_max_align_t.h:
 
-/usr/local/include/geos/export.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/geos/export.h:
 
-/usr/local/include/proj_api.h:
+/Users/ryan/src/rotobox/3rd_party_build/include/proj_api.h:
 
 /usr/include/math.h:

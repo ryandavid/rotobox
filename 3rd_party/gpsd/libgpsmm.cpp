@@ -91,7 +91,7 @@ bool gpsmm::is_open(void)
 gpsmm::~gpsmm()
 {
     if ( to_user != NULL ) {
-	(void)gps_close(gps_state());
+	gps_close(gps_state());
 	delete to_user;
     }
 }

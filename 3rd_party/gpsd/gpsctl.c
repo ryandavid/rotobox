@@ -4,17 +4,6 @@
  * BSD terms apply: see the file COPYING in the distribution root for details.
  *
  */
-
-/* sys/ipc.h needs _XOPEN_SOURCE, 500 means X/Open 1995 */
-#define _XOPEN_SOURCE 500
-/* pselect() needs _POSIX_C_SOURCE >= 200112L */
-#define _POSIX_C_SOURCE 200112L
-/* strlcpy() needs _DARWIN_C_SOURCE */
-#define _DARWIN_C_SOURCE
-
-/* for vsnprintf() FreeBSD wants __ISO_C_VISIBLE >= 1999 */
-#define __ISO_C_VISIBLE 1999
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -54,18 +43,11 @@ static bool hunting = true;
 static void settle(struct gps_device_t *session)
 /* allow the device to settle after a control operation */
 {
-    struct timespec delay;
-
     /*
      * See the 'deep black magic' comment in serial.c:set_serial().
      */
     (void)tcdrain(session->gpsdata.gps_fd);
-
-    /* wait 50,000 uSec */
-    delay.tv_sec = 0;
-    delay.tv_nsec = 50000000L;
-    nanosleep(&delay, NULL);
-
+    (void)usleep(50000);
     (void)tcdrain(session->gpsdata.gps_fd);
 }
 #endif /* defined(RECONFIGURE_ENABLE) || defined(CONTROLSEND_ENABLE) */
@@ -384,7 +366,7 @@ int main(int argc, char **argv)
 	    timeout = HIGH_LEVEL_TIMEOUT;
 
 	/* what devices have we available? */
-	if (!gps_query(&gpsdata, DEVICELIST_SET, (int)timeout, "?DEVICES;\r\n")) {
+	if (!gps_query(&gpsdata, DEVICELIST_SET, (int)timeout, "?DEVICES;\n")) {
 	    gpsd_log(&context.errout, LOG_ERROR, "no DEVICES response received.\n");
 	    (void)gps_close(&gpsdata);
 	    exit(EXIT_FAILURE);
@@ -568,7 +550,7 @@ int main(int argc, char **argv)
 	if (rate != NULL) {
 	    (void)gps_query(&gpsdata,
 			    DEVICE_SET, (int)timeout,
-			    "?DEVICE={\"path\":\"%s\",\"cycle\":%s}\r\n",
+			    "?DEVICE={\"path\":\"%s\",\"cycle\":%s}\n",
 			    device, rate);
 	}
 #endif /* RECONFIGURE_ENABLE */

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """
 
 Usage: leapsecond.py [-v] { [-h] | [-f filename] | [-g filename] | [-H filename]
@@ -6,13 +6,13 @@ Usage: leapsecond.py [-v] { [-h] | [-f filename] | [-g filename] | [-H filename]
 
 Options:
 
-  -I take a date in ISO8601 format and convert to Unix-UTC time
+  -I take a date in ISO8601 format and convert to Unix gmt time
 
-  -O take a date in Unix-UTC time and convert to ISO8601.
+  -O take a date in Unix gmt time and convert to ISO8601.
 
-  -i take a date in RFC822 format and convert to Unix-UTC time
+  -i take a date in RFC822 format and convert to Unix gmt time
 
-  -o take a date in Unix-UTC time and convert to RFC822.
+  -o take a date in Unix gmt time and convert to RFC822.
 
   -f fetch leap-second offset data and save to local cache file
 
@@ -43,72 +43,13 @@ This file is Copyright (c) 2013 by the GPSD project
 BSD terms apply: see the file COPYING in the distribution root for details.
 
 """
-# This code runs compatibly under Python 2 and 3.x for x >= 2.
-# Preserve this property!
-from __future__ import absolute_import, print_function, division
 
-import os, re, random, time, calendar, math, sys, signal
-
-try:
-    import urllib.request as urlrequest  # Python 3
-except ImportError:
-    import urllib as urlrequest          # Python 2
+import os, urllib, re, random, time, calendar, math, sys, signal
 
 # Set a socket timeout for slow servers
 import socket
 socket.setdefaulttimeout(30)
 del socket
-
-# *** Duplicate some code from gps.misc to avoid a dependency ***
-
-# Determine a single class for testing "stringness"
-try:
-    STR_CLASS = basestring  # Base class for 'str' and 'unicode' in Python 2
-except NameError:
-    STR_CLASS = str         # In Python 3, 'str' is the base class
-
-# Polymorphic str/bytes handling
-
-BINARY_ENCODING = 'latin-1'
-
-if bytes is str:  # In Python 2 these functions can be null transformations
-
-    polystr = str
-
-else:  # Otherwise we do something real
-
-    def polystr(o):
-        "Convert bytes or str to str with proper encoding."
-        if isinstance(o, str):
-            return o
-        if isinstance(o, bytes):
-            return str(o, encoding=BINARY_ENCODING)
-        raise ValueError
-
-
-def isotime(s):
-    "Convert timestamps in ISO8661 format to and from Unix time including optional fractional seconds."
-    if isinstance(s, int):
-        return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(s))
-    elif isinstance(s, float):
-        date = int(s)
-        msec = s - date
-        date = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(s))
-        return date + "." + repr(msec)[3:]
-    elif isinstance(s, STR_CLASS):
-        if s[-1] == "Z":
-            s = s[:-1]
-        if "." in s:
-            (date, msec) = s.split(".")
-        else:
-            date = s
-            msec = "0"
-        # Note: no leap-second correction!
-        return calendar.timegm(time.strptime(date, "%Y-%m-%dT%H:%M:%S")) + float("0." + msec)
-    else:
-        raise TypeError
-
-# *** End of duplicated code ***
 
 verbose = 0
 
@@ -131,17 +72,40 @@ __locations = [
     ),
 ]
 
-GPS_EPOCH = 315964800               # 6 Jan 1980 00:00:00
+GPS_EPOCH = 315964800               # 6 Jan 1981 00:00:00
 SECS_PER_WEEK = 60 * 60 * 24 * 7    # Seconds per GPS week
 ROLLOVER = 1024                     # 10-bit week rollover
 
 
 def gps_week(t):
-    return (t - GPS_EPOCH) // SECS_PER_WEEK % ROLLOVER
+    return (t - GPS_EPOCH) / SECS_PER_WEEK % ROLLOVER
 
 
 def gps_rollovers(t):
-    return (t - GPS_EPOCH) // SECS_PER_WEEK // ROLLOVER
+    return (t - GPS_EPOCH) / SECS_PER_WEEK / ROLLOVER
+
+
+def isotime(s):
+    "Convert timestamps in ISO8661 format to and from Unix time including optional fractional seconds."
+    if type(s) == type(1):
+        return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(s))
+    elif type(s) == type(1.0):
+        date = int(s)
+        msec = s - date
+        date = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(s))
+        return date + "." + repr(msec)[3:]
+    elif type(s) == type("") or type(s) == type(u""):
+        if s[-1] == "Z":
+            s = s[:-1]
+        if "." in s:
+            (date, msec) = s.split(".")
+        else:
+            date = s
+            msec = "0"
+        # Note: no leap-second correction!
+        return calendar.timegm(time.strptime(date, "%Y-%m-%dT%H:%M:%S")) + float("0." + msec)
+    else:
+        raise TypeError
 
 
 def retrieve():
@@ -152,17 +116,17 @@ def retrieve():
             if os.path.exists(url):
                 ifp = open(url)
             else:
-                ifp = urlrequest.urlopen(url)
-            txt = polystr(ifp.read())
+                ifp = urllib.urlopen(url)
+            txt = ifp.read()
             ifp.close()
             if verbose:
-                sys.stderr.write("%s\n" % txt)
+                print >>sys.stderr, "%s" % txt
             m = re.search(regexp, txt)
             if m:
                 return int(m.group(1)) * sign - offset
         except IOError:
             if verbose:
-                sys.stderr.write("IOError: %s\n" % url)
+                print >>sys.stderr, "IOError: %s" % url
     return None
 
 
@@ -197,17 +161,16 @@ def save_leapseconds(outfile):
     for (_, _, _, _, url) in __locations:
         skip = True
         try:
-            fetchobj = urlrequest.urlopen(url)
+            fetchobj = urllib.urlopen(url)
         except IOError:
-            sys.stderr.write("Fetch from %s failed.\n" % url)
+            print >>sys.stderr, "Fetch from %s failed." % url
             continue
         # This code assumes that after 1980, leap-second increments are
         # always integrally one second and every increment is listed here
         fp = open(outfile, "w")
         for line in fetchobj:
-            line = polystr(line)
             if verbose:
-                sys.stderr.write("%s\n" % line[:-1])
+                print >>sys.stderr, "%s" % line[:-1]
             if line.startswith(" 1980"):
                 skip = False
             if skip:
@@ -217,11 +180,11 @@ def save_leapseconds(outfile):
                 continue
             md = leapbound(fields[0], fields[1])
             if verbose:
-                sys.stderr.write("# %s\n" % md)
+                print >>sys.stderr, "# %s" % md
             fp.write(repr(iso_to_unix(md)) + "\t# " + str(md) + "\n")
         fp.close()
         return
-    sys.stderr.write("%s not updated.\n" % outfile)
+    print >>sys.stderr, "%s not updated." % outfile
 
 
 def fetch_leapsecs(filename):
@@ -329,9 +292,9 @@ def unix_to_iso(tv):
 def graph_history(filename):
     "Generate a GNUPLOT plot of the leap-second history."
     raw = fetch_leapsecs(filename)
-    (b, c, e) = leastsquares(list(zip(list(range(len(raw))), raw)))
+    (b, c, e) = leastsquares(zip(range(len(raw)), raw))
     e /= (60 * 60 * 24 * 7)
-    dates = [time.strftime("%Y-%m-%d", time.localtime(t)) for t in raw]
+    dates = map(lambda t: time.strftime("%Y-%m-%d", time.localtime(t)), raw)
     enddate = time.strftime("%Y-%m-%d", time.localtime(raw[-1]+16416000)) # Adding 190 days to scale
     fmt = ''
     fmt += '# Least-squares approximation of Unix time from leapsecond is:\n'
@@ -351,7 +314,7 @@ def graph_history(filename):
     for (i, (r, d)) in enumerate(zip(raw, dates)):
         fmt += "%d\t%s\t%s\n" % (i, r, d)
     fmt += 'e\n'
-    print(fmt)
+    print fmt
 
 
 def rfc822_to_unix(tv):
@@ -367,24 +330,24 @@ def unix_to_rfc822(tv):
 def printnext(val):
     "Compute Unix time correponsing to a scheduled leap second."
     if val[:3].lower() not in ("jun", "dec"):
-        sys.stderr.write("leapsecond.py: -n argument must begin with "\
-            "'Jun' or 'Dec'\n")
-        raise SystemExit(1)
+        print >>sys.stderr, "leapsecond.py: -n argument must begin with "\
+            "'Jun' or 'Dec'"
+        raise SystemExit, 1
     else:
         month = val[:3].lower()
         if len(val) != 7:
-            sys.stderr.wrrite("leapsecond.py: -n argument must be of "\
-                "the form {jun|dec}nnnn.\n")
-            raise SystemExit(1)
+            print >>sys.stderr, "leapsecond.py: -n argument must be of "\
+                "the form {jun|dec}nnnn."
+            raise SystemExit, 1
         try:
             year = int(val[3:])
         except ValueError:
-            sys.stderr.write("leapsecond.py: -n argument must end "\
-                "with a 4-digit year.\n")
-            raise SystemExit(1)
+            print >>sys.stderr, "leapsecond.py: -n argument must end "\
+                "with a 4-digit year."
+            raise SystemExit, 1
         # Date looks valid
         tv = leapbound(year, month)
-        print("%d       /* %s */" % (iso_to_unix(tv), tv))
+        print "%d       /* %s */" % (iso_to_unix(tv), tv)
 
 
 def leapbound(year, month):
@@ -405,8 +368,8 @@ def leapbound(year, month):
 
 
 def usage():
-    print(__doc__)
-    raise SystemExit(0)
+    print __doc__
+    raise SystemExit, 0
 
 if __name__ == '__main__':
     import getopt
@@ -418,27 +381,27 @@ if __name__ == '__main__':
             verbose = 1
         elif switch == '-f':    # Fetch USNO data to cache locally
             save_leapseconds(val)
-            raise SystemExit(0)
+            raise SystemExit, 0
         elif switch == '-g':  # Graph the leap_second history
             graph_history(val)
-            raise SystemExit(0)
+            raise SystemExit, 0
         elif switch == '-H':  # make leapsecond include
             sys.stdout.write(make_leapsecond_include(val))
-            raise SystemExit(0)
+            raise SystemExit, 0
         elif switch == '-i':  # Compute Unix time from RFC822 date
-            print(rfc822_to_unix(val))
-            raise SystemExit(0)
+            print rfc822_to_unix(val)
+            raise SystemExit, 0
         elif switch == '-n':  # Compute possible next leapsecond
             printnext(val)
-            raise SystemExit(0)
+            raise SystemExit, 0
         elif switch == '-o':  # Compute RFC822 date from Unix time
-            print(unix_to_rfc822(float(val)))
-            raise SystemExit(0)
+            print unix_to_rfc822(float(val))
+            raise SystemExit, 0
         elif switch == '-I':  # Compute Unix time from ISO8601 date
-            print(isotime(val))
-            raise SystemExit(0)
+            print isotime(val)
+            raise SystemExit, 0
         elif switch == '-O':  # Compute ISO8601 date from Unix time
-            print(isotime(float(val)))
-            raise SystemExit(0)
+            print isotime(float(val))
+            raise SystemExit, 0
 
 # End

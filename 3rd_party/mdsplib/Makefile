@@ -53,9 +53,9 @@ clean:
 	rm -f src/*.o metar_test libmetar.a
 
 install: library
-	cp include/metar.h ../../3rd_party_build/include/
-	chmod 0644 ../../3rd_party_build/include/metar.h
-	cp libmetar.a ../../3rd_party_build/lib/
-	chmod 0644 ../../3rd_party_build/lib/libmetar.a
-	ranlib ../../3rd_party_build/lib/libmetar.a
+	cp include/metar.h /usr/local/include/
+	chmod 0644 /usr/local/include/metar.h
+	cp libmetar.a /usr/local/lib/
+	chmod 0644 /usr/local/lib/libmetar.a
+	ranlib /usr/local/lib/libmetar.a
 

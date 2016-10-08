@@ -1,4 +1,4 @@
-/* $Id: getopt.c,v 1.3 2009-01-22 20:53:07 fwarmerdam Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 1987, 1993, 1994

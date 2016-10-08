@@ -55,18 +55,22 @@ dsp_dec_srcs := \
     src/dsp/dec_sse41.c \
     src/dsp/filters.c \
     src/dsp/filters_mips_dsp_r2.c \
+    src/dsp/filters_msa.c \
     src/dsp/filters_sse2.c \
     src/dsp/lossless.c \
     src/dsp/lossless_mips_dsp_r2.c \
+    src/dsp/lossless_msa.c \
     src/dsp/lossless_neon.$(NEON) \
     src/dsp/lossless_sse2.c \
     src/dsp/rescaler.c \
     src/dsp/rescaler_mips32.c \
     src/dsp/rescaler_mips_dsp_r2.c \
+    src/dsp/rescaler_msa.c \
     src/dsp/rescaler_neon.$(NEON) \
     src/dsp/rescaler_sse2.c \
     src/dsp/upsampling.c \
     src/dsp/upsampling_mips_dsp_r2.c \
+    src/dsp/upsampling_msa.c \
     src/dsp/upsampling_neon.$(NEON) \
     src/dsp/upsampling_sse2.c \
     src/dsp/yuv.c \
@@ -83,12 +87,14 @@ dsp_enc_srcs := \
     src/dsp/enc_avx2.c \
     src/dsp/enc_mips32.c \
     src/dsp/enc_mips_dsp_r2.c \
+    src/dsp/enc_msa.c \
     src/dsp/enc_neon.$(NEON) \
     src/dsp/enc_sse2.c \
     src/dsp/enc_sse41.c \
     src/dsp/lossless_enc.c \
     src/dsp/lossless_enc_mips32.c \
     src/dsp/lossless_enc_mips_dsp_r2.c \
+    src/dsp/lossless_enc_msa.c \
     src/dsp/lossless_enc_neon.$(NEON) \
     src/dsp/lossless_enc_sse2.c \
     src/dsp/lossless_enc_sse41.c \
@@ -110,6 +116,7 @@ enc_srcs := \
     src/enc/picture_psnr.c \
     src/enc/picture_rescale.c \
     src/enc/picture_tools.c \
+    src/enc/predictor.c \
     src/enc/quant.c \
     src/enc/syntax.c \
     src/enc/token.c \
@@ -247,7 +254,9 @@ endif
 
 ################################################################################
 
-include $(LOCAL_PATH)/examples/Android.mk
+WEBP_SRC_PATH := $(LOCAL_PATH)
+include $(WEBP_SRC_PATH)/imageio/Android.mk
+include $(WEBP_SRC_PATH)/examples/Android.mk
 
 ifeq ($(USE_CPUFEATURES),yes)
   $(call import-module,android/cpufeatures)

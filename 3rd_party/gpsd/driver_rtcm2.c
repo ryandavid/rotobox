@@ -88,20 +88,6 @@ BSD terms apply: see the file COPYING in the distribution root for details.
 #endif
 
 /*
- * Darwin (Mac OS X) uses special defines.
- * This must precede the BSD case, since _BIG_ENDIAN may be incorrectly defined
- */
-#if !defined( __BYTE_ORDER) && defined(__DARWIN_BYTE_ORDER)
-#define __BYTE_ORDER __DARWIN_BYTE_ORDER
-#endif
-#if !defined( __BIG_ENDIAN) && defined(__DARWIN_BIG_ENDIAN)
-#define __BIG_ENDIAN __DARWIN_BIG_ENDIAN
-#endif
-#if !defined( __LITTLE_ENDIAN) && defined(__DARWIN_LITTLE_ENDIAN)
-#define __LITTLE_ENDIAN __DARWIN_LITTLE_ENDIAN
-#endif
-
-/*
  * BSD uses _BYTE_ORDER, and Linux uses __BYTE_ORDER.
  */
 #if !defined( __BYTE_ORDER) && defined(_BYTE_ORDER)
@@ -112,6 +98,19 @@ BSD terms apply: see the file COPYING in the distribution root for details.
 #endif
 #if !defined( __LITTLE_ENDIAN) && defined(_LITTLE_ENDIAN)
 #define __LITTLE_ENDIAN _LITTLE_ENDIAN
+#endif
+
+/*
+ * Darwin (Mac OS X) uses special defines.
+ */
+#if !defined( __BYTE_ORDER) && defined(__DARWIN_BYTE_ORDER)
+#define __BYTE_ORDER __DARWIN_BYTE_ORDER
+#endif
+#if !defined( __BIG_ENDIAN) && defined(__DARWIN_BIG_ENDIAN)
+#define __BIG_ENDIAN __DARWIN_BIG_ENDIAN
+#endif
+#if !defined( __LITTLE_ENDIAN) && defined(__DARWIN_LITTLE_ENDIAN)
+#define __LITTLE_ENDIAN __DARWIN_LITTLE_ENDIAN
 #endif
 
 #if !defined(__BYTE_ORDER) || !defined(__BIG_ENDIAN) || !defined(__LITTLE_ENDIAN)
@@ -179,20 +178,20 @@ BSD terms apply: see the file COPYING in the distribution root for details.
 
 struct rtcm2_msg_t {
     struct rtcm2_msghw1 {			/* header word 1 */
-	unsigned int            parity:6;
-	unsigned int            refstaid:10;	/* reference station ID */
-	unsigned int            msgtype:6;	/* RTCM message type */
-	unsigned int            preamble:8;	/* fixed at 01100110 */
-	unsigned int            _pad:2;
+	uint            parity:6;
+	uint            refstaid:10;	/* reference station ID */
+	uint            msgtype:6;		/* RTCM message type */
+	uint            preamble:8;		/* fixed at 01100110 */
+	uint            _pad:2;
     } w1;
 
     struct rtcm2_msghw2 {			/* header word 2 */
-	unsigned int            parity:6;
-	unsigned int            stathlth:3;	/* station health */
-	unsigned int            frmlen:5;
-	unsigned int            sqnum:3;
-	unsigned int            zcnt:13;
-	unsigned int            _pad:2;
+	uint            parity:6;
+	uint            stathlth:3;		/* station health */
+	uint            frmlen:5;
+	uint            sqnum:3;
+	uint            zcnt:13;
+	uint            _pad:2;
     } w2;
 
     union {
@@ -200,47 +199,47 @@ struct rtcm2_msg_t {
 	struct rtcm2_msg1 {
 	    struct gps_correction_t {
 		struct {			/* msg 1 word 3 */
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		    int             prc1:16;
-		    unsigned int    satident1:5;	/* satellite ID */
-		    unsigned int    udre1:2;
-		    unsigned int    scale1:1;
-		    unsigned int    _pad:2;
+		    uint            satident1:5;	/* satellite ID */
+		    uint            udre1:2;
+		    uint            scale1:1;
+		    uint            _pad:2;
 		} w3;
 
 		struct {			/* msg 1 word 4 */
-		    unsigned int    parity:6;
-		    unsigned int    satident2:5;	/* satellite ID */
-		    unsigned int    udre2:2;
-		    unsigned int    scale2:1;
-		    unsigned int    iod1:8;
+		    uint            parity:6;
+		    uint            satident2:5;	/* satellite ID */
+		    uint            udre2:2;
+		    uint            scale2:1;
+		    uint            iod1:8;
 		    int             rrc1:8;
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		} w4;
 
 		struct {			/* msg 1 word 5 */
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		    int             rrc2:8;
 		    int             prc2:16;
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		} w5;
 
 		struct {			/* msg 1 word 6 */
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		    int             prc3_h:8;
-		    unsigned int    satident3:5;	/* satellite ID */
-		    unsigned int    udre3:2;
-		    unsigned int    scale3:1;
-		    unsigned int    iod2:8;
-		    unsigned int    _pad:2;
+		    uint            satident3:5;	/* satellite ID */
+		    uint            udre3:2;
+		    uint            scale3:1;
+		    uint            iod2:8;
+		    uint            _pad:2;
 		} w6;
 
 		struct {			/* msg 1 word 7 */
-		    unsigned int    parity:6;
-		    unsigned int    iod3:8;
+		    uint            parity:6;
+		    uint            iod3:8;
 		    int             rrc3:8;
-		    unsigned int    prc3_l:8;		/* NOTE: unsigned int for low byte */
-		    unsigned int    _pad:2;
+		    uint            prc3_l:8;		/* NOTE: uint for low byte */
+		    uint            _pad:2;
 		} w7;
 	    } corrections[(RTCM2_WORDS_MAX - 2) / 5];
 	} type1;
@@ -248,77 +247,77 @@ struct rtcm2_msg_t {
 	/* msg 3 - reference station parameters */
 	struct rtcm2_msg3 {
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    x_h:24;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    x_h:24;
+		uint        _pad:2;
 	    } w3;
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    y_h:16;
-		unsigned int	    x_l:8;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    y_h:16;
+		uint	    x_l:8;
+		uint        _pad:2;
 	    } w4;
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    z_h:8;
-		unsigned int	    y_l:16;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    z_h:8;
+		uint	    y_l:16;
+		uint        _pad:2;
 	    } w5;
 
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    z_l:24;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    z_l:24;
+		uint        _pad:2;
 	    } w6;
 	} type3;
 
 	/* msg 4 - reference station datum */
 	struct rtcm2_msg4 {
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    datum_alpha_char2:8;
-		unsigned int	    datum_alpha_char1:8;
-		unsigned int	    spare:4;
-		unsigned int	    dat:1;
-		unsigned int	    dgnss:3;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    datum_alpha_char2:8;
+		uint	    datum_alpha_char1:8;
+		uint	    spare:4;
+		uint	    dat:1;
+		uint	    dgnss:3;
+		uint        _pad:2;
 	    } w3;
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    datum_sub_div_char2:8;
-		unsigned int	    datum_sub_div_char1:8;
-		unsigned int	    datum_sub_div_char3:8;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    datum_sub_div_char2:8;
+		uint	    datum_sub_div_char1:8;
+		uint	    datum_sub_div_char3:8;
+		uint        _pad:2;
 	    } w4;
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    dy_h:8;
-		unsigned int	    dx:16;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    dy_h:8;
+		uint	    dx:16;
+		uint        _pad:2;
 	    } w5;
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    dz:24;
-		unsigned int	    dy_l:8;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    dz:24;
+		uint	    dy_l:8;
+		uint        _pad:2;
 	    } w6;
 	} type4;
 
 	/* msg 5 - constellation health */
 	struct rtcm2_msg5 {
 	    struct b_health_t {
-		unsigned int        parity:6;
-		unsigned int	    unassigned:2;
-		unsigned int	    time_unhealthy:4;
-		unsigned int	    loss_warn:1;
-		unsigned int	    new_nav_data:1;
-		unsigned int	    health_enable:1;
-		unsigned int	    cn0:5;
-		unsigned int	    data_health:3;
-		unsigned int	    issue_of_data_link:1;
-		unsigned int	    sat_id:5;
-		unsigned int	    reserved:1;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    unassigned:2;
+		uint	    time_unhealthy:4;
+		uint	    loss_warn:1;
+		uint	    new_nav_data:1;
+		uint	    health_enable:1;
+		uint	    cn0:5;
+		uint	    data_health:3;
+		uint	    issue_of_data_link:1;
+		uint	    sat_id:5;
+		uint	    reserved:1;
+		uint        _pad:2;
 	    } health[MAXHEALTH];
 	} type5;
 
@@ -328,24 +327,24 @@ struct rtcm2_msg_t {
 	struct rtcm2_msg7 {
 	    struct b_station_t {
 		struct {
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		    int	    	    lon_h:8;
 		    int	            lat:16;
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		} w3;
 		struct {
-		    unsigned int    parity:6;
-		    unsigned int    freq_h:6;
-		    unsigned int    range:10;
-		    unsigned int    lon_l:8;
-		    unsigned int    _pad:2;
+		    uint            parity:6;
+		    uint	    freq_h:6;
+		    uint	    range:10;
+		    uint	    lon_l:8;
+		    uint            _pad:2;
 		} w4;
 		struct {
-		    unsigned int    parity:6;
-		    unsigned int    encoding:1;
-		    unsigned int    sync_type:1;
-		    unsigned int    mod_mode:1;
-		    unsigned int    bit_rate:3;
+		    uint            parity:6;
+		    uint	    encoding:1;
+		    uint	    sync_type:1;
+		    uint	    mod_mode:1;
+		    uint	    bit_rate:3;
 		    /*
 		     * ITU-R M.823-2 page 9 and RTCM-SC104 v2.1 pages
 		     * 4-21 and 4-22 are in conflict over the next two
@@ -353,10 +352,10 @@ struct rtcm2_msg_t {
 		     * The latter correctly decodes the USCG station
 		     * id's so I'll use that one here. -wsr
 		     */
-		    unsigned int    station_id:10;
-		    unsigned int    health:2;
-		    unsigned int    freq_l:6;
-		    unsigned int    _pad:2;
+		    uint	    station_id:10;
+		    uint	    health:2;
+		    uint	    freq_l:6;
+		    uint            _pad:2;
 		} w5;
 	    } almanac[(RTCM2_WORDS_MAX - 2)/3];
 	} type7;
@@ -364,40 +363,40 @@ struct rtcm2_msg_t {
 	/* msg 13 - Ground Transmitter Parameters (RTCM2.3 only) */
 	struct rtcm2_msg13 {
 	    struct {
-		unsigned int        parity:6;
-		int         	    lat:16;
-		unsigned int        reserved:6;
-		unsigned int        rangeflag:1;
-		unsigned int        status:1;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		int         lat:16;
+		uint        reserved:6;
+		uint        rangeflag:1;
+		uint        status:1;
+		uint        _pad:2;
 	    } w1;
 	    struct {
-		unsigned int        parity:6;
-		unsigned int        range:8;
-		int                 lon:16;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint        range:8;
+		int         lon:16;
+		uint        _pad:2;
 	    } w2;
 	} type13;
 
 	/* msg 14 - GPS Time of Week (RTCM2.3 only) */
 	struct rtcm2_msg14 {
 	    struct {
-		unsigned int        parity:6;
-		unsigned int        leapsecs:6;
-		unsigned int        hour:8;
-		unsigned int        week:10;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint        leapsecs:6;
+		uint        hour:8;
+		uint        week:10;
+		uint        _pad:2;
 	    } w1;
 	} type14;
 
 	/* msg 16 - text msg */
 	struct rtcm2_msg16 {
 	    struct {
-		unsigned int        parity:6;
-		unsigned int	    byte3:8;
-		unsigned int	    byte2:8;
-		unsigned int	    byte1:8;
-		unsigned int        _pad:2;
+		uint        parity:6;
+		uint	    byte3:8;
+		uint	    byte2:8;
+		uint	    byte1:8;
+		uint        _pad:2;
 	    } txt[RTCM2_WORDS_MAX-2];
 	} type16;
 
@@ -405,50 +404,50 @@ struct rtcm2_msg_t {
 	struct rtcm2_msg31 {
 	    struct glonass_correction_t {
 		struct {			/* msg 1 word 3 */
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		    int             prc1:16;
-		    unsigned int    satident1:5;	/* satellite ID */
-		    unsigned int    udre1:2;
-		    unsigned int    scale1:1;
-		    unsigned int    _pad:2;
+		    uint            satident1:5;	/* satellite ID */
+		    uint            udre1:2;
+		    uint            scale1:1;
+		    uint            _pad:2;
 		} w3;
 
 		struct {			/* msg 1 word 4 */
-		    unsigned int    parity:6;
-		    unsigned int    satident2:5;	/* satellite ID */
-		    unsigned int    udre2:2;
-		    unsigned int    scale2:1;
-		    unsigned int    tod1:7;
-		    unsigned int    change1:1;
+		    uint            parity:6;
+		    uint            satident2:5;	/* satellite ID */
+		    uint            udre2:2;
+		    uint            scale2:1;
+		    uint            tod1:7;
+		    uint            change1:1;
 		    int             rrc1:8;
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		} w4;
 
 		struct {			/* msg 1 word 5 */
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		    int             rrc2:8;
 		    int             prc2:16;
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		} w5;
 
 		struct {			/* msg 1 word 6 */
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		    int             prc3_h:8;
-		    unsigned int    satident3:5;	/* satellite ID */
-		    unsigned int    udre3:2;
-		    unsigned int    scale3:1;
-		    unsigned int    tod2:7;
-		    unsigned int    change2:1;
-		    unsigned int    _pad:2;
+		    uint            satident3:5;	/* satellite ID */
+		    uint            udre3:2;
+		    uint            scale3:1;
+		    uint            tod2:7;
+		    uint            change2:1;
+		    uint            _pad:2;
 		} w6;
 
 		struct {			/* msg 1 word 7 */
-		    unsigned int    parity:6;
-		    unsigned int    tod3:7;
-		    unsigned int    change3:1;
+		    uint            parity:6;
+		    uint            tod3:7;
+		    uint            change3:1;
 		    int             rrc3:8;
-		    unsigned int    prc3_l:8;	/* NOTE: unsigned int for low byte */
-		    unsigned int    _pad:2;
+		    uint            prc3_l:8;	/* NOTE: uint for low byte */
+		    uint            _pad:2;
 		} w7;
 	    } corrections[(RTCM2_WORDS_MAX - 2) / 5];
 	} type31;
@@ -464,20 +463,20 @@ struct rtcm2_msg_t {
 
 struct rtcm2_msg_t {
     struct rtcm2_msghw1 {			/* header word 1 */
-	unsigned int            _pad:2;
-	unsigned int            preamble:8;	/* fixed at 01100110 */
-	unsigned int            msgtype:6;	/* RTCM message type */
-	unsigned int            refstaid:10;	/* reference station ID */
-	unsigned int            parity:6;
+	uint            _pad:2;
+	uint            preamble:8;		/* fixed at 01100110 */
+	uint            msgtype:6;		/* RTCM message type */
+	uint            refstaid:10;	/* reference station ID */
+	uint            parity:6;
     } w1;
 
     struct rtcm2_msghw2 {			/* header word 2 */
-	unsigned int            _pad:2;
-	unsigned int            zcnt:13;
-	unsigned int            sqnum:3;
-	unsigned int            frmlen:5;
-	unsigned int            stathlth:3;	/* station health */
-	unsigned int            parity:6;
+	uint            _pad:2;
+	uint            zcnt:13;
+	uint            sqnum:3;
+	uint            frmlen:5;
+	uint            stathlth:3;		/* station health */
+	uint            parity:6;
     } w2;
 
     union {
@@ -485,47 +484,47 @@ struct rtcm2_msg_t {
 	struct rtcm2_msg1 {
 	    struct gps_correction_t {
 		struct {			/* msg 1 word 3 */
-		    unsigned int    _pad:2;
-		    unsigned int    scale1:1;
-		    unsigned int    udre1:2;
-		    unsigned int    satident1:5;  /* satellite ID */
+		    uint            _pad:2;
+		    uint            scale1:1;
+		    uint            udre1:2;
+		    uint            satident1:5;	/* satellite ID */
 		    int             prc1:16;
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		} w3;
 
 		struct {			/* msg 1 word 4 */
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		    int             rrc1:8;
-		    unsigned int    iod1:8;
-		    unsigned int    scale2:1;
-		    unsigned int    udre2:2;
-		    unsigned int    satident2:5;	/* satellite ID */
-		    unsigned int    parity:6;
+		    uint            iod1:8;
+		    uint            scale2:1;
+		    uint            udre2:2;
+		    uint            satident2:5;	/* satellite ID */
+		    uint            parity:6;
 		} w4;
 
 		struct {			/* msg 1 word 5 */
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		    int             prc2:16;
 		    int             rrc2:8;
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		} w5;
 
 		struct {			/* msg 1 word 6 */
-		    unsigned int    _pad:2;
-		    unsigned int    iod2:8;
-		    unsigned int    scale3:1;
-		    unsigned int    udre3:2;
-		    unsigned int    satident3:5;	/* satellite ID */
+		    uint            _pad:2;
+		    uint            iod2:8;
+		    uint            scale3:1;
+		    uint            udre3:2;
+		    uint            satident3:5;	/* satellite ID */
 		    int             prc3_h:8;
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		} w6;
 
 		struct {			/* msg 1 word 7 */
-		    unsigned int    _pad:2;
-		    unsigned int    prc3_l:8;   /* NOTE: unsigned for low byte */
+		    uint            _pad:2;
+		    uint            prc3_l:8;		/* NOTE: uint for low byte */
 		    int             rrc3:8;
-		    unsigned int    iod3:8;
-		    unsigned int    parity:6;
+		    uint            iod3:8;
+		    uint            parity:6;
 		} w7;
 	    } corrections[(RTCM2_WORDS_MAX - 2) / 5];
 	} type1;
@@ -533,77 +532,77 @@ struct rtcm2_msg_t {
 	/* msg 3 - reference station parameters */
 	struct rtcm2_msg3 {
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    x_h:24;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    x_h:24;
+		uint        parity:6;
 	    } w3;
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    x_l:8;
-		unsigned int	    y_h:16;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    x_l:8;
+		uint	    y_h:16;
+		uint        parity:6;
 	    } w4;
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    y_l:16;
-		unsigned int	    z_h:8;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    y_l:16;
+		uint	    z_h:8;
+		uint        parity:6;
 	    } w5;
 
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    z_l:24;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    z_l:24;
+		uint        parity:6;
 	    } w6;
 	} type3;
 
 	/* msg 4 - reference station datum */
 	struct rtcm2_msg4 {
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    dgnss:3;
-		unsigned int	    dat:1;
-		unsigned int	    spare:4;
-		unsigned int	    datum_alpha_char1:8;
-		unsigned int	    datum_alpha_char2:8;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    dgnss:3;
+		uint	    dat:1;
+		uint	    spare:4;
+		uint	    datum_alpha_char1:8;
+		uint	    datum_alpha_char2:8;
+		uint        parity:6;
 	    } w3;
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    datum_sub_div_char3:8;
-		unsigned int	    datum_sub_div_char1:8;
-		unsigned int	    datum_sub_div_char2:8;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    datum_sub_div_char3:8;
+		uint	    datum_sub_div_char1:8;
+		uint	    datum_sub_div_char2:8;
+		uint        parity:6;
 	    } w4;
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    dx:16;
-		unsigned int	    dy_h:8;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    dx:16;
+		uint	    dy_h:8;
+		uint        parity:6;
 	    } w5;
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    dy_l:8;
-		unsigned int	    dz:24;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    dy_l:8;
+		uint	    dz:24;
+		uint        parity:6;
 	    } w6;
 	} type4;
 
 	/* msg 5 - constellation health */
 	struct rtcm2_msg5 {
 	    struct b_health_t {
-		unsigned int        _pad:2;
-		unsigned int	    reserved:1;
-		unsigned int	    sat_id:5;
-		unsigned int	    issue_of_data_link:1;
-		unsigned int	    data_health:3;
-		unsigned int	    cn0:5;
-		unsigned int	    health_enable:1;
-		unsigned int	    new_nav_data:1;
-		unsigned int	    loss_warn:1;
-		unsigned int	    time_unhealthy:4;
-		unsigned int	    unassigned:2;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    reserved:1;
+		uint	    sat_id:5;
+		uint	    issue_of_data_link:1;
+		uint	    data_health:3;
+		uint	    cn0:5;
+		uint	    health_enable:1;
+		uint	    new_nav_data:1;
+		uint	    loss_warn:1;
+		uint	    time_unhealthy:4;
+		uint	    unassigned:2;
+		uint        parity:6;
 	    } health[MAXHEALTH];
 	} type5;
 
@@ -613,29 +612,29 @@ struct rtcm2_msg_t {
 	struct rtcm2_msg7 {
 	    struct b_station_t {
 		struct {
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		    int	            lat:16;
 		    int	    	    lon_h:8;
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		} w3;
 		struct {
-		    unsigned int    _pad:2;
-		    unsigned int    lon_l:8;
-		    unsigned int    range:10;
-		    unsigned int    freq_h:6;
-		    unsigned int    parity:6;
+		    uint            _pad:2;
+		    uint	    lon_l:8;
+		    uint	    range:10;
+		    uint	    freq_h:6;
+		    uint            parity:6;
 		} w4;
 		struct {
-		    unsigned int    _pad:2;
-		    unsigned int    freq_l:6;
-		    unsigned int    health:2;
-		    unsigned int    station_id:10;
+		    uint            _pad:2;
+		    uint	    freq_l:6;
+		    uint	    health:2;
+		    uint	    station_id:10;
 			     /* see comments in LE struct above. */
-		    unsigned int    bit_rate:3;
-		    unsigned int    mod_mode:1;
-		    unsigned int    sync_type:1;
-		    unsigned int    encoding:1;
-		    unsigned int    parity:6;
+		    uint	    bit_rate:3;
+		    uint	    mod_mode:1;
+		    uint	    sync_type:1;
+		    uint	    encoding:1;
+		    uint            parity:6;
 		} w5;
 	    } almanac[(RTCM2_WORDS_MAX - 2)/3];
 	} type7;
@@ -643,40 +642,40 @@ struct rtcm2_msg_t {
 	/* msg 13 - Ground Transmitter Parameters (RTCM2.3 only) */
 	struct rtcm2_msg13 {
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int        status:1;
-		unsigned int        rangeflag:1;
-		unsigned int        reserved:6;
-		int         	    lat:16;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint        status:1;
+		uint        rangeflag:1;
+		uint        reserved:6;
+		int         lat:16;
+		uint        parity:6;
 	    } w1;
 	    struct {
-		unsigned int        _pad:2;
-		int                 lon:16;
-		unsigned int        range:8;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		int         lon:16;
+		uint        range:8;
+		uint        parity:6;
 	    } w2;
 	} type13;
 
 	/* msg 14 - GPS Time of Week (RTCM2.3 only) */
 	struct rtcm2_msg14 {
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int        week:10;
-		unsigned int        hour:8;
-		unsigned int        leapsecs:6;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint        week:10;
+		uint        hour:8;
+		uint        leapsecs:6;
+		uint        parity:6;
 	    } w1;
 	} type14;
 
 	/* msg 16 - text msg */
 	struct rtcm2_msg16 {
 	    struct {
-		unsigned int        _pad:2;
-		unsigned int	    byte1:8;
-		unsigned int	    byte2:8;
-		unsigned int	    byte3:8;
-		unsigned int        parity:6;
+		uint        _pad:2;
+		uint	    byte1:8;
+		uint	    byte2:8;
+		uint	    byte3:8;
+		uint        parity:6;
 	    } txt[RTCM2_WORDS_MAX-2];
 	} type16;
 
@@ -684,50 +683,50 @@ struct rtcm2_msg_t {
 	struct rtcm2_msg31 {
 	    struct glonass_correction_t {
 		struct {			/* msg 1 word 3 */
-		    unsigned int    _pad:2;
-		    unsigned int    scale1:1;
-		    unsigned int    udre1:2;
-		    unsigned int    satident1:5;	/* satellite ID */
+		    uint            _pad:2;
+		    uint            scale1:1;
+		    uint            udre1:2;
+		    uint            satident1:5;	/* satellite ID */
 		    int             prc1:16;
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		} w3;
 
 		struct {			/* msg 1 word 4 */
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		    int             rrc1:8;
-		    unsigned int    change1:1;
-		    unsigned int    tod1:7;
-		    unsigned int    scale2:1;
-		    unsigned int    udre2:2;
-		    unsigned int    satident2:5;	/* satellite ID */
-		    unsigned int    parity:6;
+		    uint            change1:1;
+		    uint            tod1:7;
+		    uint            scale2:1;
+		    uint            udre2:2;
+		    uint            satident2:5;	/* satellite ID */
+		    uint            parity:6;
 		} w4;
 
 		struct {			/* msg 1 word 5 */
-		    unsigned int    _pad:2;
+		    uint            _pad:2;
 		    int             prc2:16;
 		    int             rrc2:8;
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		} w5;
 
 		struct {			/* msg 1 word 6 */
-		    unsigned int    _pad:2;
-		    unsigned int    change2:1;
-		    unsigned int    tod2:7;
-		    unsigned int    scale3:1;
-		    unsigned int    udre3:2;
-		    unsigned int    satident3:5;	/* satellite ID */
+		    uint            _pad:2;
+		    uint            change2:1;
+		    uint            tod2:7;
+		    uint            scale3:1;
+		    uint            udre3:2;
+		    uint            satident3:5;	/* satellite ID */
 		    int             prc3_h:8;
-		    unsigned int    parity:6;
+		    uint            parity:6;
 		} w6;
 
 		struct {			/* msg 1 word 7 */
-		    unsigned int    _pad:2;
-		    unsigned int    prc3_l:8;	/* NOTE: unsigned for low byte */
+		    uint            _pad:2;
+		    uint            prc3_l:8;	/* NOTE: uint for low byte */
 		    int             rrc3:8;
-		    unsigned int    change3:1;
-		    unsigned int    tod3:7;
-		    unsigned int    parity:6;
+		    uint            change3:1;
+		    uint            tod3:7;
+		    uint            parity:6;
 		} w7;
 	    } corrections[(RTCM2_WORDS_MAX - 2) / 5];
 	} type31;

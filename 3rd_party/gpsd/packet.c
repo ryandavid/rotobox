@@ -102,7 +102,6 @@ PERMISSIONS
  *      $TI -- Turn indicator (Airmar PB200).
  *      $EC -- Electronic Chart Display & Information System (ECDIS)
  *      $SD -- Depth Sounder
- *      $ST -- $STI, Skytraq Debug Output
  *      $YX -- Transducer (used by some Airmar equipment including PB100)
  *      $P  -- Vendor-specific sentence
  *
@@ -222,9 +221,6 @@ static bool nextstate(struct gps_lexer_t *lexer, unsigned char c)
     switch (lexer->state) {
     case GROUND_STATE:
 	n = 0;
-#ifdef STASH_ENABLE
-	lexer->stashbuflen = 0;
-#endif
 	if (c == '#') {
 	    lexer->state = COMMENT_BODY;
 	    break;
@@ -251,12 +247,12 @@ static bool nextstate(struct gps_lexer_t *lexer, unsigned char c)
 	    break;
 	}
 #endif
-#if defined(SIRF_ENABLE) || defined(SKYTRAQ_ENABLE)
+#ifdef SIRF_ENABLE
 	if (c == 0xa0) {
 	    lexer->state = SIRF_LEADER_1;
 	    break;
 	}
-#endif /* SIRF_ENABLE || SKYTRAQ_ENABLE */
+#endif /* SIRF_ENABLE */
 #ifdef SUPERSTAR2_ENABLE
 	if (c == SOH) {
 	    lexer->state = SUPERSTAR2_LEADER;
@@ -535,13 +531,9 @@ static bool nextstate(struct gps_lexer_t *lexer, unsigned char c)
 	else if (c == '\n')
 	    /* not strictly correct, but helps for interpreting logfiles */
 	    lexer->state = NMEA_RECOGNIZED;
-	else if (c == '$') {
-#ifdef STASH_ENABLE
-	    (void) character_pushback(lexer, STASH_RECOGNIZED);
-#else
+	else if (c == '$')
 	    (void) character_pushback(lexer, GROUND_STATE);
-#endif
-	} else if (!isprint(c))
+	else if (!isprint(c))
 	    (void) character_pushback(lexer, GROUND_STATE);
 	break;
     case NMEA_CR:
@@ -607,10 +599,6 @@ static bool nextstate(struct gps_lexer_t *lexer, unsigned char c)
     case SOUNDER_LEAD_1:
 	if (c == 'D')		/* Depth-sounder leader accepted */
 	    lexer->state = NMEA_LEADER_END;
-#ifdef SKYTRAQ_ENABLE
-	else if (c == 'T')		/* $ST leader accepted, to $STI */
-	    lexer->state = NMEA_LEADER_END;
-#endif /* SKYTRAQ_ENABLE */
 	else
 	    return character_pushback(lexer, GROUND_STATE);
 	break;
@@ -801,24 +789,13 @@ static bool nextstate(struct gps_lexer_t *lexer, unsigned char c)
 	    return character_pushback(lexer, GROUND_STATE);
 	break;
 #endif /* NMEA0183_ENABLE */
-#if defined(SIRF_ENABLE) || defined(SKYTRAQ_ENABLE)
+#ifdef SIRF_ENABLE
     case SIRF_LEADER_1:
-# ifdef SIRF_ENABLE
-        /* SIRF leads with 0xA0,0xA2 */
 	if (c == 0xa2)
 	    lexer->state = SIRF_LEADER_2;
 	else
-# endif /* SIRF_ENABLE */
-# ifdef SKYTRAQ_ENABLE
-        /* Skytraq leads with 0xA0,0xA1 */
-	if (c == 0xa1)
-	    lexer->state = SKY_LEADER_2;
-	else
-# endif /* SKYTRAQ_ENABLE */
 	    return character_pushback(lexer, GROUND_STATE);
 	break;
-#endif /* SIRF_ENABLE || SKYTRAQ_ENABLE */
-#ifdef SIRF_ENABLE
     case SIRF_LEADER_2:
 	lexer->length = (size_t) (c << 8);
 	lexer->state = SIRF_LENGTH_1;
@@ -853,66 +830,6 @@ static bool nextstate(struct gps_lexer_t *lexer, unsigned char c)
 	    return character_pushback(lexer, GROUND_STATE);
 	break;
 #endif /* SIRF_ENABLE */
-#ifdef SKYTRAQ_ENABLE
-    case SKY_LEADER_2:
-        /* MSB of length is first */
-	lexer->length = (size_t) (c << 8);
-	lexer->state = SKY_LENGTH_1;
-	break;
-    case SKY_LENGTH_1:
-        /* Skytraq length can be any 16 bit number, except 0 */
-	lexer->length += c;
-	if ( 0 == lexer->length )
-	    return character_pushback(lexer, GROUND_STATE);
-	if (lexer->length > MAX_PACKET_LENGTH)
-	    return character_pushback(lexer, GROUND_STATE);
-	lexer->state = SKY_PAYLOAD;
-	break;
-    case SKY_PAYLOAD:
-	if ( 00 == --lexer->length)
-	    lexer->state = SKY_DELIVERED;
-	break;
-    case SKY_DELIVERED:
-	if ( lexer->errout.debug >= LOG_RAW+1) {
-	    char scratchbuf[MAX_PACKET_LENGTH*2+1];
-	    gpsd_log(&lexer->errout, LOG_RAW+1,
-		     "Skytraq = %s\n",
-		     gpsd_packetdump(scratchbuf,  sizeof(scratchbuf),
-			 (char *)lexer->inbuffer,
-			 lexer->inbufptr - (unsigned char *)lexer->inbuffer));
-	}
-	{
-	    unsigned char csum = 0;
-	    for (n = 4;
-		 (unsigned char *)(lexer->inbuffer + n) < lexer->inbufptr - 1;
-		 n++)
-		csum ^= lexer->inbuffer[n];
-	    if (csum != c) {
-		gpsd_log(&lexer->errout, LOG_IO,
-			 "Skytraq bad checksum 0x%hhx, expecting 0x%x\n",
-			 csum, c);
-		lexer->state = GROUND_STATE;
-		break;
-	    }
-	}
-	lexer->state = SKY_CSUM;
-	break;
-    case SKY_CSUM:
-	if ( 0x0d != c)
-	    return character_pushback(lexer, GROUND_STATE);
-	lexer->state = SKY_TRAILER_1;
-	break;
-    case SKY_TRAILER_1:
-	if ( 0x0a != c)
-	    return character_pushback(lexer, GROUND_STATE);
-	lexer->state = SKY_RECOGNIZED;
-	break;
-    case SKY_RECOGNIZED:
-	if ( 0xa0 != c)
-	    return character_pushback(lexer, GROUND_STATE);
-	lexer->state = SIRF_LEADER_1;
-	break;
-#endif /* SKYTRAQ */
 #ifdef SUPERSTAR2_ENABLE
     case SUPERSTAR2_LEADER:
 	ctmp = c;
@@ -1504,14 +1421,6 @@ static bool nextstate(struct gps_lexer_t *lexer, unsigned char c)
 	    return character_pushback(lexer, GROUND_STATE);
 	break;
 #endif /* PASSTHROUGH_ENABLE */
-#ifdef STASH_ENABLE
-    case STASH_RECOGNIZED:
-	if (c == '$')
-	    lexer->state = NMEA_DOLLAR;
-	else
-	    return character_pushback(lexer, GROUND_STATE);
-	break;
-#endif /* STASH_ENABLE */
     }
 
     return true;	/* no pushback */
@@ -1559,52 +1468,6 @@ static void packet_discard(struct gps_lexer_t *lexer)
 				    (char *)lexer->inbuffer, lexer->inbuflen));
     }
 }
-
-#ifdef STASH_ENABLE
-static void packet_stash(struct gps_lexer_t *lexer)
-/* stash the input buffer up to current input pointer */
-{
-    size_t stashlen = lexer->inbufptr - lexer->inbuffer;
-
-    memcpy(lexer->stashbuffer, lexer->inbuffer, stashlen);
-    lexer->stashbuflen = stashlen;
-    if (lexer->errout.debug >= LOG_RAW+1) {
-	char scratchbuf[MAX_PACKET_LENGTH*2+1];
-	gpsd_log(&lexer->errout, LOG_RAW+1,
-		 "Packet stash of %zu = %s\n",
-		 stashlen,
-		 gpsd_packetdump(scratchbuf, sizeof(scratchbuf),
-				 (char *)lexer->stashbuffer,
-				 lexer->stashbuflen));
-    }
-}
-
-static void packet_unstash(struct gps_lexer_t *lexer)
-/* return stash to start of input buffer */
-{
-    size_t available = sizeof(lexer->inbuffer) - lexer->inbuflen;
-    size_t stashlen = lexer->stashbuflen;
-
-    if (stashlen <= available) {
-	memmove(lexer->inbuffer + stashlen, lexer->inbuffer, lexer->inbuflen);
-	memcpy(lexer->inbuffer, lexer->stashbuffer, stashlen);
-	lexer->inbuflen += stashlen;
-	lexer->stashbuflen = 0;
-	if (lexer->errout.debug >= LOG_RAW+1) {
-	    char scratchbuf[MAX_PACKET_LENGTH*2+1];
-	    gpsd_log(&lexer->errout, LOG_RAW+1,
-		     "Packet unstash of %zu, reconstructed is %zu = %s\n",
-		     stashlen, lexer->inbuflen,
-		     gpsd_packetdump(scratchbuf, sizeof(scratchbuf),
-				     (char *)lexer->inbuffer, lexer->inbuflen));
-	}
-    } else {
-	gpsd_log(&lexer->errout, LOG_ERROR,
-		 "Rejected too long unstash of %zu\n", stashlen);
-	lexer->stashbuflen = 0;
-    }
-}
-#endif /* STASH_ENABLE */
 
 static void character_discard(struct gps_lexer_t *lexer)
 /* shift the input buffer to discard one character and reread data */
@@ -1726,10 +1589,6 @@ void packet_parse(struct gps_lexer_t *lexer)
 #endif /* AIVDM_ENABLE */
 		packet_accept(lexer, NMEA_PACKET);
 	    packet_discard(lexer);
-#ifdef STASH_ENABLE
-	    if (lexer->stashbuflen)
-		packet_unstash(lexer);
-#endif /* STASH_ENABLE */
 	    break;
 	}
 #endif /* NMEA0183_ENABLE */
@@ -1752,13 +1611,6 @@ void packet_parse(struct gps_lexer_t *lexer)
 	    break;
 	}
 #endif /* SIRF_ENABLE */
-#ifdef SKYTRAQ_ENABLE
-	else if (lexer->state == SKY_RECOGNIZED) {
-	    packet_accept(lexer, SKY_PACKET);
-	    packet_discard(lexer);
-	    break;
-	}
-#endif /* SKYTRAQ_ENABLE */
 #ifdef SUPERSTAR2_ENABLE
 	else if (lexer->state == SUPERSTAR2_RECOGNIZED) {
 	    unsigned a = 0, b;
@@ -1886,59 +1738,29 @@ void packet_parse(struct gps_lexer_t *lexer)
 #ifdef TSIP_ENABLE
 		/* check for some common TSIP packet types:
 		 * 0x13, TSIP Parsing Error Notification
-		 * 0x1c, Hardware/Software Version Information
 		 * 0x38, Request SV system data
-		 * 0x40, Almanac
+		 * 0x1c, Hardware/Software Version Information
 		 * 0x41, GPS time, data length 10
-		 * 0x42, Single Precision Fix XYZ, data length 16
-		 * 0x43, Velocity Fix XYZ, ECEF, data length 20
+		 * 0x42, Single Precision Fix, data length 16
+		 * 0x43, Velocity Fix, data length 20
 		 * 0x45, Software Version Information, data length 10
 		 * 0x46, Health of Receiver, data length 2
-		 * 0x47, Signal Level all Sats Tracked, data length 1+5*numSV
 		 * 0x48, GPS System Messages, data length 22
 		 * 0x49, Almanac Health Page, data length 32
-		 * 0x4a, Single Precision Fix LLA, data length 20
+		 * 0x4a, LLA Position, data length 20
 		 * 0x4b, Machine Code Status, data length 3
 		 * 0x4c, Operating Parameters Report, data length 17
-		 * 0x4d, Oscillator Offset
-		 * 0x4e, Response to set GPS time
-		 * 0x54, One Satellite Bias, data length 12
-		 * 0x55, I/O Options, data length 4
-		 * 0x56, Velocity Fix ENU, data length 20
+		 * 0x54, One Satellite Bias, data length 4
+		 * 0x56, Velocity Fix (ENU), data length 20
 		 * 0x57, Last Computed Fix Report, data length 8
-		 * 0x58, Satellite System Data
-		 * 0x58-05, UTC
-		 * 0x59, Satellite Health
 		 * 0x5a, Raw Measurements
 		 * 0x5b, Satellite Ephemeris Status, data length 16
 		 * 0x5c, Satellite Tracking Status, data length 24
-		 * 0x5d, Satellite Tracking Status (multi-gnss), data length 26
 		 * 0x5e, Additional Fix Status Report
-		 * 0x5f, Severe Failure Notification
-		 * 0x5F-01-0B: Reset Error Codes
-		 * 0x5F-02: Ascii text message
-		 * 0x6c, Satellite Selection List, data length 18+numSV
-		 * 0x6d, All-In-View Satellite Selection, data length 17+numSV
-		 * 0x6f, Synced Measurement Packet
-		 * 0x72, PV filter parameters
-		 * 0x74, Altitude filter parameters
-		 * 0x78, Max DGPS correction age
-		 * 0x7b, NMEA message schedule
+		 * 0x6d, All-In-View Satellite Selection, data length 16+numSV
 		 * 0x82, Differential Position Fix Mode, data length 1
-		 * 0x83, Double Precision Fix XYZ, data length 36
-		 * 0x84, Double Precision Fix LLA, data length 36
-		 * 0x85, DGPS Correction status
-		 * 0x8f, Superpackets
-		 * 0x8f-01,
-		 * 0x8f-02,
-		 * 0x8f-03, port configration
-		 * 0x8f-14, datum
-		 * 0x8f-15, datum
-		 * 0x8f-17, Single Precision UTM
-		 * 0x8f-18, Double Precision UTM
-		 * 0x8f-20, LLA & ENU
-		 * 0x8f-26, SEEPROM write status
-		 * 0x8f-40, TAIP Configuration
+		 * 0x83, Double Precision XYZ, data length 36
+		 * 0x84, Double Precision LLA, data length 36
 		 * 0xbb, GPS Navigation Configuration
 		 * 0xbc, Receiver Port Configuration
 		 *
@@ -1956,16 +1778,10 @@ void packet_parse(struct gps_lexer_t *lexer)
                 /* *INDENT-OFF* */
 		if (!((0x13 == pkt_id) ||
 		      (0x1c == pkt_id) ||
-		      (0x38 == pkt_id) ||
-		      ((0x41 <= pkt_id) && (0x4c >= pkt_id)) ||
-		      ((0x54 <= pkt_id) && (0x57 >= pkt_id)) ||
-		      ((0x5a <= pkt_id) && (0x5f >= pkt_id)) ||
-		      (0x6c == pkt_id) ||
-		      (0x6d == pkt_id) ||
-		      ((0x82 <= pkt_id) && (0x84 >= pkt_id)) ||
-		      (0x8f == pkt_id) ||
 		      (0xbb == pkt_id) ||
-		      (0xbc == pkt_id))) {
+		      (0xbc == pkt_id) ||
+		      (0x38 == pkt_id))
+		    && ((0x41 > pkt_id) || (0x8f < pkt_id))) {
 		    gpsd_log(&lexer->errout, LOG_IO,
 			     "Packet ID 0x%02x out of range for TSIP\n",
 			     pkt_id);
@@ -1990,12 +1806,6 @@ void packet_parse(struct gps_lexer_t *lexer)
 		    /* pass */ ;
 		else if (TSIP_ID_AND_LENGTH(0x46, 2))
 		    /* pass */ ;
-		else if ((0x47 == pkt_id) && ((packetlen % 5) == 0))
-		    /*
-                     * 0x47 data length 1+5*numSV, packetlen is 5+5*numSV
-                     * FIXME, should be a proper length calculation
-                     */
-		     /* pass */ ;
 		else if (TSIP_ID_AND_LENGTH(0x48, 22))
 		    /* pass */ ;
 		else if (TSIP_ID_AND_LENGTH(0x49, 32))
@@ -2020,29 +1830,17 @@ void packet_parse(struct gps_lexer_t *lexer)
 		    /* pass */ ;
 		else if (TSIP_ID_AND_LENGTH(0x5c, 24))
 		    /* pass */ ;
-		else if (TSIP_ID_AND_LENGTH(0x5d, 26))
-		    /* pass */ ;
 		else if (TSIP_ID_AND_LENGTH(0x5e, 2))
 		    /* pass */ ;
 		/*
-		 * Not in [TSIP]. the TSIP driver doesn't use type 0x5f.
-	         * but we test for it so as to avoid setting packet not_tsip
+		 * Not in [TSIP]. It's unclear where this test came from or
+		 * why it's here; the TSIP driver doesn't use type 0x5f.
 		 */
 		else if (TSIP_ID_AND_LENGTH(0x5f, 66))
-		    /*
-		     * 0x6c data length 18+numSV, total packetlen is 22+numSV
-		     * numSV up to 224
-		     */
 		    /* pass */ ;
-		else if ((0x6c == pkt_id)
-			 && ((22 <= packetlen) && (246 >= packetlen)))
-		    /*
-		     * 0x6d data length 17+numSV, total packetlen is 21+numSV
-	             * numSV up to 32
-		     */
-		    /* pass */ ;
+		/* 0x6d is variable length depending on the sat picture */
 		else if ((0x6d == pkt_id)
-			 && ((21 <= packetlen) && (53 >= packetlen)))
+			 && ((0x14 <= packetlen) && (0x20 >= packetlen)))
 		    /* pass */ ;
 		else if (TSIP_ID_AND_LENGTH(0x82, 1))
 		    /* pass */ ;
@@ -2051,7 +1849,7 @@ void packet_parse(struct gps_lexer_t *lexer)
 		else if (TSIP_ID_AND_LENGTH(0x84, 36))
 		    /* pass */ ;
 		/* super packets, variable length */
-		else if (0x8f == pkt_id)
+		else if ((0x8e == pkt_id) || (0x8f == pkt_id))
 		    /* pass */ ;
 		/*
 		 * This is according to [TSIP].
@@ -2323,12 +2121,6 @@ void packet_parse(struct gps_lexer_t *lexer)
 	    break;
 	}
 #endif /* PASSTHROUGH_ENABLE */
-#ifdef STASH_ENABLE
-	else if (lexer->state == STASH_RECOGNIZED) {
-	    packet_stash(lexer);
-	    packet_discard(lexer);
-	}
-#endif /* STASH_ENABLE */
     }				/* while */
 }
 
@@ -2425,9 +2217,6 @@ void packet_reset(struct gps_lexer_t *lexer)
 #ifdef BINARY_ENABLE
     isgps_init(lexer);
 #endif /* BINARY_ENABLE */
-#ifdef STASH_ENABLE
-    lexer->stashbuflen = 0;
-#endif /* STASH_ENABLE */
 }
 
 

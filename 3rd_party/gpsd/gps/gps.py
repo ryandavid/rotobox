@@ -14,17 +14,10 @@
 # The JSON parts of this (which will be reused by any new interface)
 # now live in a different module.
 #
-
-# This code runs compatibly under Python 2 and 3.x for x >= 2.
-# Preserve this property!
-from __future__ import absolute_import, print_function, division
-
-from .client import *
-from .misc import isotime
+from client import *
+from misc import isotime
 
 NaN = float('nan')
-
-
 def isnan(x): return str(x) == 'nan'
 
 # Don't hand-hack this list, it's generated.
@@ -86,8 +79,7 @@ WATCH_PPS	= 0x002000	# enable PPS JSON
 WATCH_NEWSTYLE	= 0x010000	# force JSON streaming
 WATCH_OLDSTYLE	= 0x020000	# force old-style streaming
 
-
-class gpsfix(object):
+class gpsfix:
     def __init__(self):
         self.mode = MODE_NO_FIX
         self.time = NaN
@@ -104,8 +96,7 @@ class gpsfix(object):
         self.eps = NaN
         self.epc = NaN
 
-
-class gpsdata(object):
+class gpsdata:
     "Position, track, velocity and status information returned by a GPS."
 
     class satellite:
@@ -115,7 +106,6 @@ class gpsdata(object):
             self.azimuth = azimuth
             self.ss = ss
             self.used = used
-
         def __repr__(self):
             return "PRN: %3d  E: %3d  Az: %3d  Ss: %3d  Used: %s" % (
                 self.PRN, self.elevation, self.azimuth, self.ss, "ny"[self.used]
@@ -174,15 +164,88 @@ class gpsdata(object):
             st += "    %r\n" % sat
         return st
 
-
 class gps(gpscommon, gpsdata, gpsjson):
     "Client interface to a running gpsd instance."
-
     def __init__(self, host="127.0.0.1", port=GPSD_PORT, verbose=0, mode=0):
         gpscommon.__init__(self, host, port, verbose)
         gpsdata.__init__(self)
+        self.newstyle = False
         if mode:
             self.stream(mode)
+
+    def __oldstyle_unpack(self, buf):
+        # unpack a daemon response into the gps instance members
+        self.fix.time = 0.0
+        fields = buf.strip().split(",")
+        if fields[0] == "GPSD":
+            for field in fields[1:]:
+                if not field or field[1] != '=':
+                    continue
+                cmd = field[0].upper()
+                data = field[2:]
+                if data[0] == "?":
+                    continue
+                if cmd == 'F':
+                    self.device = data
+                elif cmd == 'I':
+                    self.gps_id = data
+                elif cmd == 'O':
+                    fields = data.split()
+                    if fields[0] == '?':
+                        self.fix.mode = MODE_NO_FIX
+                    else:
+                        def default(i, vbit=0, cnv=float):
+                            if fields[i] == '?':
+                                return NaN
+                            else:
+                                try:
+                                    value = cnv(fields[i])
+                                except ValueError:
+                                    return NaN
+                                self.valid |= vbit
+                                return value
+                        # clear all valid bits that might be set again below
+                        self.valid &= ~(
+                            TIME_SET | TIMERR_SET | LATLON_SET | ALTITUDE_SET |
+                            HERR_SET | VERR_SET | TRACK_SET | SPEED_SET |
+                            CLIMB_SET | SPEEDERR_SET | CLIMBERR_SET | MODE_SET
+                        )
+                        self.utc = fields[1]
+                        self.fix.time = default(1, TIME_SET)
+                        if not isnan(self.fix.time):
+                            self.utc = isotime(self.fix.time)
+                        self.fix.ept = default(2, TIMERR_SET)
+                        self.fix.latitude = default(3, LATLON_SET)
+                        self.fix.longitude = default(4)
+                        self.fix.altitude = default(5, ALTITUDE_SET)
+                        self.fix.epx = self.epy = default(6, HERR_SET)
+                        self.fix.epv = default(7, VERR_SET)
+                        self.fix.track = default(8, TRACK_SET)
+                        self.fix.speed = default(9, SPEED_SET)
+                        self.fix.climb = default(10, CLIMB_SET)
+                        self.fix.epd = default(11)
+                        self.fix.eps = default(12, SPEEDERR_SET)
+                        self.fix.epc = default(13, CLIMBERR_SET)
+                        if len(fields) > 14:
+                            self.fix.mode = default(14, MODE_SET, int)
+                        else:
+                            if self.valid & ALTITUDE_SET:
+                                self.fix.mode = MODE_2D
+                            else:
+                                self.fix.mode = MODE_3D
+                            self.valid |= MODE_SET
+                elif cmd == 'X':
+                    self.online = float(data)
+                    self.valid |= ONLINE_SET
+                elif cmd == 'Y':
+                    satellites = data.split(":")
+                    prefix = satellites.pop(0).split()
+                    d1 = int(prefix.pop())
+                    newsats = []
+                    for i in range(d1):
+                        newsats.append(gps.satellite(*map(int, satellites[i].split())))
+                    self.satellites = newsats
+                    self.valid |= SATELLITE_SET
 
     def __oldstyle_shim(self):
         # The rest is backwards compatibility for the old interface
@@ -216,25 +279,24 @@ class gps(gpscommon, gpsdata, gpsjson):
                 if type(self.fix.time) == type(0.0):
                     self.fix.time = self.utc
                 else:
-                    self.fix.time = isotime(self.utc)
-            self.fix.ept       = default("ept",   NaN, TIMERR_SET)
-            self.fix.latitude  = default("lat",   NaN, LATLON_SET)
+                    self.fix.time = isotime(self.utc.encode("ascii"))
+            self.fix.ept =       default("ept",   NaN, TIMERR_SET)
+            self.fix.latitude =  default("lat",   NaN, LATLON_SET)
             self.fix.longitude = default("lon",   NaN)
-            self.fix.altitude  = default("alt",   NaN, ALTITUDE_SET)
-            self.fix.epx       = default("epx",   NaN, HERR_SET)
-            self.fix.epy       = default("epy",   NaN, HERR_SET)
-            self.fix.epv       = default("epv",   NaN, VERR_SET)
-            self.fix.track     = default("track", NaN, TRACK_SET)
-            self.fix.speed     = default("speed", NaN, SPEED_SET)
-            self.fix.climb     = default("climb", NaN, CLIMB_SET)
-            self.fix.epd       = default("epd",   NaN)
-            self.fix.eps       = default("eps",   NaN, SPEEDERR_SET)
-            self.fix.epc       = default("epc",   NaN, CLIMBERR_SET)
-            self.fix.mode      = default("mode",  0,   MODE_SET)
-            self.fix.status    = default("status",1)
+            self.fix.altitude =  default("alt",   NaN, ALTITUDE_SET)
+            self.fix.epx =       default("epx",   NaN, HERR_SET)
+            self.fix.epy =       default("epy",   NaN, HERR_SET)
+            self.fix.epv =       default("epv",   NaN, VERR_SET)
+            self.fix.track =     default("track", NaN, TRACK_SET)
+            self.fix.speed =     default("speed", NaN, SPEED_SET)
+            self.fix.climb =     default("climb", NaN, CLIMB_SET)
+            self.fix.epd =       default("epd",   NaN)
+            self.fix.eps =       default("eps",   NaN, SPEEDERR_SET)
+            self.fix.epc =       default("epc",   NaN, CLIMBERR_SET)
+            self.fix.mode =      default("mode",  0,   MODE_SET)
         elif self.data.get("class") == "SKY":
             for attrp in ("x", "y", "v", "h", "p", "g"):
-                setattr(self, attrp + "dop", default(attrp + "dop", NaN, DOP_SET))
+                setattr(self, attrp+"dop", default(attrp+"dop", NaN, DOP_SET))
             if "satellites" in self.data.keys():
                 self.satellites = []
                 for sat in self.data['satellites']:
@@ -253,11 +315,14 @@ class gps(gpscommon, gpsdata, gpsjson):
         if self.response.startswith("{") and self.response.endswith("}\r\n"):
             self.unpack(self.response)
             self.__oldstyle_shim()
+            self.newstyle = True
+            self.valid |= PACKET_SET
+        elif self.response.startswith("GPSD"):
+            self.__oldstyle_unpack(self.response)
             self.valid |= PACKET_SET
         return 0
 
-    def __next__(self):
-        "Python 3 version of next()."
+    def next(self):
         if self.read() == -1:
             raise StopIteration
         if hasattr(self, "data"):
@@ -265,13 +330,9 @@ class gps(gpscommon, gpsdata, gpsjson):
         else:
             return self.response
 
-    def next(self):
-        "Python 2 backward compatibility."
-        return self.__next__()
-
     def stream(self, flags=0, devpath=None):
         "Ask gpsd to stream reports at your client."
-        if (flags & (WATCH_JSON | WATCH_OLDSTYLE | WATCH_NMEA | WATCH_RAW)) == 0:
+        if (flags & (WATCH_JSON|WATCH_OLDSTYLE|WATCH_NMEA|WATCH_RAW)) == 0:
             flags |= WATCH_JSON
         if flags & WATCH_DISABLE:
             if flags & WATCH_OLDSTYLE:
@@ -280,8 +341,8 @@ class gps(gpscommon, gpsdata, gpsjson):
                     arg += 'r-'
                     return self.send(arg)
             else:
-                gpsjson.stream(self, flags, devpath)
-        else:  # flags & WATCH_ENABLE:
+                gpsjson.stream(self, ~flags, devpath)
+        else: # flags & WATCH_ENABLE:
             if flags & WATCH_OLDSTYLE:
                 arg = 'w+'
                 if flags & WATCH_NMEA:
@@ -289,7 +350,6 @@ class gps(gpscommon, gpsdata, gpsjson):
                     return self.send(arg)
             else:
                 gpsjson.stream(self, flags, devpath)
-
 
 def is_sbas(prn):
     "Is this the NMEA ID of an SBAS satellite?"
@@ -304,10 +364,10 @@ if __name__ == '__main__':
         if switch == '-v':
             verbose = True
     if len(arguments) > 2:
-        print('Usage: gps.py [-v] [host [port]]')
+        print 'Usage: gps.py [-v] [host [port]]'
         sys.exit(1)
 
-    opts = {"verbose": verbose}
+    opts = { "verbose" : verbose }
     if len(arguments) > 0:
         opts["host"] = arguments[0]
     if len(arguments) > 1:
@@ -317,9 +377,9 @@ if __name__ == '__main__':
     session.stream(WATCH_ENABLE)
     try:
         for report in session:
-            print(report)
+            print report
     except KeyboardInterrupt:
         # Avoid garble on ^C
-        print("")
+        print ""
 
 # gps.py ends here

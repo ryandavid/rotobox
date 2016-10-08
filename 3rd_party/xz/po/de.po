@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: XZ Utils 4.999.9beta\n"
 "Report-Msgid-Bugs-To: lasse.collin@tukaani.org\n"
-"POT-Creation-Date: 2015-09-29 14:03+0300\n"
+"POT-Creation-Date: 2015-08-07 05:10+0200\n"
 "PO-Revision-Date: 2015-08-07 14:00+0200\n"
 "Last-Translator:  <sqrt@entless.org>\n"
 "Language-Team: German\n"
@@ -105,12 +105,24 @@ msgstr "Passte die Anzahl Threads von %s auf %s an um nicht das Speichernutzungs
 msgid "Adjusted LZMA%c dictionary size from %s MiB to %s MiB to not exceed the memory usage limit of %s MiB"
 msgstr "Passte LZMA%c-Wörterbuchgröße von %s MiB to %s MiB an, um nicht das Speichernutzungslimit von %s MiB zu übersteigen"
 
-#: src/xz/file_io.c:87 src/xz/file_io.c:95
+#: src/xz/file_io.c:100 src/xz/file_io.c:108
 #, c-format
 msgid "Error creating a pipe: %s"
 msgstr "Fehler beim Erzeugen der Pipeline: %s"
 
-#: src/xz/file_io.c:172
+#: src/xz/file_io.c:163
+msgid "Sandbox is disabled due to incompatible command line arguments"
+msgstr "Sandbox ist wegen inkompatibler Kommandozeilenargumente deaktiviert"
+
+#: src/xz/file_io.c:206
+msgid "Sandbox was successfully enabled"
+msgstr "Sandbox wurde erfolgreich aktiviert"
+
+#: src/xz/file_io.c:210
+msgid "Failed to enable the sandbox"
+msgstr "Konnte Sandbox nicht aktivieren"
+
+#: src/xz/file_io.c:252
 #, c-format
 msgid "%s: poll() failed: %s"
 msgstr "%s: poll() Fehler: %s"
@@ -125,107 +137,107 @@ msgstr "%s: poll() Fehler: %s"
 #. it is possible that the user has put a new file in place
 #. of the original file, and in that case it obviously
 #. shouldn't be removed.
-#: src/xz/file_io.c:242
+#: src/xz/file_io.c:322
 #, c-format
 msgid "%s: File seems to have been moved, not removing"
 msgstr "%s: Datei scheint umbenannt worden zu sein, daher wird sie nicht gelöscht"
 
-#: src/xz/file_io.c:249 src/xz/file_io.c:762
+#: src/xz/file_io.c:329 src/xz/file_io.c:847
 #, c-format
 msgid "%s: Cannot remove: %s"
 msgstr "%s: Kann nicht löschen: %s"
 
-#: src/xz/file_io.c:274
+#: src/xz/file_io.c:354
 #, c-format
 msgid "%s: Cannot set the file owner: %s"
 msgstr "%s: Kann Dateieigentümer nicht setzen: %s"
 
-#: src/xz/file_io.c:280
+#: src/xz/file_io.c:360
 #, c-format
 msgid "%s: Cannot set the file group: %s"
 msgstr "%s: Kann Dateigruppe nicht setzen: %s"
 
-#: src/xz/file_io.c:299
+#: src/xz/file_io.c:379
 #, c-format
 msgid "%s: Cannot set the file permissions: %s"
 msgstr "%s: Kann Zugriffsrechte nicht setzen: %s"
 
-#: src/xz/file_io.c:409
+#: src/xz/file_io.c:489
 #, c-format
 msgid "Error getting the file status flags from standard input: %s"
 msgstr "Kann Status-Flags der Standardeingabe nicht ermitteln: %s"
 
-#: src/xz/file_io.c:463 src/xz/file_io.c:525
+#: src/xz/file_io.c:543 src/xz/file_io.c:605
 #, c-format
 msgid "%s: Is a symbolic link, skipping"
 msgstr "%s: Überspringe symbolischen Link"
 
-#: src/xz/file_io.c:554
+#: src/xz/file_io.c:634
 #, c-format
 msgid "%s: Is a directory, skipping"
 msgstr "%s: Überspringe Verzeichnis"
 
-#: src/xz/file_io.c:560
+#: src/xz/file_io.c:640
 #, c-format
 msgid "%s: Not a regular file, skipping"
 msgstr "%s: Keine reguläre Datei, überspringe"
 
-#: src/xz/file_io.c:577
+#: src/xz/file_io.c:657
 #, c-format
 msgid "%s: File has setuid or setgid bit set, skipping"
 msgstr "%s: Datei hat das setuid- oder setgid-Bit gesetzt, überspringe"
 
-#: src/xz/file_io.c:584
+#: src/xz/file_io.c:664
 #, c-format
 msgid "%s: File has sticky bit set, skipping"
 msgstr "%s: Datei hat sticky-Bit gesetzt, überspringe"
 
-#: src/xz/file_io.c:591
+#: src/xz/file_io.c:671
 #, c-format
 msgid "%s: Input file has more than one hard link, skipping"
 msgstr "%s: Eingabedatei hat mehr als einen Hard Link, überspringe"
 
-#: src/xz/file_io.c:671
+#: src/xz/file_io.c:756
 #, c-format
 msgid "Error restoring the status flags to standard input: %s"
 msgstr "Fehler beim Wiederherstellen der Status-Flags für die Standardausgabe: %s"
 
-#: src/xz/file_io.c:720
+#: src/xz/file_io.c:805
 #, c-format
 msgid "Error getting the file status flags from standard output: %s"
 msgstr "Kann Status-Flags der Standardausgabe nicht ermitteln: %s"
 
-#: src/xz/file_io.c:898
+#: src/xz/file_io.c:983
 #, c-format
 msgid "Error restoring the O_APPEND flag to standard output: %s"
 msgstr "Fehler beim Wiederherstellen des O_APPEND-Flags bei Standardausgabe: %s"
 
-#: src/xz/file_io.c:910
+#: src/xz/file_io.c:995
 #, c-format
 msgid "%s: Closing the file failed: %s"
 msgstr "%s: Fehler beim Schließen der Datei: %s"
 
-#: src/xz/file_io.c:946 src/xz/file_io.c:1172
+#: src/xz/file_io.c:1031 src/xz/file_io.c:1257
 #, c-format
 msgid "%s: Seeking failed when trying to create a sparse file: %s"
 msgstr "%s: Positionierungsfehler beim Versuch eine sparse (dünnbesetzte) Datei zu erzeugen: %s"
 
-#: src/xz/file_io.c:1041
+#: src/xz/file_io.c:1126
 #, c-format
 msgid "%s: Read error: %s"
 msgstr "%s: Lesefehler: %s"
 
-#: src/xz/file_io.c:1061
+#: src/xz/file_io.c:1146
 #, c-format
 msgid "%s: Error seeking the file: %s"
 msgstr "%s: Fehler beim Lesen der Dateinamen: %s"
 
-#: src/xz/file_io.c:1071
+#: src/xz/file_io.c:1156
 #, c-format
 msgid "%s: Unexpected end of file"
 msgstr "%s: Unerwartetes Ende der Datei"
 
-#: src/xz/file_io.c:1130
+#: src/xz/file_io.c:1215
 #, c-format
 msgid "%s: Write error: %s"
 msgstr "%s: Schreibfehler: %s"
@@ -463,7 +475,7 @@ msgstr "%s: Null-Zeichen gefunden beim Lesen der Dateinamen; Meinten Sie `--file
 msgid "Compression and decompression with --robot are not supported yet."
 msgstr "Komprimierung und Dekomprimierung mit --robot ist noch nicht unterstützt."
 
-#: src/xz/main.c:231
+#: src/xz/main.c:249
 msgid "Cannot read data from standard input when reading filenames from standard input"
 msgstr "Lesen der Standardeingabe ist nicht möglich, wenn die Dateinamen auch von der Standardeingabe gelesen werden"
 
@@ -973,15 +985,6 @@ msgstr "Schreiben auf die Standardausgabe fehlgeschlagen"
 #: src/common/tuklib_exit.c:42
 msgid "Unknown error"
 msgstr "Unbekannter Fehler"
-
-#~ msgid "Sandbox is disabled due to incompatible command line arguments"
-#~ msgstr "Sandbox ist wegen inkompatibler Kommandozeilenargumente deaktiviert"
-
-#~ msgid "Sandbox was successfully enabled"
-#~ msgstr "Sandbox wurde erfolgreich aktiviert"
-
-#~ msgid "Failed to enable the sandbox"
-#~ msgstr "Konnte Sandbox nicht aktivieren"
 
 #~ msgid "Error setting O_NONBLOCK on standard input: %s"
 #~ msgstr "Fehler beim Setzen des O_NONBLOCK-Flags für Standardausgabe: %s"

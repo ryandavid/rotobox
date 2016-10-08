@@ -22,8 +22,7 @@ problems may have been fixed or changed somewhat since this was written!
  1.8 DNS timing is wrong for HTTP redirects
  1.9 HTTP/2 frames while in the connection pool kill reuse
  1.10 Strips trailing dot from host name
- 1.11 transfer-encoding: chunked in HTTP/2
- 1.12 CURLOPT_SEEKFUNCTION not called with CURLFORM_STREAM
+ 1.11 CURLOPT_SEEKFUNCTION not called with CURLFORM_STREAM
 
  2. TLS
  2.1 Hangs with PolarSSL
@@ -50,6 +49,7 @@ problems may have been fixed or changed somewhat since this was written!
  5.5 can't handle Unicode arguments in Windows
  5.6 cmake support gaps
  5.7 Visual Studio project gaps
+ 5.8 configure finding libs in wrong directory
 
  6. Authentication
  6.1 NTLM authentication and unicode
@@ -198,15 +198,7 @@ problems may have been fixed or changed somewhat since this was written!
 
  See https://github.com/curl/curl/issues/716 for the discussion.
 
-1.11 transfer-encoding: chunked in HTTP/2
-
- For HTTP/1, when -H transfer-encoding:chunked option is given, curl encodes
- the request using chunked encoding. But when HTTP/2 is being used, the
- command wrongly sends a request with both content-length and
- transfer-encoding: chunked headers being set (and the request body is not
- chunked-encoded). See https://github.com/curl/curl/issues/662
-
-1.12 CURLOPT_SEEKFUNCTION not called with CURLFORM_STREAM
+1.11 CURLOPT_SEEKFUNCTION not called with CURLFORM_STREAM
 
  I'm using libcurl to POST form data using a FILE* with the CURLFORM_STREAM
  option of curl_formadd(). I've noticed that if the connection drops at just
@@ -367,6 +359,24 @@ problems may have been fixed or changed somewhat since this was written!
 
   - support for other development IDEs
   - add PATH environment variables for third-party DLLs
+
+5.8 configure finding libs in wrong directory
+
+ When the configure script checks for third-party libraries, it adds those
+ directories to the LDFLAGS variable and then tries linking to see if it
+ works. When successful, the found directory is kept in the LDFLAGS variable
+ when the script continues to execute and do more tests and possibly check for
+ more libraries.
+
+ This can make subsequent checks for libraries wrongly detect another
+ installation in a directory that was previously added to LDFLAGS by another
+ library check!
+
+ A possibly better way to do these checks would be to keep the pristine LDFLAGS
+ even after successful checks and instead add those verified paths to a
+ separate variable that only after all library checks have been performed gets
+ appended to LDFLAGS.
+
 
 6. Authentication
 

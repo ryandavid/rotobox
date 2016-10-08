@@ -54,6 +54,4 @@ airports/*
 # SQLite Database
 rotobox.sqlite
 
-# 3rd party build artifacts
-3rd_party_build/*
 

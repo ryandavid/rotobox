@@ -10,9 +10,9 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-#include "gps.h"
-#include "libgps.h"
-#include "gpsdclient.h"
+#define LIBGPS_DEBUG
+
+#include "gpsd.h"
 
 #include <unistd.h>
 #include <getopt.h>
@@ -32,12 +32,9 @@ static struct gps_data_t gpsdata;
 int main(int argc, char *argv[])
 {
     struct gps_data_t collect;
-    struct fixsource_t source;
     char buf[BUFSIZ];
     int option;
     bool batchmode = false;
-    bool forwardmode = false;
-    char *fmsg = NULL;
 #ifdef CLIENTDEBUG_ENABLE
     int debug = 0;
 #endif
@@ -45,14 +42,10 @@ int main(int argc, char *argv[])
     (void)signal(SIGSEGV, onsig);
     (void)signal(SIGBUS, onsig);
 
-    while ((option = getopt(argc, argv, "bf:hsD:?")) != -1) {
+    while ((option = getopt(argc, argv, "bhsD:?")) != -1) {
 	switch (option) {
 	case 'b':
 	    batchmode = true;
-	    break;
-	case 'f':
-	    forwardmode = true;
-	    fmsg = optarg;
 	    break;
 	case 's':
 	    (void)
@@ -73,16 +66,10 @@ int main(int argc, char *argv[])
 	case '?':
 	case 'h':
 	default:
-	    (void)fputs("usage: test_libgps [-b] [-f fwdmsg] [-D lvl] [-s] [server[:port:[device]]]\n", stderr);
+	    (void)fputs("usage: test_libgps [-b] [-D lvl] [-s]\n", stderr);
 	    exit(EXIT_FAILURE);
 	}
     }
-
-    /* Grok the server, port, and device. */
-    if (optind < argc) {
-	gpsd_source_spec(argv[optind], &source);
-    } else
-	gpsd_source_spec(NULL, &source);
 
 #ifdef CLIENTDEBUG_ENABLE
     gps_enable_debug(debug, stdout);
@@ -90,34 +77,22 @@ int main(int argc, char *argv[])
     if (batchmode) {
 #ifdef SOCKET_EXPORT_ENABLE
 	while (fgets(buf, sizeof(buf), stdin) != NULL) {
-	    if (buf[0] == '{' || isalpha( (int) buf[0])) {
+	    if (buf[0] == '{' || isalpha(buf[0])) {
 		gps_unpack(buf, &gpsdata);
-#ifdef LIBGPS_DEBUG
 		libgps_dump_state(&gpsdata);
-#endif
 	    }
 	}
 #endif
-    } else if (gps_open(source.server, source.port, &collect) != 0) {
-	(void)fprintf(stderr,
-		      "test_libgps: no gpsd running or network error: %d, %s\n",
-		      errno, gps_errstr(errno));
+    } else if (gps_open(NULL, 0, &collect) <= 0) {
+	(void)fputs("Daemon is not running.\n", stdout);
 	exit(EXIT_FAILURE);
-    } else if (forwardmode) {
-	if (gps_send(&collect, fmsg) == -1) {
-	  (void)fprintf(stderr,
-			"test_libgps: gps send error: %d, %s\n",
-			errno, gps_errstr(errno));
-	}
-	if (gps_read(&collect) == -1) {
-	  (void)fprintf(stderr,
-			"test_libgps: gps read error: %d, %s\n",
-			errno, gps_errstr(errno));
-	}
+    } else if (optind < argc) {
+	(void)strlcpy(buf, argv[optind], sizeof(buf));
+	(void)strlcat(buf, "\n", sizeof(buf));
+	(void)gps_send(&collect, buf);
+	(void)gps_read(&collect);
 #ifdef SOCKET_EXPORT_ENABLE
-#ifdef LIBGPS_DEBUG
 	libgps_dump_state(&collect);
-#endif
 #endif
 	(void)gps_close(&collect);
     } else {
@@ -137,9 +112,7 @@ int main(int argc, char *argv[])
 	    (void)gps_send(&collect, buf);
 	    (void)gps_read(&collect);
 #ifdef SOCKET_EXPORT_ENABLE
-#ifdef LIBGPS_DEBUG
 	    libgps_dump_state(&collect);
-#endif
 #endif
 	}
 	(void)gps_close(&collect);

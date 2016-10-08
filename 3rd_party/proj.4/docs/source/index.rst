@@ -33,16 +33,12 @@ Documentation
 
    download
    faq
-   apps/index
-   projections/index
-   parameters
    geodesic
    grids
-   htpd
-   development/index
-   glossary
    license
-   references
+   htpd
+   threads
+   parameters
 
 
 

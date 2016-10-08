@@ -1,4 +1,4 @@
-/* $Id: fax2tiff.c,v 1.24 2015-08-23 15:40:45 bfriesen Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 1990-1997 Sam Leffler

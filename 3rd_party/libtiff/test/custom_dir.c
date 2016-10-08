@@ -1,4 +1,4 @@
-/* $Id: custom_dir.c,v 1.3 2013-12-17 14:41:58 bfriesen Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2012, Frank Warmerdam <warmerdam@pobox.com>

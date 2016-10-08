@@ -1,15 +1,5 @@
 			GPSD project news
 
-Repository head:
-  Repair support for non-NMEA devices requring active probing
-  (e.g. Garmin USB GPSes). Apply OS X build fixes.  Fix a SiRF driver
-  bug that occasionally confused NTP.  Support for Spectratime iSync
-  GRClok and LNRClok oscillators. gpxlogger can reconnect when
-  the GPS loses the fix. xgps and xgpsspeed moved to python-gi,
-  getting shut of the deprecated pygtk2 bindings. Default mode for
-  xgpsspeed is now the more interesting nautical display. gpsmon
-  includes the hostname with the device display.
-
 3.16: 2016-01-08 (Eric S. Raymond <esr@snark.thyrsus.com>)
   Test rebuilds for mid-2015 leapsecond bump. Regression tests will
   run even if "python" in Python 3.  Build correctly on systems where
@@ -22,7 +12,7 @@ Repository head:
   CCFLAGS contains options that are only compatible with the
   cros1s-compiler. Fix Savannah bug #45342: SConstruct generates wrong
   *.pc files.  Fix Savannah bug #46495: gpsd_poll may crash due to
-  unitialized pointer (probably due to buggy FD_ISSET on host
+  unitialized pointer (probably due to bugg FD_ISSET on hos
   system). Fix Savannah bug #46648: gpsd crashes and buffer overflow
   is reported when terminated.  Fix Savannah bug #46802: AIVDM to CSV
   is broken in some weird cases. Fix Savannah bug #46804: JSON
@@ -30,8 +20,7 @@ Repository head:
 
 3.15: 2015-06-03 (Eric S. Raymond <esr@snark.thyrsus.com>)
   Fix a rare crash bug related to devices becoming inaccessible while timed out.
-  Accept NMEA 4.1 GSV sententences with the trailing signal-ID field,
-  as well as GSV sentences with fields for fewer than four satellites.
+  Accept NMEA 4.1 GSV sententences with the trailing signal-ID field.
   Fixed incorrect decode of south latitudes in AIS Type 17 messages.
   splint has been retired; this removes almost 2KLOC of annotations.
   chrpath is no longer a build dependency. Corrected Beidou/QZNSS display

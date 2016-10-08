@@ -58,21 +58,17 @@
 #    preceding table.
 #
 # TO-DO: generate code for ais.py.
-#
-# This code runs compatibly under Python 2 and 3.x for x >= 2.
-# Preserve this property!
-from __future__ import absolute_import, print_function, division
 
 import sys, getopt
 
 def correct_table(wfp):
     # Writes the corrected table.
-    print("Total bits:", base, file=sys.stderr)
+    print >>sys.stderr, "Total bits:", base
     for (i, t) in enumerate(table):
         if offsets[i].strip():
-            print("|" + offsets[i] + t[owidth+1:].rstrip(), file=wfp)
+            print >>wfp, "|" + offsets[i] + t[owidth+1:].rstrip()
         else:
-            print(t.rstrip(), file=wfp)
+            print >>wfp, t.rstrip()
 
 def make_driver_code(wfp):
     # Writes calls to bit-extraction macros.
@@ -86,7 +82,7 @@ def make_driver_code(wfp):
     indent = base
     for (i, t) in enumerate(table):
         if '|' in t:
-            fields = [s.strip() for s in t.split('|')]
+            fields = map(lambda s: s.strip(), t.split('|'))
             width = fields[2]
             name = fields[4]
             ftype = fields[5]
@@ -99,24 +95,21 @@ def make_driver_code(wfp):
             if not record:
                 continue
             if ftype == 'x':
-                print("\t/* skip %s bit%s */" % (width, ["", "s"][width>'1']),
-                      file=wfp)
+                print >>wfp,"\t/* skip %s bit%s */" % (width, ["", "s"][width>'1'])
                 continue
             if ftype[0] == 'a':
                 arrayname = name
                 explicit = ftype[1] == '^'
-                print('#define ARRAY_BASE %s' % offsets[i].strip(), file=wfp)
-                print('#define ELEMENT_SIZE %s' % trailing, file=wfp)
+                print >>wfp, '#define ARRAY_BASE %s' % offsets[i].strip()
+                print >>wfp, '#define ELEMENT_SIZE %s' % trailing
                 if explicit:
                     lengthfield = last
-                    print(indent + "for (i = 0; i < %s; i++) {" % lengthfield,
-                          file=wfp) 
+                    print >>wfp, indent + "for (i = 0; i < %s; i++) {" % lengthfield 
                 else:
                     lengthfield = "n" + arrayname
-                    print(indent + "for (i = 0; ARRAY_BASE + (ELEMENT_SIZE*i) < bitlen; i++) {", file=wfp) 
+                    print >>wfp, indent + "for (i = 0; ARRAY_BASE + (ELEMENT_SIZE*i) < bitlen; i++) {" 
                 indent += step
-                print(indent + "int a = ARRAY_BASE + (ELEMENT_SIZE*i);",
-                      file=wfp) 
+                print >>wfp, indent + "int a = ARRAY_BASE + (ELEMENT_SIZE*i);" 
                 continue
             offset = offsets[i].split('-')[0]
             if arrayname:
@@ -125,24 +118,22 @@ def make_driver_code(wfp):
             else:
                 target = "%s.%s" % (structname, name)
             if ftype[0].lower() in ('u', 'i', 'e'):
-                print(indent + "%s\t= %sBITS(%s, %s);" % \
-                      (target, {'u':'U', 'e':'U', 'i':'S'}[ftype[0].lower()], offset, width), file=wfp)
+                print >>wfp, indent + "%s\t= %sBITS(%s, %s);" % \
+                      (target, {'u':'U', 'e':'U', 'i':'S'}[ftype[0].lower()], offset, width)
             elif ftype == 't':
-                print(indent + "UCHARS(%s, %s);" % (offset, target), file=wfp)
+                print >>wfp, indent + "UCHARS(%s, %s);" % (offset, target)
             elif ftype == 'b':
-                print(indent + "%s\t= (bool)UBITS(%s, 1);" % (target, offset),
-                      file=wfp)
+                print >>wfp, indent + "%s\t= (bool)UBITS(%s, 1);" % (target, offset)
             else:
-                print(indent + "/* %s bits of type %s */" % (width,ftype),
-                      file=wfp)
+                print >>wfp, indent + "/* %s bits of type %s */" % (width,ftype)
             last = name
     if arrayname:
         indent = base
-        print(indent + "}", file=wfp)
+        print >>wfp, indent + "}"
         if not explicit:
-            print(indent + "%s.%s = ind;" % (structname, lengthfield), file=wfp)
-        print("#undef ARRAY_BASE", file=wfp) 
-        print("#undef ELEMENT_SIZE", file=wfp) 
+            print >>wfp, indent + "%s.%s = ind;" % (structname, lengthfield)
+        print >>wfp, "#undef ARRAY_BASE" 
+        print >>wfp, "#undef ELEMENT_SIZE" 
 
 def make_structure(wfp):
     # Write a structure definition correponding to the table.
@@ -153,11 +144,11 @@ def make_structure(wfp):
     inwards = step
     arrayname = None
     def tabify(n):
-        return ('\t' * (n // 8)) + (" " * (n % 8)) 
-    print(tabify(baseindent) + "struct {", file=wfp)
+        return ('\t' * (n / 8)) + (" " * (n % 8)) 
+    print >>wfp, tabify(baseindent) + "struct {"
     for (i, t) in enumerate(table):
         if '|' in t:
-            fields = [s.strip() for s in t.split('|')]
+            fields = map(lambda s: s.strip(), t.split('|'))
             width = fields[2]
             description = fields[3].strip()
             name = fields[4]
@@ -177,14 +168,12 @@ def make_structure(wfp):
                     ftype = ftype[1:]
                 else:
                     lengthfield = "n%s" % arrayname
-                    print(tabify(baseindent + inwards)
-                          + "signed int %s;" % lengthfield, file=wfp)
+                    print >>wfp, tabify(baseindent + inwards) + "signed int %s;" % lengthfield
                 if arrayname.endswith("s"):
                     typename = arrayname[:-1]
                 else:
                     typename = arrayname
-                print(tabify(baseindent + inwards) + "struct %s_t {" % typename,
-                      file=wfp)
+                print >>wfp, tabify(baseindent + inwards) + "struct %s_t {" % typename
                 inwards += step
                 arraydim = ftype[1:]
                 continue
@@ -195,21 +184,20 @@ def make_structure(wfp):
             elif ftype == 'b':
                 decl = "bool %s;\t/* %s */" % (name, description)
             elif ftype == 't':
-                stl = int(width) // 6
+                stl = int(width)/6
                 decl = "char %s[%d+1];\t/* %s */" % (name, stl, description)
             else:
                 decl = "/* %s bits of type %s */" % (width, ftype)
-            print(tabify(baseindent + inwards) + decl, file=wfp)
+            print >>wfp, tabify(baseindent + inwards) + decl
         last = name
     if arrayname:
         inwards -= step
-        print(tabify(baseindent + inwards) + "} %s[%s];"
-              % (arrayname, arraydim), file=wfp)
+        print >>wfp, tabify(baseindent + inwards) + "} %s[%s];" % (arrayname, arraydim)
     if "->" in structname:
         typename = structname.split("->")[1]
     if "." in typename:
         structname = structname.split(".")[1]    
-    print(tabify(baseindent) + "} %s;" % typename, file=wfp)
+    print >>wfp, tabify(baseindent) + "} %s;" % typename
 
 def make_json_dumper(wfp):
     # Write the skeleton of a JSON dump corresponding to the table.
@@ -242,7 +230,7 @@ def make_json_dumper(wfp):
     vocabularies = [x[0] for x in subtables]
     for (i, t) in enumerate(table):
         if '|' in t:
-            fields = [s.strip() for s in t.split('|')]
+            fields = map(lambda s: s.strip(), t.split('|'))
             name = fields[4]
             ftype = fields[5]
             if after == name:
@@ -284,7 +272,7 @@ def make_json_dumper(wfp):
                                fmt+r'\"%s\"', "JSON_BOOL(%s)",
                                None, None))
             elif ftype[0] == 'd':
-                print("Cannot generate code for data members", file=sys.stderr)
+                print >>sys.stderr, "Cannot generate code for data members"
                 sys.exit(1)
             elif ftype[0] == 'U':
                 tuples.append((name,
@@ -302,22 +290,21 @@ def make_json_dumper(wfp):
                     lengthfield = "n" + name
                 tuples.append((name, None, None, None, lengthfield))
             else:
-                print("Unknown type code", ftype, file=sys.stderr)
+                print >>sys.stderr, "Unknown type code", ftype
                 sys.exit(1)
         last = name
     startspan = 0
     def scaled(i):
         return tuples[i][3] is not None
     def tslice(e, i):
-        return [x[i] for x in tuples[startspan:e+1]]
+        return map(lambda x: x[i], tuples[startspan:e+1])
     base = " " * 8
     step = " " * 4
     inarray = None
     header = "(void)snprintf(buf + strlen(buf), buflen - strlen(buf),"
     for (i, (var, uf, uv, sf, sv)) in enumerate(tuples):
         if uf == None:
-            print(base + "for (i = 0; i < %s.%s; i++) {" % (structname, sv),
-                  file=wfp)
+            print >>wfp, base + "for (i = 0; i < %s.%s; i++) {" % (structname, sv)
             inarray = var
             base = " " * 12
             startspan = i+1
@@ -334,13 +321,12 @@ def make_json_dumper(wfp):
             endit = None
         if endit:
             if not scaled(i):
-                print(base + header, file=wfp)
+                print >>wfp, base + header
                 if inarray:
                     prefix = '{"'
                 else:
                     prefix = '"'
-                print(base + step + prefix +','.join(tslice(i,1)) + endit,
-                      file=wfp)
+                print >>wfp, base + step + prefix +','.join(tslice(i,1)) + endit
                 for (j, t) in enumerate(tuples[startspan:i+1]):
                     if inarray:
                         ref = structname + "." + inarray + "[i]." + t[0]
@@ -352,10 +338,9 @@ def make_json_dumper(wfp):
                     else:
                         wfp.write(",\n")
             else:
-                print(base + "if (scaled)", file=wfp)
-                print(base + step + header, file=wfp)
-                print(base + step*2 + '"'+','.join(tslice(i,3)) + endit,
-                      file=wfp)
+                print >>wfp, base + "if (scaled)"
+                print >>wfp, base + step + header
+                print >>wfp, base + step*2 + '"'+','.join(tslice(i,3)) + endit
                 for (j, t) in enumerate(tuples[startspan:i+1]):
                     if inarray:
                         ref = structname + "." + inarray + "[i]." + t[0]
@@ -366,10 +351,9 @@ def make_json_dumper(wfp):
                         wfp.write(");\n")
                     else:
                         wfp.write(",\n")
-                print(base + "else", file=wfp)
-                print(base + step + header, file=wfp)
-                print(base + step*2 + '"'+','.join(tslice(i,1)) + endit,
-                      file=wfp)
+                print >>wfp, base + "else"
+                print >>wfp, base + step + header
+                print >>wfp, base + step*2 + '"'+','.join(tslice(i,1)) + endit
                 for (j, t) in enumerate(tuples[startspan:i+1]):
                     if inarray:
                         ref = structname + "." + inarray + "[i]." + t[0]
@@ -384,11 +368,10 @@ def make_json_dumper(wfp):
     # If we were looking at a trailing array, close scope 
     if inarray:
         base = " " * 8
-        print(base + "}", file=wfp)
-        print(base + "if (buf[strlen(buf)-1] == ',')", file=wfp)
-        print(base + step + r"buf[strlen(buf)-1] = '\0';", file=wfp)
-        print(base + "(void)strlcat(buf, \"]}\", buflen - strlen(buf));",
-              file=wfp)
+        print >>wfp, base + "}"
+        print >>wfp, base + "if (buf[strlen(buf)-1] == ',')"
+        print >>wfp, base + step + r"buf[strlen(buf)-1] = '\0';"
+        print >>wfp, base + "(void)strlcat(buf, \"]}\", buflen - strlen(buf));"
 
 def make_json_generator(wfp):
     # Write a stanza for jsongen.py.in describing how to generate a
@@ -397,16 +380,16 @@ def make_json_generator(wfp):
     extra = ""
     arrayname = None
     record = after is None
-    print('''\
+    print >>wfp, '''\
     {
     "initname" : "__INITIALIZER__",
     "headers": ("AIS_HEADER",),
     "structname": "%s",
     "fieldmap":(
-        # fieldname    type        default''' % (structname,), file=wfp)
+        # fieldname    type        default''' % (structname,)
     for (i, t) in enumerate(table):
         if '|' in t:
-            fields = [s.strip() for s in t.split('|')]
+            fields = map(lambda s: s.strip(), t.split('|'))
             name = fields[4]
             ftype = fields[5]
             if after == name:
@@ -431,10 +414,9 @@ def make_json_generator(wfp):
                 else:
                     lengthfield = "n" + arrayname
                 extra = " " * 8
-                print("        ('%s',%s 'array', (" % \
-                      (arrayname, " "*(10-len(arrayname))), file=wfp)
-                print("            ('%s_t', '%s', (" % (typename, lengthfield),
-                      file=wfp)
+                print >>wfp, "        ('%s',%s 'array', (" % \
+                      (arrayname, " "*(10-len(arrayname)))
+                print >>wfp, "            ('%s_t', '%s', (" % (typename, lengthfield)
             else:
                 # Depends on the assumption that the read code
                 # always sees unscaled JSON.
@@ -465,27 +447,27 @@ def make_json_generator(wfp):
                     "second": "'60'",
                     }
                 default = namedefaults.get(name) or typedefault
-                print(extra + "        ('%s',%s '%s',%s %s)," % (name,
+                print >>wfp, extra + "        ('%s',%s '%s',%s %s)," % (name,
                                                      " "*(10-len(name)),
                                                      readtype,
                                                      " "*(8-len(readtype)),
-                                                     default), file=wfp)
+                                                     default)
                 if ftype[0] == 'e':
-                    print(extra + "        ('%s_text',%s'ignore',   None)," % \
-                          (name, " "*(6-len(name))), file=wfp)
+                    print >>wfp, extra + "        ('%s_text',%s'ignore',   None)," % \
+                          (name, " "*(6-len(name)))
 
             last = name
     if arrayname:
-        print("                    )))),", file=wfp)
-    print("        ),", file=wfp)
-    print("    },", file=wfp)
+        print >>wfp, "                    )))),"
+    print >>wfp, "        ),"
+    print >>wfp, "    },"
 
 if __name__ == '__main__':
     try:
         (options, arguments) = getopt.getopt(sys.argv[1:], "a:tc:s:d:S:E:r:o:")
-    except getopt.GetoptError as msg:
-        print("tablecheck.py: " + str(msg))
-        raise SystemExit(1)
+    except getopt.GetoptError, msg:
+        print "tablecheck.py: " + str(msg)
+        raise SystemExit, 1
     generate = maketable = makestruct = makedump = readgen = all = False
     after = before = None
     filestem = "tablegen"
@@ -515,7 +497,7 @@ if __name__ == '__main__':
             filestem = val
 
     if not generate and not maketable and not makestruct and not makedump and not readgen and not all:
-        print("tablecheck.py: no mode selected", file=sys.stderr)
+        print >>sys.stderr, "tablecheck.py: no mode selected"
         sys.exit(1)
 
     # First, read in the table.
@@ -573,10 +555,10 @@ if __name__ == '__main__':
                 subtable_content.append([f.strip() for f in line[1:].strip().split("|")])
             continue
     if state == 0:
-        print("Can't find named table.", file=sys.stderr)
+        print >>sys.stderr, "Can't find named table."
         sys.exit(1)        
     elif state < 3:
-        print("Ill-formed table (in state %d)." % state, file=sys.stderr)
+        print >>sys.stderr, "Ill-formed table (in state %d)." % state
         sys.exit(1)
     table = table[1:]
     ranges = ranges[1:]
@@ -599,7 +581,7 @@ if __name__ == '__main__':
     corrections = False
     for w in widths:
         if w is None:
-            offsets.append(repr(base))
+            offsets.append(`base`)
             base = 0
         elif w == '':
             offsets.append('')
@@ -607,13 +589,13 @@ if __name__ == '__main__':
             w = int(w)
             offsets.append("%d-%d" % (base, base + w - 1))
             base += w
-    if [p for p in zip(ranges, offsets) if p[0] != p[1]]:
+    if filter(lambda p: p[0] != p[1], zip(ranges, offsets)):
         corrections = True
-        print("Offset corrections:")
+        print "Offset corrections:"
         for (old, new) in zip(ranges, offsets):
             if old != new:
-                print(old, "->", new, file=sys.stderr) 
-    owidth = max(*list(map(len, offsets))) 
+                print >>sys.stderr, old, "->", new 
+    owidth = max(*map(len, offsets)) 
     for (i, off) in enumerate(offsets):
         offsets[i] += " " * (owidth - len(offsets[i]))
 

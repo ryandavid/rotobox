@@ -1,4 +1,4 @@
-/* $Id: fax2ps.c,v 1.31 2015-09-06 18:24:27 bfriesen Exp $" */
+/* $Id$" */
 
 /*
  * Copyright (c) 1991-1997 Sam Leffler

@@ -5,9 +5,6 @@
  * see the file COPYING in the distribution root for details.
  */
 
-/* sys/ipc.h needs _XOPEN_SOURCE, 500 means X/Open 1995 */
-#define _XOPEN_SOURCE 500
-
 #include <string.h>
 #include <libgen.h>
 #include <stdbool.h>
@@ -30,15 +27,10 @@ void ntp_write(volatile struct shmTime *shmseg,
 {
     struct tm tm;
 
-    /*
-     * insist that leap seconds only happen in june and december
+    /* insist that leap seconds only happen in june and december
      * GPS emits leap pending for 3 months prior to insertion
      * NTP expects leap pending for only 1 month prior to insertion
-     * Per http://bugs.ntp.org/1090
-     *
-     * ITU-R TF.460-6, Section 2.1, says laep seconds can be primarily
-     * in Jun/Dec but may be in March or September
-     */
+     * Per http://bugs.ntp.org/1090 */
     (void)gmtime_r( &(td->real.tv_sec), &tm);
     if ( 5 != tm.tm_mon && 11 != tm.tm_mon ) {
         /* Not june, not December, no way */

@@ -8,13 +8,6 @@
  * see the file COPYING in the distribution root for details.
  */
 
-/* nice() needs _XOPEN_SOURCE, 500 means X/Open 1995 */
-#define _XOPEN_SOURCE 500
-/* snprintf() needs __DARWIN_C_LEVEL >= 200112L */
-#define __DARWIN_C_LEVEL 200112L
-/* snprintf() needs _DARWIN_C_SOURCE */
-#define _DARWIN_C_SOURCE
-
 #include <string.h>
 #include <libgen.h>
 #include <stdbool.h>
@@ -24,7 +17,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
-#include <time.h>        /* for timespec */
 #include <unistd.h>
 
 #include "timespec.h"
@@ -112,6 +104,8 @@
  * Removing these segments is usually not necessary, as the operating system
  * garbage-collects them when they have no attached processes.
  */
+
+#define PPS_MIN_FIXES	3	/* # fixes to wait for before shipping PPS */
 
 static volatile struct shmTime *getShmTime(struct gps_context_t *context, int unit)
 {
@@ -323,15 +317,10 @@ static void chrony_send(struct gps_device_t *session, struct timedelta_t *td)
     struct tm tm;
     int leap_notify = session->context->leap_notify;
 
-    /*
-     * insist that leap seconds only happen in june and december
+    /* insist that leap seconds only happen in june and december
      * GPS emits leap pending for 3 months prior to insertion
      * NTP expects leap pending for only 1 month prior to insertion
-     * Per http://bugs.ntp.org/1090
-     *
-     * ITU-R TF.460-6, Section 2.1, says lappe seconds can be primarily
-     * in Jun/Dec but may be in March or September
-     */
+     * Per http://bugs.ntp.org/1090 */
     (void)gmtime_r( &(td->real.tv_sec), &tm);
     if ( 5 != tm.tm_mon && 11 != tm.tm_mon ) {
         /* Not june, not December, no way */
@@ -369,7 +358,7 @@ static char *report_hook(volatile struct pps_thread_t *pps_thread,
     struct gps_device_t *session = (struct gps_device_t *)pps_thread->context;
 
     /* PPS only source never get any serial info
-     * so no NTPTIME_IS or fixcnt */
+     * so no PPSTIME_IS or fixcnt */
     if ( source_pps != session->sourcetype) {
         /* FIXME! these two validations need to move back into ppsthread.c */
 
@@ -382,9 +371,10 @@ static char *report_hook(volatile struct pps_thread_t *pps_thread,
 	 * required on all Garmin and u-blox; safest to do it
 	 * for all cases as we have no other general way to know
 	 * if PPS is good.
+	 *
+	 * Not sure yet how to handle u-blox UBX_MODE_TMONLY
 	 */
-	if (session->fixcnt <= NTP_MIN_FIXES &&
-	    (session->gpsdata.set & GOODTIME_IS) == 0)
+	if (session->fixcnt <= PPS_MIN_FIXES)
 	    return "no fix";
     }
 
@@ -455,16 +445,6 @@ void ntpshm_link_activate(struct gps_device_t *session)
 	} else {
 	    init_hook(session);
 	    session->pps_thread.report_hook = report_hook;
-	    /*
-	     * The HAT kludge. If we're using the HAT GPS on a
-	     * Raspberry Pi or a workalike like the ODROIDC2, and
-	     * there is a static /dev/pps0, and we have access because
-	     * we're root, assume we want to use KPPS.
-	     */
-	    if ((strcmp(session->pps_thread.devicename, MAGIC_HAT_GPS) == 0
-		 || strcmp(session->pps_thread.devicename, MAGIC_LINK_GPS) == 0)
-		&& access("/dev/pps0", R_OK | W_OK) == 0)
-		session->pps_thread.devicename = "/dev/pps0";
 	    pps_thread_activate(&session->pps_thread);
 	}
     }

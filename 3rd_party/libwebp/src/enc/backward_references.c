@@ -16,6 +16,7 @@
 #include "./backward_references.h"
 #include "./histogram.h"
 #include "../dsp/lossless.h"
+#include "../dsp/lossless_common.h"
 #include "../dsp/dsp.h"
 #include "../utils/color_cache.h"
 #include "../utils/utils.h"
@@ -211,13 +212,13 @@ void VP8LHashChainClear(VP8LHashChain* const p) {
 
 // -----------------------------------------------------------------------------
 
-#define HASH_MULTIPLIER_HI (0xc6a4a793U)
-#define HASH_MULTIPLIER_LO (0x5bd1e996U)
+#define HASH_MULTIPLIER_HI (0xc6a4a793ULL)
+#define HASH_MULTIPLIER_LO (0x5bd1e996ULL)
 
 static WEBP_INLINE uint32_t GetPixPairHash64(const uint32_t* const argb) {
   uint32_t key;
-  key  = argb[1] * HASH_MULTIPLIER_HI;
-  key += argb[0] * HASH_MULTIPLIER_LO;
+  key  = (argb[1] * HASH_MULTIPLIER_HI) & 0xffffffffu;
+  key += (argb[0] * HASH_MULTIPLIER_LO) & 0xffffffffu;
   key = key >> (32 - HASH_BITS);
   return key;
 }
@@ -242,18 +243,25 @@ static WEBP_INLINE int MaxFindCopyLength(int len) {
 }
 
 int VP8LHashChainFill(VP8LHashChain* const p, int quality,
-                      const uint32_t* const argb, int xsize, int ysize) {
+                      const uint32_t* const argb, int xsize, int ysize,
+                      int low_effort) {
   const int size = xsize * ysize;
   const int iter_max = GetMaxItersForQuality(quality);
-  const int iter_min = iter_max - quality / 10;
   const uint32_t window_size = GetWindowSizeForHashChain(quality, xsize);
   int pos;
+  int argb_comp;
   uint32_t base_position;
   int32_t* hash_to_first_index;
   // Temporarily use the p->offset_length_ as a hash chain.
   int32_t* chain = (int32_t*)p->offset_length_;
+  assert(size > 0);
   assert(p->size_ != 0);
   assert(p->offset_length_ != NULL);
+
+  if (size <= 2) {
+    p->offset_length_[0] = p->offset_length_[size - 1] = 0;
+    return 1;
+  }
 
   hash_to_first_index =
       (int32_t*)WebPSafeMalloc(HASH_SIZE, sizeof(*hash_to_first_index));
@@ -262,48 +270,111 @@ int VP8LHashChainFill(VP8LHashChain* const p, int quality,
   // Set the int32_t array to -1.
   memset(hash_to_first_index, 0xff, HASH_SIZE * sizeof(*hash_to_first_index));
   // Fill the chain linking pixels with the same hash.
-  for (pos = 0; pos < size - 1; ++pos) {
-    const uint32_t hash_code = GetPixPairHash64(argb + pos);
-    chain[pos] = hash_to_first_index[hash_code];
-    hash_to_first_index[hash_code] = pos;
+  argb_comp = (argb[0] == argb[1]);
+  for (pos = 0; pos < size - 2;) {
+    uint32_t hash_code;
+    const int argb_comp_next = (argb[pos + 1] == argb[pos + 2]);
+    if (argb_comp && argb_comp_next) {
+      // Consecutive pixels with the same color will share the same hash.
+      // We therefore use a different hash: the color and its repetition
+      // length.
+      uint32_t tmp[2];
+      uint32_t len = 1;
+      tmp[0] = argb[pos];
+      // Figure out how far the pixels are the same.
+      // The last pixel has a different 64 bit hash, as its next pixel does
+      // not have the same color, so we just need to get to the last pixel equal
+      // to its follower.
+      while (pos + (int)len + 2 < size && argb[pos + len + 2] == argb[pos]) {
+        ++len;
+      }
+      if (len > MAX_LENGTH) {
+        // Skip the pixels that match for distance=1 and length>MAX_LENGTH
+        // because they are linked to their predecessor and we automatically
+        // check that in the main for loop below. Skipping means setting no
+        // predecessor in the chain, hence -1.
+        memset(chain + pos, 0xff, (len - MAX_LENGTH) * sizeof(*chain));
+        pos += len - MAX_LENGTH;
+        len = MAX_LENGTH;
+      }
+      // Process the rest of the hash chain.
+      while (len) {
+        tmp[1] = len--;
+        hash_code = GetPixPairHash64(tmp);
+        chain[pos] = hash_to_first_index[hash_code];
+        hash_to_first_index[hash_code] = pos++;
+      }
+      argb_comp = 0;
+    } else {
+      // Just move one pixel forward.
+      hash_code = GetPixPairHash64(argb + pos);
+      chain[pos] = hash_to_first_index[hash_code];
+      hash_to_first_index[hash_code] = pos++;
+      argb_comp = argb_comp_next;
+    }
   }
+  // Process the penultimate pixel.
+  chain[pos] = hash_to_first_index[GetPixPairHash64(argb + pos)];
+
   WebPSafeFree(hash_to_first_index);
 
   // Find the best match interval at each pixel, defined by an offset to the
   // pixel and a length. The right-most pixel cannot match anything to the right
   // (hence a best length of 0) and the left-most pixel nothing to the left
   // (hence an offset of 0).
+  assert(size > 2);
   p->offset_length_[0] = p->offset_length_[size - 1] = 0;
-  for (base_position = size - 2 < 0 ? 0 : size - 2; base_position > 0;) {
+  for (base_position = size - 2; base_position > 0;) {
     const int max_len = MaxFindCopyLength(size - 1 - base_position);
     const uint32_t* const argb_start = argb + base_position;
     int iter = iter_max;
     int best_length = 0;
     uint32_t best_distance = 0;
+    uint32_t best_argb;
     const int min_pos =
         (base_position > window_size) ? base_position - window_size : 0;
     const int length_max = (max_len < 256) ? max_len : 256;
     uint32_t max_base_position;
 
-    for (pos = chain[base_position]; pos >= min_pos; pos = chain[pos]) {
+    pos = chain[base_position];
+    if (!low_effort) {
       int curr_length;
-      if (--iter < 0) {
-        break;
+      // Heuristic: use the comparison with the above line as an initialization.
+      if (base_position >= (uint32_t)xsize) {
+        curr_length = FindMatchLength(argb_start - xsize, argb_start,
+                                      best_length, max_len);
+        if (curr_length > best_length) {
+          best_length = curr_length;
+          best_distance = xsize;
+        }
+        --iter;
       }
+      // Heuristic: compare to the previous pixel.
+      curr_length =
+          FindMatchLength(argb_start - 1, argb_start, best_length, max_len);
+      if (curr_length > best_length) {
+        best_length = curr_length;
+        best_distance = 1;
+      }
+      --iter;
+      // Skip the for loop if we already have the maximum.
+      if (best_length == MAX_LENGTH) pos = min_pos - 1;
+    }
+    best_argb = argb_start[best_length];
+
+    for (; pos >= min_pos && --iter; pos = chain[pos]) {
+      int curr_length;
       assert(base_position > (uint32_t)pos);
 
-      curr_length =
-          FindMatchLength(argb + pos, argb_start, best_length, max_len);
+      if (argb[pos + best_length] != best_argb) continue;
+
+      curr_length = VP8LVectorMismatch(argb + pos, argb_start, max_len);
       if (best_length < curr_length) {
         best_length = curr_length;
         best_distance = base_position - pos;
-        // Stop if we have reached the maximum length. Otherwise, make sure
-        // we have executed a minimum number of iterations depending on the
-        // quality.
-        if ((best_length == MAX_LENGTH) ||
-            (curr_length >= length_max && iter < iter_min)) {
-          break;
-        }
+        best_argb = argb_start[best_length];
+        // Stop if we have reached a good enough length.
+        if (best_length >= length_max) break;
       }
     }
     // We have the best match but in case the two intervals continue matching
@@ -581,9 +652,10 @@ static void AddSingleLiteralWithCostModel(const uint32_t* const argb,
                                           uint16_t* const dist_array) {
   double cost_val = prev_cost;
   const uint32_t color = argb[0];
-  if (use_color_cache && VP8LColorCacheContains(hashers, color)) {
+  const int ix = use_color_cache ? VP8LColorCacheContains(hashers, color) : -1;
+  if (ix >= 0) {
+    // use_color_cache is true and hashers contains color
     const double mul0 = 0.68;
-    const int ix = VP8LColorCacheGetIndex(hashers, color);
     cost_val += GetCacheCost(cost_model, ix) * mul0;
   } else {
     const double mul1 = 0.82;
@@ -1393,9 +1465,11 @@ static int BackwardReferencesHashChainFollowChosenPath(
       i += len;
     } else {
       PixOrCopy v;
-      if (use_color_cache && VP8LColorCacheContains(&hashers, argb[i])) {
+      const int idx =
+          use_color_cache ? VP8LColorCacheContains(&hashers, argb[i]) : -1;
+      if (idx >= 0) {
+        // use_color_cache is true and hashers contains argb[i]
         // push pixel as a color cache index
-        const int idx = VP8LColorCacheGetIndex(&hashers, argb[i]);
         v = PixOrCopyCreateCacheIdx(idx);
       } else {
         if (use_color_cache) VP8LColorCacheInsert(&hashers, argb[i]);
@@ -1584,8 +1658,9 @@ static int BackwardRefsWithLocalCache(const uint32_t* const argb,
     PixOrCopy* const v = c.cur_pos;
     if (PixOrCopyIsLiteral(v)) {
       const uint32_t argb_literal = v->argb_or_distance;
-      if (VP8LColorCacheContains(&hashers, argb_literal)) {
-        const int ix = VP8LColorCacheGetIndex(&hashers, argb_literal);
+      const int ix = VP8LColorCacheContains(&hashers, argb_literal);
+      if (ix >= 0) {
+        // hashers contains argb_literal
         *v = PixOrCopyCreateCacheIdx(ix);
       } else {
         VP8LColorCacheInsert(&hashers, argb_literal);

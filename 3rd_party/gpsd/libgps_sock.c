@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #ifndef USE_QT
@@ -78,7 +79,6 @@ int gps_sock_open(const char *host, const char *port,
 	return -1;
     PRIVATE(gpsdata)->newstyle = false;
     PRIVATE(gpsdata)->waiting = 0;
-    PRIVATE(gpsdata)->buffer[0] = 0;
 
 #ifdef LIBGPS_DEBUG
     PRIVATE(gpsdata)->waitcount = 0;
@@ -119,7 +119,6 @@ int gps_sock_close(struct gps_data_t *gpsdata)
     int status;
 
     free(PRIVATE(gpsdata));
-    gpsdata->privdata = NULL;
     status = close(gpsdata->gps_fd);
     gpsdata->gps_fd = -1;
     return status;

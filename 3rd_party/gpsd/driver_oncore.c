@@ -105,7 +105,7 @@ oncore_msg_navsol(struct gps_device_t *session, unsigned char *buf,
 	unpacked_date.tm_sec = (int)getub(buf, 10);
 	unpacked_date.tm_isdst = 0;
 	unpacked_date.tm_wday = unpacked_date.tm_yday = 0;
-	nsec = (unsigned int) getbeu32(buf, 11);
+	nsec = (uint) getbeu32(buf, 11);
 
 	session->newdata.time = (timestamp_t)mkgmtime(&unpacked_date) + nsec * 1e-9;
 	mask |= TIME_SET;
@@ -176,9 +176,9 @@ oncore_msg_navsol(struct gps_device_t *session, unsigned char *buf,
 	    }
 	    /* bit 2 of the status word: using for time solution */
 	    if (status & 0x02)
-		mask |= NTPTIME_IS | GOODTIME_IS;
+		mask |= PPSTIME_IS;
 	    /*
-	     * The GOODTIME_IS mask bit exists distinctly from TIME_SET exactly
+	     * The PPSTIME_IS mask bit exists distinctly from TIME_SET exactly
 	     * so an OnCore running in time-service mode (and other GPS clocks)
 	     * can signal that it's returning time even though no position fixes
 	     * have been available.

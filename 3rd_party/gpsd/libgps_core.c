@@ -5,10 +5,6 @@
  * This file is Copyright (c) 2010 by the GPSD project
  * BSD terms apply: see the file COPYING in the distribution root for details.
  */
-
-/* for vsnprintf() FreeBSD wants __ISO_C_VISIBLE >= 1999 */
-#define __ISO_C_VISIBLE 1999
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -53,10 +49,6 @@ void libgps_trace(int errlevel, const char *fmt, ...)
 	(void)fputs(buf, debugfp);
     }
 }
-#else
-// Functions defined as so to furfil the API but otherwise do nothing when built with debug capability turned off
-void gps_enable_debug(int level UNUSED, FILE * fp UNUSED) {}
-void libgps_trace(int errlevel UNUSED, const char *fmt UNUSED, ...){}
 #endif /* LIBGPS_DEBUG */
 
 #ifdef SOCKET_EXPORT_ENABLE
@@ -301,9 +293,8 @@ void libgps_dump_state(struct gps_data_t *collect)
 	(void)fprintf(debugfp, "ONLINE: %lf\n", collect->online);
     if (collect->set & TIME_SET)
 	(void)fprintf(debugfp, "TIME: %lf\n", collect->fix.time);
-    /* NOTE: %.7f needed for cm level accurate GPS */
     if (collect->set & LATLON_SET)
-	(void)fprintf(debugfp, "LATLON: lat/lon: %.7lf %.7lf\n",
+	(void)fprintf(debugfp, "LATLON: lat/lon: %lf %lf\n",
 		      collect->fix.latitude, collect->fix.longitude);
     if (collect->set & ALTITUDE_SET)
 	(void)fprintf(debugfp, "ALTITUDE: altitude: %lf  U: climb: %lf\n",

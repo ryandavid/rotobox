@@ -28,7 +28,6 @@
     webpmux -set xmp image_metadata.xmp in.webp -o out_xmp_container.webp
 
   Extract relevant data from WebP container file:
-    webpmux -get frgm n in.webp -o out_fragment.webp
     webpmux -get frame n in.webp -o out_frame.webp
     webpmux -get icc in.webp -o image_profile.icc
     webpmux -get exif in.webp -o image_metadata.exif
@@ -55,7 +54,8 @@
 #include <string.h>
 #include "webp/decode.h"
 #include "webp/mux.h"
-#include "./example_util.h"
+#include "../examples/example_util.h"
+#include "../imageio/imageio_util.h"
 
 //------------------------------------------------------------------------------
 // Config object to parse command-line arguments.
@@ -88,17 +88,16 @@ typedef enum {
   FEATURE_XMP,
   FEATURE_ICCP,
   FEATURE_ANMF,
-  FEATURE_FRGM,
   LAST_FEATURE
 } FeatureType;
 
 static const char* const kFourccList[LAST_FEATURE] = {
-  NULL, "EXIF", "XMP ", "ICCP", "ANMF", "FRGM"
+  NULL, "EXIF", "XMP ", "ICCP", "ANMF"
 };
 
 static const char* const kDescriptions[LAST_FEATURE] = {
   NULL, "EXIF metadata", "XMP metadata", "ICC profile",
-  "Animation frame", "Image fragment"
+  "Animation frame"
 };
 
 typedef struct {
@@ -182,7 +181,6 @@ static WebPMuxError DisplayInfo(const WebPMux* mux) {
   printf("Canvas size: %d x %d\n", width, height);
 
   err = WebPMuxGetFeatures(mux, &flag);
-  if (flag & FRAGMENTS_FLAG) err = WEBP_MUX_INVALID_ARGUMENT;
   RETURN_IF_ERROR("Failed to retrieve features\n");
 
   if (flag == 0) {
@@ -193,26 +191,22 @@ static WebPMuxError DisplayInfo(const WebPMux* mux) {
   // Print the features present.
   printf("Features present:");
   if (flag & ANIMATION_FLAG) printf(" animation");
-  if (flag & FRAGMENTS_FLAG) printf(" image fragments");
   if (flag & ICCP_FLAG)      printf(" ICC profile");
   if (flag & EXIF_FLAG)      printf(" EXIF metadata");
   if (flag & XMP_FLAG)       printf(" XMP metadata");
   if (flag & ALPHA_FLAG)     printf(" transparency");
   printf("\n");
 
-  if ((flag & ANIMATION_FLAG) || (flag & FRAGMENTS_FLAG)) {
-    const int is_anim = !!(flag & ANIMATION_FLAG);
-    const WebPChunkId id = is_anim ? WEBP_CHUNK_ANMF : WEBP_CHUNK_FRGM;
-    const char* const type_str = is_anim ? "frame" : "fragment";
+  if (flag & ANIMATION_FLAG) {
+    const WebPChunkId id = WEBP_CHUNK_ANMF;
+    const char* const type_str = "frame";
     int nFrames;
 
-    if (is_anim) {
-      WebPMuxAnimParams params;
-      err = WebPMuxGetAnimationParams(mux, &params);
-      assert(err == WEBP_MUX_OK);
-      printf("Background color : 0x%.8X  Loop Count : %d\n",
-             params.bgcolor, params.loop_count);
-    }
+    WebPMuxAnimParams params;
+    err = WebPMuxGetAnimationParams(mux, &params);
+    assert(err == WEBP_MUX_OK);
+    printf("Background color : 0x%.8X  Loop Count : %d\n",
+           params.bgcolor, params.loop_count);
 
     err = WebPMuxNumChunks(mux, id, &nFrames);
     assert(err == WEBP_MUX_OK);
@@ -221,8 +215,8 @@ static WebPMuxError DisplayInfo(const WebPMux* mux) {
     if (nFrames > 0) {
       int i;
       printf("No.: width height alpha x_offset y_offset ");
-      if (is_anim) printf("duration   dispose blend ");
-      printf("image_size\n");
+      printf("duration   dispose blend ");
+      printf("image_size  compression\n");
       for (i = 1; i <= nFrames; i++) {
         WebPMuxFrameInfo frame;
         err = WebPMuxGetFrame(mux, i, &frame);
@@ -235,7 +229,7 @@ static WebPMuxError DisplayInfo(const WebPMux* mux) {
           printf("%3d: %5d %5d %5s %8d %8d ", i, features.width,
                  features.height, features.has_alpha ? "yes" : "no",
                  frame.x_offset, frame.y_offset);
-          if (is_anim) {
+          {
             const char* const dispose =
                 (frame.dispose_method == WEBP_MUX_DISPOSE_NONE) ? "none"
                                                                 : "background";
@@ -243,7 +237,10 @@ static WebPMuxError DisplayInfo(const WebPMux* mux) {
                 (frame.blend_method == WEBP_MUX_BLEND) ? "yes" : "no";
             printf("%8d %10s %5s ", frame.duration, dispose, blend);
           }
-          printf("%10d\n", (int)frame.bitstream.size);
+          printf("%10d %11s\n", (int)frame.bitstream.size,
+                 (features.format == 1) ? "lossy" :
+                 (features.format == 2) ? "lossless" :
+                                          "undefined");
         }
         WebPDataClear(&frame.bitstream);
         RETURN_IF_ERROR3("Failed to retrieve %s#%d\n", type_str, i);
@@ -272,7 +269,7 @@ static WebPMuxError DisplayInfo(const WebPMux* mux) {
     printf("Size of the XMP metadata: %d\n", (int)xmp.size);
   }
 
-  if ((flag & ALPHA_FLAG) && !(flag & (ANIMATION_FLAG | FRAGMENTS_FLAG))) {
+  if ((flag & ALPHA_FLAG) && !(flag & ANIMATION_FLAG)) {
     WebPMuxFrameInfo image;
     err = WebPMuxGetFrame(mux, 1, &image);
     if (err == WEBP_MUX_OK) {
@@ -365,7 +362,7 @@ static int ReadFileToWebPData(const char* const filename,
                               WebPData* const webp_data) {
   const uint8_t* data;
   size_t size;
-  if (!ExUtilReadFile(filename, &data, &size)) return 0;
+  if (!ImgIoUtilReadFile(filename, &data, &size)) return 0;
   webp_data->bytes = data;
   webp_data->size = size;
   return 1;
@@ -385,7 +382,7 @@ static int CreateMux(const char* const filename, WebPMux** mux) {
 static int WriteData(const char* filename, const WebPData* const webpdata) {
   int ok = 0;
   FILE* fout = strcmp(filename, "-") ? fopen(filename, "wb")
-                                     : ExUtilSetBinaryMode(stdout);
+                                     : ImgIoUtilSetBinaryMode(stdout);
   if (fout == NULL) {
     fprintf(stderr, "Error opening output WebP file %s!\n", filename);
     return 0;
@@ -449,13 +446,6 @@ static int ParseFrameArgs(const char* args, WebPMuxFrameInfo* const info) {
   return 1;
 }
 
-static int ParseFragmentArgs(const char* args, WebPMuxFrameInfo* const info) {
-  const int ok =
-      (sscanf(args, "+%d+%d", &info->x_offset, &info->y_offset) == 2);
-  if (ok) WarnAboutOddOffset(info);
-  return ok;
-}
-
 static int ParseBgcolorArgs(const char* args, uint32_t* const bgcolor) {
   uint32_t a, r, g, b;
   if (sscanf(args, "%u,%u,%u,%u", &a, &r, &g, &b) != 4) return 0;
@@ -484,7 +474,6 @@ static void DeleteConfig(WebPMuxConfig* config) {
 static int ValidateCommandLine(int argc, const char* argv[],
                                int* num_feature_args) {
   int num_frame_args;
-  int num_frgm_args;
   int num_loop_args;
   int num_bgcolor_args;
   int ok = 1;
@@ -511,7 +500,6 @@ static int ValidateCommandLine(int argc, const char* argv[],
 
   // Compound checks.
   num_frame_args = CountOccurrences(argv, argc, "-frame");
-  num_frgm_args = CountOccurrences(argv, argc, "-frgm");
   num_loop_args = CountOccurrences(argv, argc, "-loop");
   num_bgcolor_args = CountOccurrences(argv, argc, "-bgcolor");
 
@@ -526,22 +514,14 @@ static int ValidateCommandLine(int argc, const char* argv[],
     ERROR_GOTO1("ERROR: Loop count and background color are relevant only in "
                 "case of animation.\n", ErrValidate);
   }
-  if (num_frame_args > 0 && num_frgm_args > 0) {
-    ERROR_GOTO1("ERROR: Only one of frames & fragments can be specified at a "
-                "time.\n", ErrValidate);
-  }
 
   assert(ok == 1);
-  if (num_frame_args == 0 && num_frgm_args == 0) {
+  if (num_frame_args == 0) {
     // Single argument ('set' action for ICCP/EXIF/XMP, OR a 'get' action).
     *num_feature_args = 1;
   } else {
-    // Multiple arguments ('set' action for animation or fragmented image).
-    if (num_frame_args > 0) {
-      *num_feature_args = num_frame_args + num_loop_args + num_bgcolor_args;
-    } else {
-      *num_feature_args = num_frgm_args;
-    }
+    // Multiple arguments ('set' action for animation)
+    *num_feature_args = num_frame_args + num_loop_args + num_bgcolor_args;
   }
 
  ErrValidate:
@@ -694,8 +674,7 @@ static int ParseCommandLine(int argc, const char* argv[],
       } else if (!strcmp(argv[i], "frame") &&
                  (config->action_type_ == ACTION_GET)) {
         CHECK_NUM_ARGS_LESS(2, ErrParse);
-        feature->type_ = (!strcmp(argv[i], "frame")) ? FEATURE_ANMF :
-            FEATURE_FRGM;
+        feature->type_ = FEATURE_ANMF;
         arg->params_ = argv[i + 1];
         ++feature_arg_index;
         i += 2;
@@ -733,8 +712,7 @@ static int ValidateConfig(WebPMuxConfig* config) {
   if (config->input_ == NULL) {
     if (config->action_type_ != ACTION_SET) {
       ERROR_GOTO1("ERROR: No input file specified.\n", ErrValidate2);
-    } else if (feature->type_ != FEATURE_ANMF &&
-               feature->type_ != FEATURE_FRGM) {
+    } else if (feature->type_ != FEATURE_ANMF) {
       ERROR_GOTO1("ERROR: No input file specified.\n", ErrValidate2);
     }
   }
@@ -786,14 +764,13 @@ static int InitializeConfig(int argc, const char* argv[],
 //------------------------------------------------------------------------------
 // Processing.
 
-static int GetFrameFragment(const WebPMux* mux,
-                            const WebPMuxConfig* config, int is_frame) {
+static int GetFrame(const WebPMux* mux, const WebPMuxConfig* config) {
   WebPMuxError err = WEBP_MUX_OK;
   WebPMux* mux_single = NULL;
   int num = 0;
   int ok = 1;
   int parse_error = 0;
-  const WebPChunkId id = is_frame ? WEBP_CHUNK_ANMF : WEBP_CHUNK_FRGM;
+  const WebPChunkId id = WEBP_CHUNK_ANMF;
   WebPMuxFrameInfo info;
   WebPDataInit(&info.bitstream);
 
@@ -844,9 +821,7 @@ static int Process(const WebPMuxConfig* config) {
       if (!ok) goto Err2;
       switch (feature->type_) {
         case FEATURE_ANMF:
-        case FEATURE_FRGM:
-          ok = GetFrameFragment(mux, config,
-                                (feature->type_ == FEATURE_ANMF) ? 1 : 0);
+          ok = GetFrame(mux, config);
           break;
 
         case FEATURE_ICCP:
@@ -934,35 +909,6 @@ static int Process(const WebPMuxConfig* config) {
           if (err != WEBP_MUX_OK) {
             ERROR_GOTO2("ERROR (%s): Could not set animation parameters.\n",
                         ErrorString(err), Err2);
-          }
-          break;
-        }
-
-        case FEATURE_FRGM: {
-          int i;
-          mux = WebPMuxNew();
-          if (mux == NULL) {
-            ERROR_GOTO2("ERROR (%s): Could not allocate a mux object.\n",
-                        ErrorString(WEBP_MUX_MEMORY_ERROR), Err2);
-          }
-          for (i = 0; i < feature->arg_count_; ++i) {
-            WebPMuxFrameInfo frgm;
-            frgm.id = WEBP_CHUNK_FRGM;
-            ok = ReadFileToWebPData(feature->args_[i].filename_,
-                                    &frgm.bitstream);
-            if (!ok) goto Err2;
-            ok = ParseFragmentArgs(feature->args_[i].params_, &frgm);
-            if (!ok) {
-              WebPDataClear(&frgm.bitstream);
-              ERROR_GOTO1("ERROR: Could not parse fragment properties.\n",
-                          Err2);
-            }
-            err = WebPMuxPushFrame(mux, &frgm, 1);
-            WebPDataClear(&frgm.bitstream);
-            if (err != WEBP_MUX_OK) {
-              ERROR_GOTO3("ERROR (%s): Could not add a fragment at index %d.\n",
-                          ErrorString(err), i, Err2);
-            }
           }
           break;
         }

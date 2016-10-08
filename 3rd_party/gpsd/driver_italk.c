@@ -61,7 +61,7 @@ static gps_mask_t decode_itk_navfix(struct gps_device_t *session,
     session->newdata.time = gpsd_gpstime_resolve(session,
 	(unsigned short) getles16(buf, 7 + 82),
 	(unsigned int)getleu32(buf, 7 + 84) / 1000.0);
-    mask |= TIME_SET | NTPTIME_IS;
+    mask |= TIME_SET | PPSTIME_IS;
 
     epx = (double)(getles32(buf, 7 + 96) / 100.0);
     epy = (double)(getles32(buf, 7 + 100) / 100.0);
@@ -194,7 +194,7 @@ static gps_mask_t decode_itk_utcionomodel(struct gps_device_t *session,
     gpsd_log(&session->context->errout, LOG_DATA,
 	     "UTC_IONO_MODEL: time=%.2f mask={TIME}\n",
 	     session->newdata.time);
-    return TIME_SET | NTPTIME_IS;
+    return TIME_SET | PPSTIME_IS;
 }
 
 static gps_mask_t decode_itk_subframe(struct gps_device_t *session,
@@ -281,7 +281,7 @@ static gps_mask_t italk_parse(struct gps_device_t *session,
     if (len == 0)
 	return 0;
 
-    type = (unsigned int) getub(buf, 4);
+    type = (uint) getub(buf, 4);
     /* we may need to dump the raw packet */
     gpsd_log(&session->context->errout, LOG_RAW,
 	     "raw italk packet type 0x%02x\n", type);

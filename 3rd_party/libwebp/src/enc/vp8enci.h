@@ -325,9 +325,7 @@ int VP8EmitTokens(VP8TBuffer* const b, VP8BitWriter* const bw,
                   const uint8_t* const probas, int final_pass);
 
 // record the coding of coefficients without knowing the probabilities yet
-int VP8RecordCoeffTokens(const int ctx, const int coeff_type,
-                         int first, int last,
-                         const int16_t* const coeffs,
+int VP8RecordCoeffTokens(int ctx, const struct VP8Residual* const res,
                          VP8TBuffer* const tokens);
 
 // Estimate the final coded size given a set of 'probas'.
@@ -475,14 +473,6 @@ void VP8EncInitAlpha(VP8Encoder* const enc);    // initialize alpha compression
 int VP8EncStartAlpha(VP8Encoder* const enc);    // start alpha coding process
 int VP8EncFinishAlpha(VP8Encoder* const enc);   // finalize compressed data
 int VP8EncDeleteAlpha(VP8Encoder* const enc);   // delete compressed data
-
-  // in filter.c
-void VP8SSIMAddStats(const VP8DistoStats* const src, VP8DistoStats* const dst);
-void VP8SSIMAccumulatePlane(const uint8_t* src1, int stride1,
-                            const uint8_t* src2, int stride2,
-                            int W, int H, VP8DistoStats* const stats);
-double VP8SSIMGet(const VP8DistoStats* const stats);
-double VP8SSIMGetSquaredError(const VP8DistoStats* const stats);
 
 // autofilter
 void VP8InitFilter(VP8EncIterator* const it);

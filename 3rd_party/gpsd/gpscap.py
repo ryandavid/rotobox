@@ -1,22 +1,16 @@
 """
+
 gpscap - GPS/AIS capability dictionary class.
 
 This file is Copyright (c) 2010 by the GPSD project
 BSD terms apply: see the file COPYING in the distribution root for details.
 """
-# This code runs compatibly under Python 2 and 3.x for x >= 2.
-# Preserve this property!
-from __future__ import absolute_import, print_function, division
+import ConfigParser
 
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
-
-class GPSDictionary(configparser.RawConfigParser):
+class GPSDictionary(ConfigParser.RawConfigParser):
     def __init__(self, *files):
         "Initialize the capability dictionary"
-        configparser.RawConfigParser.__init__(self)
+        ConfigParser.RawConfigParser.__init__(self)
         if not files:
             files = ["gpscap.ini", "/usr/share/gpsd/gpscap.ini"]
         self.read(files)
@@ -41,9 +35,9 @@ class GPSDictionary(configparser.RawConfigParser):
         # Sanity check: All items must have a type field.
         for section in self.sections():
             if not self.has_option(section, "type"):
-                raise configparser.Error("%s has no type" % section)
+                raise ConfigParser.Error("%s has no type" % section)
             elif self.get(section, "type") not in ("engine", "vendor", "device"):
-                raise configparser.Error("%s has invalid type" % section)
+                raise ConfigParser.Error("%s has invalid type" % section)
         # Sanity check: All devices must point at a vendor object.
         # Side effect: build the lists of vendors and devices.
         self.vendors = []
@@ -57,9 +51,9 @@ class GPSDictionary(configparser.RawConfigParser):
         for section in self.sections():
             if self.get(section, "type") == "device":
                 if not self.has_option(section, "vendor"):
-                    raise configparser.Error("%s has no vendor" % section)
+                    raise ConfigParser.Error("%s has no vendor" % section)
                 if self.get(section, "vendor") not in self.vendors:
-                    raise configparser.Error("%s has invalid vendor" % section)
+                    raise ConfigParser.Error("%s has invalid vendor" % section)
 
     def HTMLDump(self, ofp):
         thead = """<table style='border:1px solid gray;font-size:small;background-color:#CCCCCC'>
@@ -172,6 +166,6 @@ if __name__ == "__main__":
     try:
         d = GPSDictionary()
         d.HTMLDump(sys.stdout)
-    except configparser.Error as e:
-        sys.stderr.write(sys.argv[0]+":%s\n" % e)
-        raise SystemExit(1)
+    except ConfigParser.Error, e:
+        print >>sys.stderr, sys.argv[0]+":", e
+        raise SystemExit, 1

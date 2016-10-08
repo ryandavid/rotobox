@@ -37,6 +37,7 @@
  1.20 SRV and URI DNS records
  1.21 API for URL parsing/splitting
  1.23 Offer API to flush the connection pool
+ 1.24 TCP Fast Open for windows
 
  2. libcurl - multi interface
  2.1 More non-blocking
@@ -67,6 +68,8 @@
  5.6 Refuse "downgrade" redirects
  5.7 Brotli compression
  5.8 QUIC
+ 5.9 Add easy argument to formpost functions
+ 5.10 Leave secure cookies alone
 
  6. TELNET
  6.1 ditch stdin
@@ -108,6 +111,10 @@
  13.7 improve configure --with-ssl
  13.8 Support DANE
  13.9 Support TLS v1.3
+ 13.10 Support SSLKEYLOGFILE
+ 13.11 Support intermediate & root pinning for PINNEDPUBLICKEY
+ 13.12 Support HSTS
+ 13.13 Support HPKP
 
  14. GnuTLS
  14.1 SSL engine stuff
@@ -142,6 +149,7 @@
  18.12 keep running, read instructions from pipe/socket
  18.13 support metalink in http headers
  18.14 --fail without --location should treat 3xx as a failure
+ 18.15 Introduce --fail-fast to exit on first transfer fail
 
  19. Build
  19.1 roffit
@@ -360,6 +368,12 @@
  An API could allow a forced flush or just a forced loop that would properly
  close all connections that have been closed by the server already.
 
+1.24 TCP Fast Open for windows
+
+ libcurl supports the CURLOPT_TCP_FASTOPEN option since 7.49.0 for Linux and
+ Mac OS. Windows supports TCP Fast Open starting with Windows 10, version 1607
+ and we should add support for it.
+
 
 2. libcurl - multi interface
 
@@ -535,6 +549,20 @@ This is not detailed in any FTP specification.
  implemented. This, to allow other projects to benefit from the work and to
  thus broaden the interest and chance of others to participate.
 
+5.9 Add easy argument to formpost functions
+
+ Make sure there's an easy handle passed in to `curl_formadd()`,
+ `curl_formget()` and `curl_formfree()` by adding replacement functions and
+ deprecating the old ones. Allows better error messages and is generally good
+ API hygiene.
+
+5.10 Leave secure cookies alone
+
+ Non-secure origins (HTTP sites) should not be allowed to set or modify
+ cookies with the 'secure' property:
+
+ https://tools.ietf.org/html/draft-ietf-httpbis-cookie-alone-01
+
 
 6. TELNET
 
@@ -707,6 +735,51 @@ that doesn't exist on the server, just like --ftp-create-dirs.
  the corresponding support. There may be a need to add some additional options
  to allow libcurl to take advantage of the new features in 1.3.
 
+13.10 Support SSLKEYLOGFILE
+
+ When used, Firefox and Chrome dumps their master TLS keys to the file name
+ this environment variable specifies. This allows tools like for example
+ Wireshark to capture and decipher TLS traffic to/from those clients. libcurl
+ could be made to support this more widely (presumably this already works when
+ built with NSS). Peter Wu made a OpenSSL preload to make possible that can be
+ used as inspiration and guidance
+ https://git.lekensteyn.nl/peter/wireshark-notes/tree/src/sslkeylog.c
+
+13.11 Support intermediate & root pinning for PINNEDPUBLICKEY
+
+ CURLOPT_PINNEDPUBLICKEY does not consider the hashes of intermediate & root
+ certificates when comparing the pinned keys. Therefore it is not compatible
+ with "HTTP Public Key Pinning" as there also intermediate and root certificates
+ can be pinned. This is very useful as it prevents webadmins from "locking
+ themself out of their servers".
+
+ Adding this feature would make curls pinning 100% compatible to HPKP and allow
+ more flexible pinning.
+
+13.12 Support HSTS
+
+ "HTTP Strict Transport Security" is TOFU (trust on first use), time-based
+ features indicated by a HTTP header send by the webserver. It is widely used
+ in browsers and it's purpose is to prevent insecure HTTP connections after
+ a previous HTTPS connection. It protects against SSLStripping attacks.
+
+ Doc: https://developer.mozilla.org/en-US/docs/Web/Security/HTTP_strict_transport_security
+ RFC 6797: https://tools.ietf.org/html/rfc6797
+
+13.13 Support HPKP
+
+ "HTTP Public Key Pinning" is TOFU (trust on first use), time-based
+ features indicated by a HTTP header send by the webserver. It's purpose is
+ to prevent Man-in-the-middle attacks by trusted CAs by allowing webadmins
+ to specify which CAs/certificates/public keys to trust when connection to
+ their websites.
+
+ It can be build based on PINNEDPUBLICKEY.
+
+ Wikipedia: https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning
+ OWASP: https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning
+ Doc: https://developer.mozilla.org/de/docs/Web/Security/Public_Key_Pinning
+ RFC: https://tools.ietf.org/html/draft-ietf-websec-key-pinning-21
 
 14. GnuTLS
 
@@ -913,6 +986,14 @@ that doesn't exist on the server, just like --ftp-create-dirs.
  ... --fail must treat 3xx responses as failures too. The least problematic
  way to implement this is probably to add that new logic in the command line
  tool only and not in the underlying CURLOPT_FAILONERROR logic.
+
+18.15 Introduce --fail-fast to exit on first transfer fail
+
+ curl will transfer all URLs given on the command line one by one but only
+ returns the error code for the last transfer. Transfer failures on the first
+ ones will not be returned as error code etc to the shell. A --fail-fast
+ option would make curl exit and return an error for the first transfer that
+ fails.
 
 
 19. Build

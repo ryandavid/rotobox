@@ -64,8 +64,6 @@ static int json_tpv_read(const char *buf, struct gps_data_t *gpsdata,
 			         .dflt.real = NAN},
 	{"mode",   t_integer, .addr.integer = &gpsdata->fix.mode,
 			         .dflt.integer = MODE_NOT_SEEN},
-	{"status", t_integer, .addr.integer = &gpsdata->status,
-			         .dflt.integer = STATUS_FIX},
 	{NULL},
 	/* *INDENT-ON* */
     };
@@ -397,40 +395,6 @@ int json_pps_read(const char *buf, struct gps_data_t *gpsdata,
     return status;
 }
 
-int json_oscillator_read(const char *buf, struct gps_data_t *gpsdata,
-			 const char **endptr)
-{
-    bool running = false, reference = false, disciplined = false;
-    int delta = 0;
-    const struct json_attr_t json_attrs_osc[] = {
-	/* *INDENT-OFF* */
-        {"class",	t_check,   .dflt.check = "OSC"},
-	{"device",	t_string,  .addr.string = gpsdata->dev.path,
-				   .len = sizeof(gpsdata->dev.path)},
-	{"running",	t_boolean, .addr.boolean = &running,
-				   .dflt.boolean = false},
-	{"reference",	t_boolean, .addr.boolean = &reference,
-				   .dflt.boolean = false},
-	{"disciplined",	t_boolean, .addr.boolean = &disciplined,
-				   .dflt.boolean = false},
-	{"delta",	t_integer, .addr.integer = &delta,
-				   .dflt.integer = 0},
-	{NULL},
-	/* *INDENT-ON* */
-    };
-    int status;
-
-    memset(&gpsdata->osc, '\0', sizeof(gpsdata->osc));
-    status = json_read_object(buf, json_attrs_osc, endptr);
-
-    gpsdata->osc.running = running;
-    gpsdata->osc.reference = reference;
-    gpsdata->osc.disciplined = disciplined;
-    gpsdata->osc.delta = delta;
-
-    return status;
-}
-
 int libgps_json_unpack(const char *buf,
 		       struct gps_data_t *gpsdata, const char **end)
 /* the only entry point - unpack a JSON object into gpsdata_t substructures */
@@ -442,6 +406,7 @@ int libgps_json_unpack(const char *buf,
 	return -1;
     if (str_starts_with(classtag, "\"class\":\"TPV\"")) {
 	status = json_tpv_read(buf, gpsdata, end);
+	gpsdata->status = STATUS_FIX;
 	gpsdata->set = STATUS_SET;
 	if (isnan(gpsdata->fix.time) == 0)
 	    gpsdata->set |= TIME_SET;
@@ -569,13 +534,6 @@ int libgps_json_unpack(const char *buf,
 	if (status == 0) {
 	    gpsdata->set &= ~UNION_SET;
 	    gpsdata->set |= PPS_SET;
-	}
-	return status;
-    } else if (str_starts_with(classtag, "\"class\":\"OSC\"")) {
-	status = json_oscillator_read(buf, gpsdata, end);
-	if (status == 0) {
-	    gpsdata->set &= ~UNION_SET;
-	    gpsdata->set |= OSCILLATOR_SET;
 	}
 	return status;
     } else

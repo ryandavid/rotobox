@@ -33,9 +33,6 @@
 
 #define CLIMB 3
 
-/* daemon() needs _DEFAULT_SOURCE */
-#define _DEFAULT_SOURCE
-
 #include <netdb.h>
 #ifndef AF_UNSPEC
 #include <sys/types.h>
@@ -307,7 +304,6 @@ int main(int argc, char *argv[])
 	    default:
 		(void)fprintf(stderr, "Unknown -l argument: %s\n", optarg);
 	    }
-	    break;
 	case 's':
 	    sleep(10);
 	    continue;

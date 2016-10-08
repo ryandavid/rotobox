@@ -5,11 +5,7 @@ Should be identical to the steps outlined in BRINGUP.md, ignoring the ones that 
 ## Compiling on OS X
 ````
 # Install dependencies via MacPorts
-sudo port install cmake pkgconfig
-
-# Need to add /opt/local/lib to dylib
-nano ~/.profile
-export DYLD_FALLBACK_LIBRARY_PATH=$DYLD_FALLBACK_LIBRARY_PATH:/opt/local/lib
+sudo port install cmake pkgconfig automake autoconf libtool
 ````
 
 Build it!

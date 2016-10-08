@@ -57,10 +57,8 @@
    EARTHA_5,		/* EARTHA leader H */
 #endif /* EARTHMATE_ENABLE */
 
-#if defined(SIRF_ENABLE) || defined(SKYTRAQ_ENABLE)
-   SIRF_LEADER_1,	/* seen first character of SiRF/Skytraq leader <0x0A> */
-#endif /* SIRF_ENABLE || SKYTRAQ_ENABLE */
 #ifdef SIRF_ENABLE
+   SIRF_LEADER_1,	/* we've seen first character of SiRF leader */
    SIRF_LEADER_2,	/* seen second character of SiRF leader */
    SIRF_LENGTH_1,	/* seen first byte of SiRF length */
    SIRF_PAYLOAD,	/* we're in a SiRF payload part */
@@ -68,20 +66,6 @@
    SIRF_TRAILER_1,	/* saw first byte of SiRF trailer */
    SIRF_RECOGNIZED,	/* saw second byte of SiRF trailer */
 #endif /* SIRF_ENABLE */
-
-#ifdef SKYTRAQ_ENABLE
-   /* <0xA0,0xA1><Len><Message ID><Message Body><csum><0x0D,0x0A> */
-   /* Len is two bytes, is the length of Message ID and Message Body */
-   /* Skytraq leader 1 same as SIRF_LEADER_1 */
-   SKY_LEADER_2,	/* saw leader 2 <0xA1> */
-   SKY_LENGTH_1,	/* saw first byte of packet length */
-   SKY_LENGTH_2,	/* saw second byte of packet length */
-   SKY_PAYLOAD,		/* we're in a Skytraq payload */
-   SKY_DELIVERED,	/* saw last byte of Skytraq payload */
-   SKY_CSUM,		/* saw Skytraq checksum */
-   SKY_TRAILER_1,	/* saw first byte of Skytraq trailer <0x0D> */
-   SKY_RECOGNIZED,	/* found end of the Skytraq packet */
-#endif /* SKYTRAQ_ENABLE */
 
 #ifdef ZODIAC_ENABLE
    ZODIAC_EXPECTED,	/* expecting Zodiac packet */
@@ -220,10 +204,6 @@
    JSON_NUMBER,         /* inside a JSON numeric literal */
    JSON_SPECIAL,        /* inside a JSON special literal (true,false,null) */
    JSON_RECOGNIZED,     /* JSON packet recognized */
-#endif
-
-#ifdef STASH_ENABLE
-   STASH_RECOGNIZED,    /* stashable prefix recognized */
 #endif
 
 /* end of packet_states.h */

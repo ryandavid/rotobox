@@ -596,19 +596,6 @@ if test "$enable_wic" = "yes"; then
 fi
 esac
 
-dnl === If --enable-aligned is defined, define WEBP_FORCE_ALIGNED
-
-AC_MSG_CHECKING(if --enable-aligned option is specified)
-AC_ARG_ENABLE([aligned],
-              AS_HELP_STRING([--enable-aligned],
-                             [Force aligned memory operations in non-dsp code
-                              (may be slower)]))
-if test "$enable_aligned" = "yes"; then
-  AC_DEFINE(WEBP_FORCE_ALIGNED, [1],
-            [Define to 1 to force aligned memory operations])
-fi
-AC_MSG_RESULT(${enable_aligned-no})
-
 dnl === If --enable-swap-16bit-csp is defined, add -DWEBP_SWAP_16BIT_CSP
 
 USE_SWAP_16BIT_CSP=""
@@ -672,13 +659,12 @@ dnl =========================
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([src/webp/config.h])
 AC_CONFIG_FILES([Makefile src/Makefile man/Makefile \
-                 examples/Makefile src/dec/Makefile \
-                 src/enc/Makefile src/dsp/Makefile \
+                 examples/Makefile extras/Makefile imageio/Makefile \
+                 src/dec/Makefile src/enc/Makefile src/dsp/Makefile \
                  src/demux/Makefile src/mux/Makefile \
-                 src/utils/Makefile src/extras/Makefile \
+                 src/utils/Makefile \
                  src/libwebp.pc src/libwebpdecoder.pc \
-                 src/demux/libwebpdemux.pc src/mux/libwebpmux.pc \
-                 src/extras/libwebpextras.pc])
+                 src/demux/libwebpdemux.pc src/mux/libwebpmux.pc])
 
 
 AC_OUTPUT

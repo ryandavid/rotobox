@@ -14,9 +14,6 @@ else
     GPSD_HOME=`dirname $0`
 fi
 
-# sed may choke on binary data with some LANG settings
-unset LANG
-
 # Arrange to call a gpsfake in the source directory without fuss.
 if [ -z ${PYTHON} ]; then
     PYTHON="python2"
@@ -48,8 +45,7 @@ opts=""
 logfile=""
 help="0"
 baton=false
-quiet=false
-while getopts cl:sStbuvo:qh opt
+while getopts cl:sStbuvo:h opt
 do
     case $opt in
 	c) testing=clientlib ;;	# Can be 'daemon'
@@ -61,8 +57,7 @@ do
 	u) opts="$opts -u" ;;	# Force UDP
 	v) mode=view ;;		# View result of generating a check file
 	o) opts="$opts $OPTARG" ;;	# Pass options to gpsfake
-	q) quiet=true ;;	# Suppress header/trailer messages
-	h) help="1" ;;
+	h) help="1"
     esac
 done
 shift $(($OPTIND - 1))
@@ -82,7 +77,6 @@ then
 	echo "-u - Force UDP"
 	echo "-v  - view result of generating a check file"
 	echo "-o <opt> - Pass options to gpsfake"
-	echo "-q  - Suppress header/trailer messages"
 	echo
 
 	exit 0
@@ -122,14 +116,14 @@ fi
 
 case $mode in
     regress|slowregress)
-        [ $quiet = true ] || echo "Testing the $testing..." >&2
+        echo "Testing the $testing..." >&2
         errors=0; total=0; notfound=0;error_list="";
         for f in $*; do
 	    if [ -r $f.chk ]
 	    then
 		trap 'rm -f ${TMP}/test-$$.chk; exit $errors' EXIT HUP INT TERM
 		case $testing in
-		daemon) TMPDIR=${TMP} ${PYTHON} ${PYTHON_COVERAGE} ${GPSD_HOME}/gpsfake -s 38400 -1 -p $opts ${f} | ${GPSFILTER} ${ALTFILTER} >${TMP}/test-$$.chk ;;
+		daemon) TMPDIR=${TMP} ${PYTHON} ${GPSD_HOME}/gpsfake -s 38400 -1 -p $opts ${f} | ${GPSFILTER} ${ALTFILTER} >${TMP}/test-$$.chk ;;
 		clientlib) ${GPSD_HOME}/test_libgps -b <${f} >${TMP}/test-$$.chk ;;
 		esac
 		if [ "${ALTFILTER}" ]
@@ -143,10 +137,7 @@ case $mode in
 		fi
 		if test -s ${TMP}/diff-$$ ; then
 		    errors=`expr $errors + 1`;
-		    error_list="$error_list \"${f}\""
-		    if ! test -s ${TMP}/test-$$.chk ; then
-			echo " Output missing for ${f}" >${TMP}/diff-$$
-		    fi
+                    error_list="$error_list \"${f}\""
 		    if [ -z "$logfile" ]
 		    then
 			cat ${TMP}/diff-$$
@@ -172,30 +163,25 @@ case $mode in
             echo "================================================================"
             status=1;
         else
-            if [ $quiet = true ] && [ $total -eq 1 ] && [ $notfound -eq 0 ]
-            then
-                echo "Regression test $1 successful"
-            else
-                echo "Regression test successful: no errors in $total tests ($notfound not found).";
-            fi
+            echo "Regression test successful: no errors in $total tests ($notfound not found).";
             status=0;
         fi
         ;;
     build)
-	[ $quiet = true ] || echo "Rebuilding $testing regressions..." >&2
+	echo "Rebuilding $testing regressions..." >&2
         for f in $*; do
 	    case $testing in
-            daemon) ${PYTHON} ${PYTHON_COVERAGE} ${GPSD_HOME}/gpsfake -s 38400 -1 -p $opts ${f} | ${GPSFILTER} >${f}.chk;;
+            daemon) ${PYTHON} ${GPSD_HOME}/gpsfake -s 38400 -1 -p $opts ${f} | ${GPSFILTER} >${f}.chk;;
 	    clientlib) ${GPSD_HOME}/test_libgps -b <${f} >${f}.chk ;;
             esac
         done
         status=0
         ;;
     view)
-        [ $quiet = true ] || echo "Viewing..." >&2
+        echo "Viewing..." >&2
         for f in $*; do
 	    case $testing in
-            daemon) ${PYTHON} ${PYTHON_COVERAGE} ${GPSD_HOME}/gpsfake -s 38400 -1 -p $opts ${f} | ${GPSFILTER} ;;
+            daemon) ${PYTHON} ${GPSD_HOME}/gpsfake -s 38400 -1 -p $opts ${f} | ${GPSFILTER} ;;
             clientlib) ${GPSD_HOME}/libgps -b <${f} ;;
             esac
         done
@@ -206,11 +192,10 @@ esac
 # See starttime above
 endtime=`date +"%s * 1000000000 + %N" | sed '/+ N/s///' 2>/dev/null`
 
-if [ $quiet = false ] && [ "$starttime" -a "$endtime" ]
+if [ "$starttime" -a "$endtime" ]
 then
-    # Avoid using -n here since some shells don't support it.
-    echo "Elapsed time:" \
-    $(echo "scale=2; (${endtime} - ${starttime}) / 1000000000" | bc) >&2
+    echo -n "Elapsed time: "
+    echo "scale=2; (${endtime} - ${starttime}) / 1000000000" | bc
 fi
 
 rm -fr ${TMP}

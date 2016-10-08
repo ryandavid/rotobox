@@ -9,8 +9,7 @@
 
 #include "compiler.h"
 
-// check for osx only - hurd doesn't have/need these includes.
-#ifdef __APPLE__
+#ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
 #endif
@@ -18,7 +17,7 @@
 #ifndef HAVE_CLOCK_GETTIME
 int clock_gettime(clockid_t clk_id UNUSED, struct timespec *ts)
 {
-#ifdef __MACH__ // OS X and hurd do not have clock_gettime, use clock_get_time
+#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
     clock_serv_t cclock;
     mach_timespec_t mts;
     host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);

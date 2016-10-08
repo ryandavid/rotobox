@@ -1,19 +1,25 @@
 # This file is Copyright (c) 2010 by the GPSD project
 # BSD terms apply: see the file COPYING in the distribution root for details.
 #
-# This code run compatibly under Python 2 and 3.x for x >= 2.
-# Preserve this property!
-from __future__ import absolute_import, print_function, division
+import time, socket, sys, select, exceptions
 
-import time, socket, sys, select, json
-
-from .misc import polystr, polybytes
+if sys.hexversion >= 0x2060000:
+    import json			# For Python 2.6
+else:
+    import simplejson as json 	# For Python 2.4 and 2.5
 
 GPSD_PORT = "2947"
 
-class gpscommon(object):
-    "Isolate socket handling and buffering from the protocol interpretation."
 
+class json_error(exceptions.Exception):
+    def __init__(self, data, explanation):
+        exceptions.Exception.__init__(self)
+        self.data = data
+        self.explanation = explanation
+
+
+class gpscommon:
+    "Isolate socket handling and buffering from the protocol interpretation."
     def __init__(self, host="127.0.0.1", port=GPSD_PORT, verbose=0):
         self.sock = None        # in case we blow up in connect
         self.linebuffer = ""
@@ -35,7 +41,7 @@ class gpscommon(object):
             try:
                 port = int(port)
             except ValueError:
-                raise socket.error("nonnumeric port")
+                raise socket.error, "nonnumeric port"
         # if self.verbose > 0:
         #    print 'connect:', (host, port)
         msg = "getaddrinfo returns an empty list"
@@ -46,14 +52,13 @@ class gpscommon(object):
                 self.sock = socket.socket(af, socktype, proto)
                 # if self.debuglevel > 0: print 'connect:', (host, port)
                 self.sock.connect(sa)
-            except socket.error as e:
-                msg = str(e)
+            except socket.error, msg:
                 # if self.debuglevel > 0: print 'connect fail:', (host, port)
                 self.close()
                 continue
             break
         if not self.sock:
-            raise socket.error(msg)
+            raise socket.error, msg
 
     def close(self):
         if self.sock:
@@ -76,8 +81,7 @@ class gpscommon(object):
             sys.stderr.write("poll: reading from daemon...\n")
         eol = self.linebuffer.find('\n')
         if eol == -1:
-            # RTCM3 JSON can be over 4.4k long, so go big
-            frag = polystr(self.sock.recv(8192))
+            frag = self.sock.recv(4096)
             self.linebuffer += frag
             if self.verbose > 1:
                 sys.stderr.write("poll: read complete.\n")
@@ -91,7 +95,6 @@ class gpscommon(object):
                 if self.verbose > 1:
                     sys.stderr.write("poll: returning 0.\n")
                 # Read succeeded, but only got a fragment
-                self.response = ''  # Don't duplicate last response
                 return 0
         else:
             if self.verbose > 1:
@@ -119,7 +122,7 @@ class gpscommon(object):
         "Ship commands to the daemon."
         if not commands.endswith("\n"):
             commands += "\n"
-        self.sock.send(polybytes(commands))
+        self.sock.send(commands)
 
 WATCH_ENABLE = 0x000001 	# enable streaming
 WATCH_DISABLE = 0x000002 	# disable watching
@@ -134,28 +137,20 @@ WATCH_PPS = 0x002000    	# enable PPS in raw/NMEA
 WATCH_DEVICE = 0x000800 	# watch specific device
 
 
-class json_error(BaseException):
-    def __init__(self, data, explanation):
-        BaseException.__init__(self)
-        self.data = data
-        self.explanation = explanation
-
-
-class gpsjson(object):
+class gpsjson:
     "Basic JSON decoding."
-
     def __iter__(self):
         return self
 
     def unpack(self, buf):
         try:
             self.data = dictwrapper(json.loads(buf.strip(), encoding="ascii"))
-        except ValueError as e:
+        except ValueError, e:
             raise json_error(buf, e.args[0])
         # Should be done for any other array-valued subobjects, too.
         # This particular logic can fire on SKY or RTCM2 objects.
         if hasattr(self.data, "satellites"):
-            self.data.satellites = [dictwrapper(x) for x in self.data.satellites]
+            self.data.satellites = map(dictwrapper, self.data.satellites)
 
     def stream(self, flags=0, devpath=None):
         "Control streaming reports from the daemon,"
@@ -200,9 +195,8 @@ class gpsjson(object):
         return self.send(arg + "}")
 
 
-class dictwrapper(object):
+class dictwrapper:
     "Wrapper that yields both class and dictionary behavior,"
-
     def __init__(self, ddict):
         self.__dict__ = ddict
 

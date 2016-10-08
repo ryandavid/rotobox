@@ -1,4 +1,4 @@
-/* $Id: tiff2bw.c,v 1.18 2015-06-21 01:09:10 bfriesen Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler
@@ -45,7 +45,7 @@
 #define	strneq(a,b,n)	(strncmp(a,b,n) == 0)
 
 /* x% weighting -> fraction of full color */
-#define	PCT(x)	(((x)*255+127)/100)
+#define	PCT(x)	(((x)*256+50)/100)
 int	RED = PCT(30);		/* 30% */
 int	GREEN = PCT(59);	/* 59% */
 int	BLUE = PCT(11);		/* 11% */

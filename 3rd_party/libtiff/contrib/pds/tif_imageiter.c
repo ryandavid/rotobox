@@ -1,4 +1,4 @@
-/* $Header: /cvs/maptools/cvsroot/libtiff/contrib/pds/tif_imageiter.c,v 1.4 2010-06-08 18:55:15 bfriesen Exp $ */
+/* $Header$ */
 
 /*
  * Copyright (c) 1991-1996 Sam Leffler

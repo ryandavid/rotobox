@@ -1,5 +1,5 @@
 /*
- * $Id: xtiff.c,v 1.4 2013-05-02 14:44:29 tgl Exp $
+ * $Id$
  *
  * xtiff - view a TIFF file in an X window
  *

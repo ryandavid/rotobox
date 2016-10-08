@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
 # usage: gegps [-i] [-d kmldir]
@@ -20,10 +20,6 @@
 # Modified by Chen Wei <weichen302@aol.com> for use with gpsd
 # Cleaned up and adapted for the GPSD project by Eric S. Raymond.
 
-# This code runs compatibly under Python 2 and 3.x for x >= 2.
-# Preserve this property!
-from __future__ import absolute_import, print_function, division
-
 import sys, os, getopt
 import gps
 
@@ -40,7 +36,6 @@ KML_OPEN_IN_GE = '''\
 </NetworkLink>
 </kml>
 '''
-
 
 def kmlize(tpv):
     '''http://code.google.com/apis/kml/documentation/kmlreference.html
@@ -68,7 +63,7 @@ def kmlize(tpv):
         <coordinates>%s,%s,%s</coordinates>
     </Point>
 </Placemark>
-</kml>""" % (speed, heading, longitude, latitude, longitude, latitude, altitude)
+</kml>""" % (speed,heading,longitude,latitude,longitude,latitude,altitude)
 
 
 if __name__ == "__main__":
@@ -99,6 +94,6 @@ if __name__ == "__main__":
         except StopIteration:
             pass
         except KeyboardInterrupt:
-            print('gegpsd stopped ')
+            print 'gegpsd stopped '
 
 # end

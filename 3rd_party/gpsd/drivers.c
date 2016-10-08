@@ -2,10 +2,6 @@
  * This file is Copyright (c) 2010 by the GPSD project
  * BSD terms apply: see the file COPYING in the distribution root for details.
  */
-
-/* for vsnprintf() FreeBSD wants __ISO_C_VISIBLE >= 1999 */
-#define __ISO_C_VISIBLE 1999
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -291,15 +287,10 @@ const struct gps_type_t driver_nmea0183 = {
 static void garmin_mode_switch(struct gps_device_t *session, int mode)
 /* only does anything in one direction, going to Garmin binary driver */
 {
-    struct timespec delay;
-
     if (mode == MODE_BINARY) {
 	(void)nmea_send(session, "$PGRMC1,1,2,1,,,,2,W,N");
 	(void)nmea_send(session, "$PGRMI,,,,,,,R");
-        /* wait 333 uSec, standard Garmin settling time */
-	delay.tv_sec = 0;
-	delay.tv_nsec = 333000L;
-	nanosleep(&delay, NULL);
+	(void)usleep(333);	/* standard Garmin settling time */
     }
 }
 #endif /* RECONFIGURE_ENABLE */
@@ -612,17 +603,11 @@ static const struct gps_type_t driver_tripmate = {
 
 static void earthmate_event_hook(struct gps_device_t *session, event_t event)
 {
-    struct timespec delay;
-
     if (session->context->readonly)
 	return;
     if (event == event_triggermatch) {
 	(void)gpsd_write(session, "EARTHA\r\n", 8);
-        /* wait 10,000 uSec */
-	delay.tv_sec = 0;
-	delay.tv_nsec = 10000000L;
-	nanosleep(&delay, NULL);
-
+	(void)usleep(10000);
 	(void)gpsd_switch_driver(session, "Zodiac");
     }
 }
@@ -1070,25 +1055,16 @@ static const struct gps_type_t driver_garmintxt = {
 #ifdef MTK3301_ENABLE
 /**************************************************************************
  *
- * MediaTek MTK-3301, 3329, 3339
+ * MediaTek MTK-3301 and 3329
  *
- * OEMs for several GPS vendors, notably including Garmin, FasTrax, Trimble,
- * and AdaFruit. Website at <http://www.mediatek.com/>.
+ * OEMs for several GPS vendors, notably including Garmin and FasTrax.
+ * Website at <http://www.mediatek.com/>.
  *
  * The Trimble Condor appears to be an MTK3329.  It behaves as an MTK3301
  * and positively acknowledges all 3301 sentences as valid. It ignores $PMTK
  * sentence fields that are not implemented in the Trimble Condor. It does
  * not have power-save mode and ignores $PMTK320.  For $PMTK314 it silently
  * ignores periodic enabling of messages that aren't supported.
- *
- * From its datasheet the MTK3339 seems to add QZSS support not present in
- * earlier versions. The data sheet says it has 66 channels, which mkes
- * sense given the multi-constellation capability. The channel count
- * in the driver is never used by the NMEA driver so leaving the lower MTK3301
- * value in there is OK.
- *
- * The Adafruit GPS HAT for the Raspberry Pi is an MTK3339. It works with this
- * driver; in fact AdaFruit's overview page for the product features GPSD.
  *
  **************************************************************************/
 
@@ -1175,173 +1151,6 @@ const struct gps_type_t driver_mtk3301 = {
 };
 /* *INDENT-ON* */
 #endif /* MTK3301_ENABLE */
-
-#ifdef ISYNC_ENABLE
-/**************************************************************************
- *
- * Spectratime LNRCLOK / GRCLOK iSync GPS-disciplined rubidium oscillators
- *
- * These devices comprise a u-blox 6 attached to a separate iSync
- * microcontroller which drives the rubidium oscillator.  The iSync
- * microcontroller can be configured to pass through the underlying
- * GPS communication channel, while still using the GPS PPSREF signal
- * to discipline the rubidium oscillator.
- *
- * The iSync can also generate its own periodic status packets in NMEA
- * format.  These describe the state of the oscillator (including
- * whether or not the oscillator PPSOUT is synced to the GPS PPSREF).
- * These packets are transmitted in the middle of the underlying GPS
- * packets, forcing us to handle interrupted NMEA packets.
- *
- * The default state of the device is to generate no periodic output.
- * We send a probe string to initiate beating of the iSync-proprietary
- * $PTNTS,B message, which is then detected as a NMEA trigger.
- *
- **************************************************************************/
-
-static ssize_t isync_write(struct gps_device_t *session, const char *data)
-
-{
-    return gpsd_write(session, data, strlen(data));
-}
-
-static bool isync_detect(struct gps_device_t *session)
-{
-    speed_t old_baudrate;
-    char old_parity;
-    unsigned int old_stopbits;
-
-    /* Set 9600 8N1 */
-    old_baudrate = session->gpsdata.dev.baudrate;
-    old_parity = session->gpsdata.dev.parity;
-    old_stopbits = session->gpsdata.dev.stopbits;
-    gpsd_set_speed(session, 9600, 'N', 1);
-
-    /* Cancel pass-through mode and initiate beating of $PTNTS,B
-     * message, which can subsequently be detected as a trigger.
-     */
-    (void)isync_write(session, "@@@@\r\nMAW0C0B\r\n");
-
-    /* return serial port to original settings */
-    gpsd_set_speed(session, old_baudrate, old_parity, old_stopbits);
-
-    return false;
-}
-
-static void isync_event_hook(struct gps_device_t *session, event_t event)
-{
-    if (session->context->readonly)
-	return;
-
-    if (event == event_driver_switch) {
-	session->lexer.counter = 0;
-    }
-
-    if (event == event_configure) {
-	switch (session->lexer.counter) {
-	case 1:
-	    /* Configure timing and frequency flags:
-	     *  - Thermal compensation active
-	     *  - PPSREF active
-	     *  - PPSOUT active
-	     */
-	    (void)isync_write(session, "MAW040B\r\n");
-	    /* Configure tracking flags:
-	     *  - Save frequency every 24 hours
-	     *  - Align PPSOUT to PPSINT
-	     *  - Track PPSREF
-	     */
-	    (void)isync_write(session, "MAW0513\r\n");
-	    /* Configure tracking start flags:
-	     *  - Tracking restart allowed
-	     *  - Align to PPSREF
-	     */
-	    (void)isync_write(session, "MAW0606\r\n");
-	    /* Configure tracking window:
-	     *  - 4us
-	     */
-	    (void)isync_write(session, "MAW1304\r\n");
-	    /* Configure alarm window:
-	     *  - 4us
-	     */
-	    (void)isync_write(session, "MAW1404\r\n");
-	    break;
-	case 2:
-	    /* Configure pulse every d second:
-	     *  - pulse every second
-	     */
-	    (void)isync_write(session, "MAW1701\r\n");
-	    /* Configure pulse origin:
-	     *  - zero offset
-	     */
-	    (void)isync_write(session, "MAW1800\r\n");
-	    /* Configure pulse width:
-	     *  - 600ms
-	     */
-	    (void)isync_write(session, "MAW1223C34600\r\n");
-	    break;
-	case 3:
-	    /* Configure GPS resource utilization:
-	     *  - do not consider GPS messages
-	     */
-	    (void)isync_write(session, "MAW2200\r\n");
-	    /* Restart sync */
-	    (void)isync_write(session, "SY1\r\n");
-	    /* Restart tracking */
-	    (void)isync_write(session, "TR1\r\n");
-	    break;
-	case 4:
-	    /* Cancel BTx messages (if any) */
-	    (void)isync_write(session, "BT0\r\n");
-	    /* Configure messages coming out every second:
-	     *  - Oscillator status ($PTNTA) at 750ms
-	     */
-	    (void)isync_write(session, "MAW0B00\r\n");
-	    (void)isync_write(session, "MAW0C0A\r\n");
-	    break;
-	case 5:
-	    /* Enable GPS passthrough and force u-blox driver to
-	     * select NMEA mode.
-	     */
-	    session->mode = 0;
-	    session->drivers_identified = 0;
-	    (void)isync_write(session, "@@@@GPS\r\n");
-	    break;
-	case 6:
-	    /* Trigger detection of underlying u-blox (if necessary) */
-	    (void)ubx_write(session, 0x06, 0x00, NULL, 0);
-	    break;
-	}
-    }
-}
-
-/* *INDENT-OFF* */
-const struct gps_type_t driver_isync = {
-    .type_name      = "iSync",		/* full name of type */
-    .packet_type    = NMEA_PACKET,	/* associated lexer packet type */
-    .flags          = DRIVER_STICKY,	/* remember this */
-    .trigger	    = "$PTNTS,B,",	/* iSync status message */
-    .channels       = 50,		/* copied from driver_ubx */
-    .probe_detect   = isync_detect,	/* how to detect at startup time */
-    .get_packet     = generic_get,	/* how to get a packet */
-    .parse_packet   = generic_parse_input,	/* how to interpret a packet */
-    .init_query     = NULL,		/* non-perturbing initial query */
-    .event_hook     = isync_event_hook,	/* lifetime event handler */
-#ifdef RECONFIGURE_ENABLE
-    .speed_switcher = NULL,		/* no speed switcher */
-    .mode_switcher  = NULL,		/* no mode switcher */
-    .rate_switcher  = NULL,		/* no sample-rate switcher */
-    .min_cycle      = 1,		/* not relevant, no rate switch */
-#endif /* RECONFIGURE_ENABLE */
-#ifdef CONTROLSEND_ENABLE
-    .control_send   = nmea_write,	/* how to send control strings */
-#endif /* CONTROLSEND_ENABLE */
-#ifdef TIMEHINT_ENABLE
-    .time_offset     = NULL,		/* no method for NTP fudge factor */
-#endif /* TIMEHINT_ENABLE */
-};
-/* *INDENT-ON* */
-#endif /* ISYNC_ENABLE */
 
 #ifdef AIVDM_ENABLE
 /**************************************************************************
@@ -1442,7 +1251,6 @@ static bool aivdm_decode(const char *buf, size_t buflen,
 		     "ignoring bogus AIS channel '12'.\n");
 	    return false;
 	}
-	/* fall through */
     case 'A':
 	ais_context = &session->driver.aivdm.context[0];
 	session->driver.aivdm.ais_channel ='A';
@@ -1743,7 +1551,6 @@ extern const struct gps_type_t driver_navcom;
 extern const struct gps_type_t driver_nmea2000;
 extern const struct gps_type_t driver_oncore;
 extern const struct gps_type_t driver_sirf;
-extern const struct gps_type_t driver_skytraq;
 extern const struct gps_type_t driver_superstar2;
 extern const struct gps_type_t driver_tsip;
 extern const struct gps_type_t driver_ubx;
@@ -1812,18 +1619,12 @@ static const struct gps_type_t *gpsd_driver_array[] = {
 #ifdef SIRF_ENABLE
     &driver_sirf,
 #endif /* SIRF_ENABLE */
-#ifdef SKYTRAQ_ENABLE
-    &driver_skytraq,
-#endif /* SKYTRAQ_ENABLE */
 #ifdef SUPERSTAR2_ENABLE
     &driver_superstar2,
 #endif /* SUPERSTAR2_ENABLE */
 #ifdef TSIP_ENABLE
     &driver_tsip,
 #endif /* TSIP_ENABLE */
-#ifdef ISYNC_ENABLE
-    &driver_isync,
-#endif /* ISYNC_ENABLE */
 #ifdef UBLOX_ENABLE
     &driver_ubx,
 #endif /* UBLOX_ENABLE */

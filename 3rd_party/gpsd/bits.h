@@ -35,13 +35,12 @@
 extern float getlef32(const char *, int);
 extern double getled64(const char *, int);
 
-#define putle16(buf, off, w) do {putbyte(buf, (off)+1, (unsigned int)(w) >> 8); putbyte(buf, (off), (w));} while (0)
-#define putle32(buf, off, l) do {putle16(buf, (off)+2, (unsigned int)(l) >> 16); putle16(buf, (off), (l));} while (0)
+#define putle16(buf, off, w) do {putbyte(buf, (off)+1, (uint)(w) >> 8); putbyte(buf, (off), (w));} while (0)
+#define putle32(buf, off, l) do {putle16(buf, (off)+2, (uint)(l) >> 16); putle16(buf, (off), (l));} while (0)
 
 /* big-endian access */
 #define getbes16(buf, off)	((int16_t)(((uint16_t)getub(buf, (off)) << 8) | (uint16_t)getub(buf, (off)+1)))
 #define getbeu16(buf, off)	((uint16_t)(((uint16_t)getub(buf, (off)) << 8) | (uint16_t)getub(buf, (off)+1)))
-#define getbeu24(buf, off)	((uint32_t)(((uint16_t)getbeu16(buf, (off)) << 8) | getub(buf, (off)+2)))
 #define getbes32(buf, off)	((int32_t)(((uint16_t)getbeu16(buf, (off)) << 16) | getbeu16(buf, (off)+2)))
 #define getbeu32(buf, off)	((uint32_t)(((uint16_t)getbeu16(buf, (off)) << 16) | getbeu16(buf, (off)+2)))
 #define getbes64(buf, off)	((int64_t)(((uint64_t)getbeu32(buf, (off)) << 32) | getbeu32(buf, (off)+4)))

@@ -17,6 +17,7 @@
 #include <assert.h>
 #include <emmintrin.h>
 #include "./lossless.h"
+#include "./lossless_common.h"
 
 // For sign-extended multiplying constants, pre-shifted by 5:
 #define CST_5b(X)  (((int16_t)((uint16_t)X << 8)) >> 5)
@@ -364,8 +365,9 @@ static int VectorMismatch(const uint32_t* const array1,
       if (length >= 8 &&
           _mm_movemask_epi8(_mm_cmpeq_epi32(
               _mm_loadu_si128((const __m128i*)&array1[4]),
-              _mm_loadu_si128((const __m128i*)&array2[4]))) == 0xffff)
+              _mm_loadu_si128((const __m128i*)&array2[4]))) == 0xffff) {
         match_len = 8;
+      }
     }
   }
 

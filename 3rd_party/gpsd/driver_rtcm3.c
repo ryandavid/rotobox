@@ -64,11 +64,6 @@ BSD terms apply: see the file COPYING in the distribution root for details.
 /* Large case statements make GNU indent very confused */
 /* *INDENT-OFF* */
 
-/* good source on message types:
- * https://software.rtcm-ntrip.org/export/HEAD/ntrip/trunk/BNC/src/bnchelp.html
- * Also look in the BNC source
- * and look at the tklib source: http://www.rtklib.com/
- */
 void rtcm3_unpack(const struct gps_context_t *context,
 		  struct rtcm3_t *rtcm, char *buf)
 /* break out the raw bits into the scaled report-structure fields */
@@ -77,7 +72,6 @@ void rtcm3_unpack(const struct gps_context_t *context,
     int bitcount = 0;
     unsigned int i;
     signed long temp;
-    bool unknown = true;;
 
 #define ugrab(width)	(bitcount += width, ubits((unsigned char *)buf, bitcount-width, width, false))
 #define sgrab(width)	(bitcount += width, sbits((signed char *)buf, bitcount-width, width, false))
@@ -98,23 +92,15 @@ void rtcm3_unpack(const struct gps_context_t *context,
     //assert(ugrab(6) == 0x00);
     ugrab(14);
 
-    rtcm->length = (unsigned int)ugrab(10);
-    rtcm->type = (unsigned int)ugrab(12);
+    rtcm->length = (uint)ugrab(10);
+    rtcm->type = (uint)ugrab(12);
 
     gpsd_log(&context->errout, LOG_RAW, "RTCM3: type %d payload length %d\n",
 	     rtcm->type, rtcm->length);
 
     switch (rtcm->type) {
-    case 63:
-        /* RTCM - 63
-         * BDS/BeiDou Ephemeris
-         * length 64
-	 */
-	break;
-
-    case 1001:
-	/* GPS Basic RTK, L1 Only */
-	rtcm->rtcmtypes.rtcm3_1001.header.station_id = (unsigned int)ugrab(12);
+    case 1001:			/* GPS Basic RTK, L1 Only */
+	rtcm->rtcmtypes.rtcm3_1001.header.station_id = (uint)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1001.header.tow = (time_t)ugrab(30);
 	rtcm->rtcmtypes.rtcm3_1001.header.sync = (bool)ugrab(1);
 	rtcm->rtcmtypes.rtcm3_1001.header.satcount = (unsigned short)ugrab(5);
@@ -129,12 +115,10 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1001.L1.locktime =	(unsigned char)sgrab(7);
 	}
 #undef R1001
-	unknown = false;
 	break;
 
-    case 1002:
-	/* GPS Extended RTK, L1 Only */
-	rtcm->rtcmtypes.rtcm3_1002.header.station_id = (unsigned int)ugrab(12);
+    case 1002:			/* GPS Extended RTK, L1 Only */
+	rtcm->rtcmtypes.rtcm3_1002.header.station_id = (uint)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1002.header.tow = (time_t)ugrab(30);
 	rtcm->rtcmtypes.rtcm3_1002.header.sync = (bool)ugrab(1);
 	rtcm->rtcmtypes.rtcm3_1002.header.satcount = (unsigned short)ugrab(5);
@@ -151,12 +135,10 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1002.L1.CNR = (ugrab(8)) * CARRIER_NOISE_RATIO_UNITS;
 	}
 #undef R1002
-	unknown = false;
 	break;
 
-    case 1003:
-	/* GPS Basic RTK, L1 & L2 */
-	rtcm->rtcmtypes.rtcm3_1003.header.station_id = (unsigned int)ugrab(12);
+    case 1003:			/* GPS Basic RTK, L1 & L2 */
+	rtcm->rtcmtypes.rtcm3_1003.header.station_id = (uint)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1003.header.tow = (time_t)ugrab(30);
 	rtcm->rtcmtypes.rtcm3_1003.header.sync = (bool)ugrab(1);
 	rtcm->rtcmtypes.rtcm3_1003.header.satcount = (unsigned short)ugrab(5);
@@ -180,12 +162,10 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1003.L2.locktime =	(unsigned char)sgrab(7);
 	}
 #undef R1003
-	unknown = false;
 	break;
 
-    case 1004:
-	/* GPS Extended RTK, L1 & L2 */
-	rtcm->rtcmtypes.rtcm3_1004.header.station_id = (unsigned int)ugrab(12);
+    case 1004:			/* GPS Extended RTK, L1 & L2 */
+	rtcm->rtcmtypes.rtcm3_1004.header.station_id = (uint)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1004.header.tow = (time_t)ugrab(30);
 	rtcm->rtcmtypes.rtcm3_1004.header.sync = (bool)ugrab(1);
 	rtcm->rtcmtypes.rtcm3_1004.header.satcount = (unsigned short)ugrab(5);
@@ -207,11 +187,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1004.L2.CNR = ugrab(8) * CARRIER_NOISE_RATIO_UNITS;
 	}
 #undef R1004
-	unknown = false;
 	break;
 
-    case 1005:
-	/* Stationary Antenna Reference Point, No Height Information */
+    case 1005:			/* Stationary Antenna Reference Point, No Height Information */
 #define R1005 rtcm->rtcmtypes.rtcm3_1005
 	R1005.station_id = (unsigned short)ugrab(12);
 	ugrab(6);		/* reserved */
@@ -224,11 +202,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	ugrab(2);
 	R1005.ecef_z = sgrab(38) * ANTENNA_POSITION_RESOLUTION;
 #undef R1005
-	unknown = false;
 	break;
 
-    case 1006:
-	/* Stationary Antenna Reference Point, with Height Information */
+    case 1006:			/* Stationary Antenna Reference Point, with Height Information */
 #define R1006 rtcm->rtcmtypes.rtcm3_1006
 	R1006.station_id = (unsigned short)ugrab(12);
 	(void)ugrab(6);		/* reserved */
@@ -242,22 +218,18 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	R1006.ecef_z = sgrab(38) * ANTENNA_POSITION_RESOLUTION;
 	R1006.height = ugrab(16) * ANTENNA_POSITION_RESOLUTION;
 #undef R1006
-	unknown = false;
 	break;
 
-    case 1007:
-	/* Antenna Descriptor */
+    case 1007:			/* Antenna Descriptor */
 	rtcm->rtcmtypes.rtcm3_1007.station_id = (unsigned short)ugrab(12);
 	n = (unsigned long)ugrab(8);
 	(void)memcpy(rtcm->rtcmtypes.rtcm3_1007.descriptor, buf + 7, n);
 	rtcm->rtcmtypes.rtcm3_1007.descriptor[n] = '\0';
 	bitcount += 8 * n;
 	rtcm->rtcmtypes.rtcm3_1007.setup_id = ugrab(8);
-	unknown = false;
 	break;
 
-    case 1008:
-	/* Antenna Descriptor & Serial Number */
+    case 1008:			/* Antenna Descriptor & Serial Number */
 	rtcm->rtcmtypes.rtcm3_1008.station_id = (unsigned short)ugrab(12);
 	n = (unsigned long)ugrab(8);
 	(void)memcpy(rtcm->rtcmtypes.rtcm3_1008.descriptor, buf + 7, n);
@@ -268,11 +240,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	(void)memcpy(rtcm->rtcmtypes.rtcm3_1008.serial, buf + 9 + n, n2);
 	rtcm->rtcmtypes.rtcm3_1008.serial[n2] = '\0';
 	//bitcount += 8 * n2;
-	unknown = false;
 	break;
 
-    case 1009:
-	/* GLONASS Basic RTK, L1 Only */
+    case 1009:			/* GLONASS Basic RTK, L1 Only */
 	rtcm->rtcmtypes.rtcm3_1009.header.station_id =
 	    (unsigned short)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1009.header.tow = (time_t)ugrab(27);
@@ -290,11 +260,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1009.L1.locktime =	(unsigned char)sgrab(7);
 	}
 #undef R1009
-	unknown = false;
 	break;
 
-    case 1010:
-	/* GLONASS Extended RTK, L1 Only */
+    case 1010:			/* GLONASS Extended RTK, L1 Only */
 	rtcm->rtcmtypes.rtcm3_1010.header.station_id =
 	    (unsigned short)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1010.header.tow = (time_t)ugrab(27);
@@ -314,11 +282,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1010.L1.CNR = ugrab(8) * CARRIER_NOISE_RATIO_UNITS;
 	}
 #undef R1010
-	unknown = false;
 	break;
 
-    case 1011:
-	/* GLONASS Basic RTK, L1 & L2 */
+    case 1011:			/* GLONASS Basic RTK, L1 & L2 */
 	rtcm->rtcmtypes.rtcm3_1011.header.station_id =
 	    (unsigned short)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1011.header.tow = (time_t)ugrab(27);
@@ -345,11 +311,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1011.L2.CNR = ugrab(8) * CARRIER_NOISE_RATIO_UNITS;
 	}
 #undef R1011
-	unknown = false;
 	break;
 
-    case 1012:
-	/* GLONASS Extended RTK, L1 & L2 */
+    case 1012:			/* GLONASS Extended RTK, L1 & L2 */
 	rtcm->rtcmtypes.rtcm3_1012.header.station_id =
 	    (unsigned short)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1012.header.tow = (time_t)ugrab(27);
@@ -379,11 +343,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1012.L2.CNR = (unsigned char)ugrab(8) * CARRIER_NOISE_RATIO_UNITS;
 	}
 #undef R1012
-	unknown = false;
 	break;
 
-    case 1013:
-	/* System Parameters */
+    case 1013:			/* System Parameters */
 	rtcm->rtcmtypes.rtcm3_1013.station_id = (unsigned short)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1013.mjd = (unsigned short)ugrab(16);
 	rtcm->rtcmtypes.rtcm3_1013.sod = (unsigned short)ugrab(17);
@@ -396,13 +358,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	    R1013.interval = (unsigned short)ugrab(16);
 	}
 #undef R1013
-	unknown = false;
 	break;
 
     case 1014:
-	/* Network Auxiliary Station Data
-	 * coordinate difference between one Aux station and the master station
-	 */
 	rtcm->rtcmtypes.rtcm3_1014.network_id = (int)ugrab(8);
 	rtcm->rtcmtypes.rtcm3_1014.subnetwork_id = (int)ugrab(4);
 	rtcm->rtcmtypes.rtcm3_1014.stationcount = (char)ugrab(5);
@@ -413,37 +371,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	rtcm->rtcmtypes.rtcm3_1014.d_lon =
 	    (unsigned short)ugrab(21) * ANTENNA_DEGREE_RESOLUTION;
 	rtcm->rtcmtypes.rtcm3_1014.d_alt = (unsigned short)ugrab(23) / 1000;
-	unknown = false;
-	break;
-
-    case 1017:
-        /* RTCM 3.1 - 1017
-         * GPS Combined Geometric and Ionospheric Correction Differences
-         * for all satellites between one Aux station and the master station
-         * (same content as both types 1015 and 1016 together, but less size)
-	 */
-	break;
-
-    case 1019:
-        /* RTCM 3.1 - 1020
-         * GPS Ephemeris
-	 * length 19
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1020:
-        /* RTCM 3.1 - 1020
-         * GLONASS Ephemeris
-	 * length 45
-	 */
-	/* TODO: rtklib has C code for this one.  */
 	break;
 
     case 1029:
-	/* Text in UTF8 format
-         *(max. 127 multibyte characters and max. 255 bytes)
-	 */
 	rtcm->rtcmtypes.rtcm3_1029.station_id = (unsigned short)ugrab(12);
 	rtcm->rtcmtypes.rtcm3_1029.mjd = (unsigned short)ugrab(16);
 	rtcm->rtcmtypes.rtcm3_1029.sod = (unsigned short)ugrab(17);
@@ -451,16 +381,9 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	rtcm->rtcmtypes.rtcm3_1029.unicode_units = (size_t)ugrab(8);
 	(void)memcpy(rtcm->rtcmtypes.rtcm3_1029.text,
 		     buf + 12, rtcm->rtcmtypes.rtcm3_1029.unicode_units);
-	unknown = false;
 	break;
 
     case 1033:			/* see note in header */
-	/* Receiver and Antenna Descriptor
-         * Type1033 is a combined Message Types 1007 and 1008
-         * and hence contains antenna descriptor and serial number
-	 * as well as receiver descriptor and serial number.
-	 */
-	/* TODO: rtklib has C code for this one.  */
 	rtcm->rtcmtypes.rtcm3_1033.station_id = (unsigned short)ugrab(12);
 	n = (unsigned long)ugrab(8);
 	(void)memcpy(rtcm->rtcmtypes.rtcm3_1033.descriptor, buf + 7, n);
@@ -479,113 +402,20 @@ void rtcm3_unpack(const struct gps_context_t *context,
 	(void)memcpy(rtcm->rtcmtypes.rtcm3_1033.firmware, buf + 11+n+n2+n3, n3);
 	rtcm->rtcmtypes.rtcm3_1033.firmware[n4] = '\0';
 	//bitcount += 8 * n4;
-	// TODO: next is receiver serial number
-	unknown = false;
-	break;
-
-    case 1043:
-        /* RTCM 3.x - 1043
-         * SBAS Ephemeris
-	 * length 29
-	 */
-	break;
-
-    case 1044:
-        /* RTCM 3.x - 1044
-         * QZSS ephemeris
-         * length 61
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1045:
-        /* RTCM 3.x - 1045
-         * Galileo Ephemeris FNAV data
-	 * length 62
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1046:
-        /* RTCM 3.x - 1046
-         * Galileo Ephemeris INAV data
-	 * length 63
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1074:
-	/* RTCM 3.x
-	 * GPS Multi Signal Message
-	 */
-	break;
-
-    case 1077:
-        /* RTCM 3.x - 1077
-	 * Full GPS pseudo-ranges, carrier phases, Doppler and
-	 * signal strength (high resolution)
-         * length 438
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1087:
-        /* RTCM 3.x - 1087
-	 * Full GLONASS pseudo-ranges, carrier phases, Doppler and
-	 * signal strength (high resolution)
-         * length 417 or 427
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1097:
-        /* RTCM 3.x - 1097
-         * Full Galileo pseudo-ranges, carrier phases, Doppler and
-	 * signal strength (high resolution)
-         * length 96
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1107:
-        /* RTCM 3.x - 1107
-	 * 'Multiple Signal Message
-         * Full SBAS pseudo-ranges, carrier phases, Doppler and
-	 * signal strength (high resolution)
-         * length 96
-	 */
-	/* TODO: rtklib has C code for this one.  */
-	break;
-
-    case 1114:
-	/* RTCM 3.x
-	 * QZSS Multi Signal Message
-	 */
-	break;
-
-    case 1124:
-	/* RTCM 3.x
-	 * BeiDou Multi Signal Message
-	 */
 	break;
 
     default:
+	/*
+	 * Leader bytes, message length, and checksum won't be copied.
+	 * The first 12 bits of the copied payload will be the type field.
+	 */
+	memcpy(rtcm->rtcmtypes.data, buf+3, rtcm->length);
 	break;
     }
 #undef RANGEDIFF
 #undef GPS_PSEUDORANGE
 #undef sgrab
 #undef ugrab
-    if ( unknown ) {
-	/*
-	 * Leader bytes, message length, and checksum won't be copied.
-	 * The first 12 bits of the copied payload will be the type field.
-	 */
-	memcpy(rtcm->rtcmtypes.data, buf+3, rtcm->length);
-	gpsd_log(&context->errout, LOG_PROG, "RTCM3: unknown type %d, length %d\n",
-	     rtcm->type, rtcm->length);
-    }
-
 }
 
 /* *INDENT-ON* */

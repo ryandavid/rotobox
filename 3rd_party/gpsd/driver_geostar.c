@@ -203,7 +203,7 @@ static gps_mask_t geostar_analyze(struct gps_device_t *session)
 		mask |= STATUS_SET;
 	    }
 	}
-	mask |= TIME_SET | NTPTIME_IS | LATLON_SET | ALTITUDE_SET | SPEED_SET | TRACK_SET | DOP_SET | USED_IS | REPORT_IS;
+	mask |= TIME_SET | PPSTIME_IS | LATLON_SET | ALTITUDE_SET | SPEED_SET | TRACK_SET | DOP_SET | USED_IS | REPORT_IS;
 
 	gpsd_log(&session->context->errout, LOG_INF,
 		 "Geographic coordinates %f %g %g %g %g %g\n",
@@ -546,7 +546,6 @@ static bool geostar_speed_switch(struct gps_device_t *session,
 			      speed_t speed, char parity, int stopbits)
 {
     unsigned char buf[4 * 4];
-    int iparity;
 
     switch (parity) {
     case 'E':
@@ -563,12 +562,11 @@ static bool geostar_speed_switch(struct gps_device_t *session,
 	parity = (char)0;
 	break;
     }
-    iparity = parity;
 
     putbe32(buf, 0, session->driver.geostar.physical_port);
     putbe32(buf, 4, speed);
     putbe32(buf, 8, stopbits);
-    putbe32(buf, 12, iparity);
+    putbe32(buf, 12, parity);
     (void)geostar_write(session, 0x41, buf, 4);
 
     return true;	/* it would be nice to error-check this */

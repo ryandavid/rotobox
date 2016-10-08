@@ -5,15 +5,10 @@
  * BSD terms apply: see the file COPYING in the distribution root for details.
  *
  */
-
-/* for vsnprintf() FreeBSD wants __ISO_C_VISIBLE >= 1999 */
-#define __ISO_C_VISIBLE 1999
-
 #include <Python.h>
 
 #include <stdio.h>
 #include "gpsd.h"
-#include "python_compatibility.h"
 
 static PyObject *ErrorObject = NULL;
 
@@ -99,7 +94,7 @@ Lexer_get(LexerObject *self, PyObject *args)
     if (PyErr_Occurred())
 	return NULL;
 
-    return Py_BuildValue("(i, i, " GPSD_PY_BYTE_FORMAT ", i)",
+    return Py_BuildValue("(i, i, s#, i)",
 			 len,
 			 self->lexer.type,
 			 self->lexer.outbuffer,
@@ -130,6 +125,12 @@ static PyMethodDef Lexer_methods[] = {
     {NULL,		NULL}		/* sentinel */
 };
 
+static PyObject *
+Lexer_getattr(LexerObject *self, char *name)
+{
+    return Py_FindMethod(Lexer_methods, (PyObject *)self, name);
+}
+
 PyDoc_STRVAR(Lexer__doc__,
 "GPS packet lexer object\n\
 \n\
@@ -138,14 +139,15 @@ Fetch a single packet from file descriptor");
 static PyTypeObject Lexer_Type = {
 	/* The ob_type field must be initialized in the module init function
 	 * to be portable to Windows without using C++. */
-	PyVarObject_HEAD_INIT(NULL, 0)
+	PyObject_HEAD_INIT(NULL)
+	0,			/*ob_size*/
 	"gps.packet.lexer",	/*tp_name*/
 	sizeof(LexerObject),	/*tp_basicsize*/
 	0,			/*tp_itemsize*/
 	/* methods */
 	(destructor)Lexer_dealloc, /*tp_dealloc*/
 	0,			/*tp_print*/
-	0,			/*tp_getattr*/
+	(getattrfunc)Lexer_getattr,			/*tp_getattr*/
 	0,			/*tp_setattr*/
 	0,			/*tp_compare*/
 	0,			/*tp_repr*/
@@ -155,11 +157,11 @@ static PyTypeObject Lexer_Type = {
 	0,			/*tp_hash*/
         0,                      /*tp_call*/
         0,                      /*tp_str*/
-        PyObject_GenericGetAttr,  /*tp_getattro*/
+        0,                      /*tp_getattro*/
         0,                      /*tp_setattro*/
         0,                      /*tp_as_buffer*/
         Py_TPFLAGS_DEFAULT,     /*tp_flags*/
-        Lexer__doc__,           /*tp_doc*/
+        Lexer__doc__,          /*tp_doc*/
         0,                      /*tp_traverse*/
         0,                      /*tp_clear*/
         0,                      /*tp_richcompare*/
@@ -253,16 +255,17 @@ level of the message and the message itself.\n\
 /* banishes a pointless compiler warning */
 extern PyMODINIT_FUNC initpacket(void);
 
+PyMODINIT_FUNC
 // cppcheck-suppress unusedFunction
-GPSD_PY_MODULE_INIT(packet)
+initpacket(void)
 {
     PyObject *m;
 
-    /* Create the module and add the functions */
-    GPSD_PY_MODULE_DEF(m, "packet", module_doc, packet_methods)
+    if (PyType_Ready(&Lexer_Type) < 0)
+	return;
 
-    if (m == NULL || PyType_Ready(&Lexer_Type) < 0)
-	return GPSD_PY_MODULE_ERROR_VAL;
+    /* Create the module and add the functions */
+    m = Py_InitModule3("packet", packet_methods, module_doc);
 
     PyModule_AddIntConstant(m, "BAD_PACKET", BAD_PACKET);
     PyModule_AddIntConstant(m, "COMMENT_PACKET", COMMENT_PACKET);
@@ -295,6 +298,4 @@ GPSD_PY_MODULE_INIT(packet)
     PyModule_AddIntConstant(m, "LOG_DATA", LOG_DATA);
     PyModule_AddIntConstant(m, "LOG_SPIN", LOG_SPIN);
     PyModule_AddIntConstant(m, "LOG_RAW", LOG_RAW);
-
-    return GPSD_PY_MODULE_SUCCESS_VAL(m);
 }

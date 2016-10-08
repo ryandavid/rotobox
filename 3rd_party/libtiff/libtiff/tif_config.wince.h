@@ -1,4 +1,4 @@
-/* $Id: tif_config.wince.h,v 1.3 2010-03-10 18:56:48 bfriesen Exp $ */
+/* $Id$ */
 
 /*
  * TIFF library configuration header for Windows CE platform.

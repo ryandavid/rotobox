@@ -334,7 +334,6 @@ static gps_mask_t handle_0x15(struct gps_device_t *session)
     uint8_t port, cmd_id = getub(buf, 3);
     gpsd_log(&session->context->errout, LOG_PROG,
 	     "Navcom: received packet type 0x15 (Negative Acknowledge)\n");
-    /* coverity_submit[tainted_data] */
     for (n = 4; n < (msg_len - 2); n += 2) {
 	uint8_t err_id = getub(buf, n);
 	uint8_t err_desc = getub(buf, n + 1);
@@ -497,7 +496,7 @@ static gps_mask_t handle_0xb1(struct gps_device_t *session)
     mask = LATLON_SET | ALTITUDE_SET | CLIMB_SET | SPEED_SET | TRACK_SET
 	| STATUS_SET | MODE_SET | USED_IS | HERR_SET | VERR_SET
 	| TIMERR_SET | DOP_SET
-	| TIME_SET | NTPTIME_IS;
+	| TIME_SET | PPSTIME_IS;
     gpsd_log(&session->context->errout, LOG_DATA,
 	     "PVT 0xb1: time=%.2f, lat=%.2f lon=%.2f alt=%.f "
 	     "speed=%.2f track=%.2f climb=%.2f mode=%d status=%d "
@@ -727,7 +726,6 @@ static gps_mask_t handle_0x86(struct gps_device_t *session)
 
     /* Satellite details */
     i = nsu = 0;
-    /* coverity_submit[tainted_data] */
     for (n = 17; n < msg_len; n += 14) {
 	uint8_t prn, ele, ca_snr, p2_snr, log_channel, hw_channel, s, stat;
 	uint16_t azm, dgps_age;
@@ -829,7 +827,6 @@ static gps_mask_t handle_0xb0(struct gps_device_t *session)
 	     tm_slew_acc, status,
 	     ((status & 0x80) ? "channel time set - " : ""),
 	     ((status & 0x40) ? "stable" : "not stable"), status & 0x0f);
-    /* coverity_submit[tainted_data] */
     for (n = 11; n < msg_len - 1; n += 16) {
 	uint8_t sv_status = getub(buf, n);
 	uint8_t ch_status = getub(buf, n + 1);
@@ -1109,7 +1106,7 @@ gps_mask_t navcom_parse(struct gps_device_t * session, unsigned char *buf,
 
     cmd_id = (unsigned char)getub(buf, 3);
     //payload = &buf[6];
-    msg_len = (unsigned int) getleu16(buf, 4);
+    msg_len = (uint) getleu16(buf, 4);
 
     gpsd_log(&session->context->errout, LOG_RAW,
 	     "Navcom: packet type 0x%02x\n", cmd_id);

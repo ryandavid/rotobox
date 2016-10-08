@@ -31,12 +31,9 @@ static struct exportmethod_t exportmethods[] = {
 /* convert double degrees to a static string and return a pointer to it
  *
  * deg_str_type:
- *   	deg_dd     : return DD.ddddddd
- *      deg_ddmm   : return DD MM.mmmmmm'
- *      deg_ddmmss : return DD MM' SS.sssss"
- *
- * for cm level accuracy we need degrees to 7+ decimal places
- * Ref: https://en.wikipedia.org/wiki/Decimal_degrees
+ *   	deg_dd     : return DD.dddddd
+ *      deg_ddmm   : return DD MM.mmmm'
+ *      deg_ddmmss : return DD MM' SS.sss"
  *
  */
 char *deg_to_str(enum deg_str_type type, double f)
@@ -53,28 +50,27 @@ char *deg_to_str(enum deg_str_type type, double f)
 
     fmin = modf(f, &fdeg);
     deg = (int)fdeg;
+    frac_deg = (long)(fmin * 1000000);
 
     if (deg_dd == type) {
-	/* DD.dddddddd */
-        /* cm level accuracy requires the %08ld */
-	frac_deg = (long)(fmin * 100000000);
-	(void)snprintf(str, sizeof(str), "%3d.%08ld", deg, frac_deg);
+	/* DD.dddddd */
+	(void)snprintf(str, sizeof(str), "%3d.%06ld", deg, frac_deg);
 	return str;
     }
     fsec = modf(fmin * 60, &fmin);
     min = (int)fmin;
+    sec = (int)(fsec * 10000.0);
 
     if (deg_ddmm == type) {
-	/* DD MM.mmmmmm */
-	sec = (int)(fsec * 1000000.0);
-	(void)snprintf(str, sizeof(str), "%3d %02d.%06d'", deg, min, sec);
+	/* DD MM.mmmm */
+	(void)snprintf(str, sizeof(str), "%3d %02d.%04d'", deg, min, sec);
 	return str;
     }
     /* else DD MM SS.sss */
     fdsec = modf(fsec * 60, &fsec);
     sec = (int)fsec;
-    dsec = (int)(fdsec * 10000.0);
-    (void)snprintf(str, sizeof(str), "%3d %02d' %02d.%05d\"", deg, min, sec,
+    dsec = (int)(fdsec * 1000.0);
+    (void)snprintf(str, sizeof(str), "%3d %02d' %02d.%03d\"", deg, min, sec,
 		   dsec);
 
     return str;
@@ -148,7 +144,7 @@ void gpsd_source_spec(const char *arg, struct fixsource_t *source)
 
     if (arg != NULL) {
 	char *colon1, *skipto, *rbrk;
-	source->spec = (char *)arg;
+	source->spec = strdup(arg);
 	assert(source->spec != NULL);
 
 	skipto = source->spec;

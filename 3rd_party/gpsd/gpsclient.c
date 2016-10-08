@@ -10,7 +10,6 @@
 #include "gps.h"
 #include "gpsdclient.h"
 #include "compiler.h"	/* for UNUSED */
-#include "python_compatibility.h"
 
 /*
  * Client utility functions
@@ -42,7 +41,7 @@ gpsclient_gpsd_units(PyObject *self UNUSED, PyObject *args)
 static PyObject *
 gpsclient_wgs84_separation(PyObject *self UNUSED, PyObject *args)
 {
-    double lat = 0.0, lon = 0.0;
+    const double lat, lon;
     double sep;
 
     if (!PyArg_ParseTuple(args, "dd", &lat, &lon))
@@ -54,7 +53,7 @@ gpsclient_wgs84_separation(PyObject *self UNUSED, PyObject *args)
 static PyObject *
 gpsclient_maidenhead(PyObject *self UNUSED, PyObject *args)
 {
-    double lat = 0.0, lon = 0.0;
+    const double lat, lon;
     char *gs;
 
     if (!PyArg_ParseTuple(args, "dd", &lat, &lon))
@@ -84,16 +83,13 @@ PyDoc_STRVAR(module_doc,
 /* banishes a pointless compiler warning */
 extern PyMODINIT_FUNC initclienthelpers(void);
 
+PyMODINIT_FUNC
 // cppcheck-suppress unusedFunction
-GPSD_PY_MODULE_INIT(clienthelpers)
+initclienthelpers(void)
 {
     PyObject *m;
 
-    /* Create the module and add the functions */
-    GPSD_PY_MODULE_DEF(m, "clienthelpers", module_doc, gpsclient_methods)
-
-    if (m == NULL)
-	return GPSD_PY_MODULE_ERROR_VAL;
+    m = Py_InitModule3("gps.clienthelpers", gpsclient_methods, module_doc);
 
     PyModule_AddIntConstant(m, "deg_dd", deg_dd);
     PyModule_AddIntConstant(m, "deg_ddmm", deg_ddmm);
@@ -103,6 +99,5 @@ GPSD_PY_MODULE_INIT(clienthelpers)
     PyModule_AddIntConstant(m, "imperial", imperial);
     PyModule_AddIntConstant(m, "nautical", nautical);
     PyModule_AddIntConstant(m, "metric", metric);
-
-    return GPSD_PY_MODULE_SUCCESS_VAL(m);
 }
+

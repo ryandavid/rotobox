@@ -45,7 +45,7 @@ static void assert_integer(char *attr, int fld, int val)
     }
 }
 
-static void assert_uinteger(char *attr, unsigned int fld, unsigned int val)
+static void assert_uinteger(char *attr, uint fld, uint val)
 {
     if (fld != val) {
 	(void)fprintf(stderr,
@@ -223,14 +223,8 @@ static const char *json_strTOFF = "{\"class\":\"TOFF\",\"device\":\"GPS#1\"," \
     "\"real_sec\":1428001514, \"real_nsec\":1000000," \
     "\"clock_sec\":1428001513,\"clock_nsec\":999999999}";
 
-/* Case 12: test parsing of OSC message */
-
-static const char *json_strOSC = "{\"class\":\"OSC\",\"device\":\"GPS#1\"," \
-    "\"running\":true,\"reference\":true,\"disciplined\":false," \
-    "\"delta\":67}";
-
 #ifndef JSON_MINIMAL
-/* Case 13: Read array of integers */
+/* Case 12: Read array of integers */
 
 static const char *json_strInt = "[23,-17,5]";
 static int intstore[4], intcount;
@@ -242,7 +236,7 @@ static const struct json_array_t json_array_Int = {
     .maxlen = sizeof(intstore)/sizeof(intstore[0]),
 };
 
-/* Case 14: Read array of booleans */
+/* Case 13: Read array of booleans */
 
 static const char *json_strBool = "[true,false,true]";
 static bool boolstore[4];
@@ -255,13 +249,13 @@ static const struct json_array_t json_array_Bool = {
     .maxlen = sizeof(boolstore)/sizeof(boolstore[0]),
 };
 
-/* Case 15: Read array of reals */
+/* Case 14: Read array of reals */
 
-static const char *json_str15 = "[23.1,-17.2,5.3]";
+static const char *json_str14 = "[23.1,-17.2,5.3]";
 static double realstore[4];
 static int realcount;
 
-static const struct json_array_t json_array_15 = {
+static const struct json_array_t json_array_14 = {
     .element_type = t_real,
     .arr.reals.store = realstore,
     .count = &realcount,
@@ -392,20 +386,10 @@ static void jsontest(int i)
 	assert_integer("clock_nsec", gpsdata.pps.clock.tv_nsec, 999999999);
 	break;
 
-    case 12:
-	status = json_oscillator_read(json_strOSC, &gpsdata, NULL);
-	assert_case(12,status);
-	assert_string("device", gpsdata.dev.path, "GPS#1");
-	assert_boolean("running", gpsdata.osc.running, true);
-	assert_boolean("reference", gpsdata.osc.reference, true);
-	assert_boolean("disciplined", gpsdata.osc.disciplined, false);
-	assert_integer("delta", gpsdata.osc.delta, 67);
-	break;
-
 #ifdef JSON_MINIMAL
-#define MAXTEST 12
+#define MAXTEST 11
 #else
-    case 13:
+    case 12:
 	status = json_read_array(json_strInt, &json_array_Int, NULL);
 	assert_integer("count", intcount, 3);
 	assert_integer("intstore[0]", intstore[0], 23);
@@ -414,7 +398,7 @@ static void jsontest(int i)
 	assert_integer("intstore[3]", intstore[3], 0);
 	break;
 
-    case 14:
+    case 13:
 	status = json_read_array(json_strBool, &json_array_Bool, NULL);
 	assert_integer("count", boolcount, 3);
 	assert_boolean("boolstore[0]", boolstore[0], true);
@@ -423,8 +407,8 @@ static void jsontest(int i)
 	assert_boolean("boolstore[3]", boolstore[3], false);
 	break;
 
-    case 15:
-	status = json_read_array(json_str15, &json_array_15, NULL);
+    case 14:
+	status = json_read_array(json_str14, &json_array_14, NULL);
 	assert_integer("count", realcount, 3);
 	assert_real("realstore[0]", realstore[0], 23.1);
 	assert_real("realstore[1]", realstore[1], -17.2);
@@ -432,7 +416,7 @@ static void jsontest(int i)
 	assert_real("realstore[3]", realstore[3], 0);
 	break;
 
-#define MAXTEST 15
+#define MAXTEST 14
 #endif /* JSON_MINIMAL */
 
     default:

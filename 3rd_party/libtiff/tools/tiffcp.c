@@ -1,4 +1,4 @@
-/* $Id: tiffcp.c,v 1.53 2015-06-21 01:09:10 bfriesen Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler

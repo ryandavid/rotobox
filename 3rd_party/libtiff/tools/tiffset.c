@@ -1,5 +1,5 @@
 /******************************************************************************
- * $Id: tiffset.c,v 1.18 2012-12-04 03:02:37 bfriesen Exp $
+ * $Id$
  *
  * Project:  libtiff tools
  * Purpose:  Mainline for setting metadata in existing TIFF files.

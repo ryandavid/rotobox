@@ -2,7 +2,7 @@
 :description: How to set up an NTP Stratum 1 server using GPSD.
 :keywords: time, GPSD, NTP, time, precision, 1PPS, PPS, stratum, jitter
 Gary E. Miller <gem@rellim.com>, Eric S. Raymond <esr@thyrsus.com>
-v2.8, July 2016
+v2.4, Mar 2015
 
 This document is mastered in asciidoc format.  If you are reading it in HTML,
 you can find the original at the GPSD project website.
@@ -23,40 +23,33 @@ into more detail about the steps.
    which to use yet if you have easy access to both, but knowing which
    alternatives are readily available to you is a good place to start.
 
-2. Verify that your gpsd version is at least 3.17.  Many problems are
-   caused by the use of old versions.  When in doubt, reinstall
-   gpsd from the upstream source.  Many distributions ship old
-   and/or broken versions of gpsd.
-
-3. Connect a PPS-capable GPS receiver to one of your serial or USB
+2. Connect a PPS-capable GPS receiver to one of your serial or USB
    ports.  A random cheap consumer-grade GPS receiver won't do; you
    may have to do some hunting to find a usable one.
 
-4. Check that it actually emits PPS by pointing GPSD's gpsmon utility
+3. Check that it actually emits PPS by pointing GPSD's gpsmon utility
    at the port.  If it has a good (3D-mode) fix, lines marked "PPS"
-   should scroll by in the packet-logging window.  A new device out of
-   the box may take up to 30 minutes for the first 3D fix.  If gpsmon
-   shows a 3D fix, but does not show PPS lines, try running ppscheck.
+   should scroll by in the packet-logging window.
 
-5. If you persistently fail to get live PPS, (a) you may have a
-   skyview problem, (b) you may have a cabling problem, (c) your GPS
-   may not support PPS, (d) you may have a gpsd or kernel configuration
-   problem, (e) you may have a device problem, (e) there may be a bug
-   in the core GPSD code used by gpsmon.  These are listed in roughly
-   decreasing probability.  Troubleshoot appropriately.
+4. If you persistently fail to get live PPS, (1) you may have a
+   skyview problem, (2) you may have a cabling problem, (3) you may
+   have a gpsd or kernel configuration problem, (4) you may have a
+   device problem, (5) there may be a bug in the core GPSD code used
+   by gpsmon.  These are listed in roughly decreasing probability
+   order.  Troubleshoot appropriately.
 
-6. Edit your ntpd or chronyd configuration to tell your NTP daemon to
+5. Edit your ntpd or chronyd configuration to tell your NTP daemon to
    listen for time hints. (This step is somewhat tricky.)
 
-7. Start up gpsd.  If you are using ntpd, you can use ipcrm(1) to check that
+6. Start up gpsd.  If you are using ntpd, you can use ipcrm(1) to check that
    verify that the shared-memory segment that gpsd and ntpd want to
    use to communicate has been attached; or you can impatiently skip
    to the next step and look for the segment only if that fails.
 
-8. Use ntpq or the chronyc sources command to verify that your device
+7. Use ntpq or the chronyc sources command to verify that your device
    is feeding time corrections to your NTP daemon.
 
-9. (Optional and challenging.) Hand-tune your installation for the
+8. (Optional and challenging.) Hand-tune your installation for the
    best possible performance.
 
 This document does not attempt to explain all the intricacies of time
@@ -115,54 +108,6 @@ In fact many public and widely-trusted Stratum 1 servers use GPS
 receivers as their reference clocks, and a significant fraction of
 those use GPSD in the way we will describe here.
 
-== GPS time ==
-
-The way time is shipped from GPS satellites causes problems to
-beware of in certain edge cases.
-
-Date and time in GPS is represented as number of weeks from the start
-of zero second of 6 January 1980, plus number of seconds into the
-week. GPS time is *not* leap-second corrected, though satellites also
-broadcast a current leap-second correction which is updated on
-six-month boundaries according to rotational bulletins issued by the
-International Earth Rotation and Reference Systems Service (IERS).
-
-The leap-second correction is only included in the multiplexed satellite
-subframe broadcast, once every 12.5 minutes.  While the satellites do
-notify GPSes of upcoming leap-seconds, this notification is not
-necessarily processed correctly on consumer-grade devices, and may not
-be available at all when a GPS receiver has just cold-booted. Thus,
-reported UTC time may be slightly inaccurate between a cold boot or leap
-second and the following subframe broadcast.
-
-GPS date and time are subject to a rollover problem in the 10-bit week
-number counter, which will re-zero every 1024 weeks (roughly every 19.6
-years). The last rollover (and the first since GPS went live in 1980)
-was in Aug-1999; the next will fall in Apr-2019.  The new "CNAV" data
-format extends the week number to 13 bits, with the first rollover
-occurring in Jan-2137, but this is only used with some newly added GPS
-signals, and is unlikely to be usable in most consumer-grade receivers
-prior to the 2019 rollover.
-
-For accurate time reporting, therefore, a GPS requires a supplemental
-time references sufficient to identify the current rollover period,
-e.g. accurate to within 512 weeks. Many GPSes have a wired-in (and
-undocumented) assumption about the UTC time of the last rollover and
-will thus report incorrect times outside the rollover period they were
-designed in.
-
-For accurate time service via GPSD, you require two things:
-
-* A GPS made since the last rollover, so its hidden assumption about
- the epoch will be correct.
-
-* Enough time elapsed since a cold boot or IERS leap-second adjustment
-  for the current leap-second to get update.
-
-* A GPS that properly handles leap-second adjustments.  Anything
-  based on a u-blox from v6 onward should be good; the status of
-  SiRFs is unknown and doubtful.
-
 == 1PPS quality issues ==
 
 GPSD is useful for precision time service because it can use the 1PPS
@@ -174,15 +119,14 @@ just by timestamping the arrival of the first character in the report
 on each fix and correcting for a relatively small fixed latency
 composed of fix-processing and RS232 transmission time.
 
-At one character per ten bits (counting framing and stopbits) a
+At one character per ten bits (counting framing at stopbits) a
 9600-bps serial link introduces about a mSec of latency *per
 character*; furthermore, your kernel will normally delay delivery
 of characters to your application until the next timer tick, about
 every 4 mSec in modern kernels. Both USB and RS232 will incur that
 approximately 5mSec-per-char latency overhead.  You'll have to deal
 with this latency even on chips like the Venus 6 that claim the
-beginning of their reporting burst is synced to PPS.  (Such claims are
-not always reliable, in any case.)
+beginning of their reporting burst is synced to PPS.
 
 Unfortunately, fix reports are also delayed in the receiver and on
 the link by as much as several hundred mSec, and this delay is not
@@ -233,14 +177,13 @@ plain-vanilla x86 PCs with clock speeds in the 2GHz range.
 
 All the previous figures assume you're using PPS delivered over RS232.
 USB GPS receivers that deliver 1PPS are rare, but do exist. Notably,
-there's the Navisys GR-601W/GR-701W/GR-801W <<MACX-1>>. In case these devices go
-out of production it's worth noting that they are a trivial
-modification of the stock two-chip-on-a-miniboard
-commodity-GPS-receiver design of engine plus USB-to-serial adapter;
-the GR-[678]01W wires a u-blox 6/7/8 to a Prolific Logic PL23203.  To
-get 1PPS out, this design just wires the 1PPS pin from the GPS engine
-to the Carrier Detect pin on the USB adapter. (This is known as the
-"Macx-1 mod".)
+there's the Navisys GR601-W. In case this device goes out of
+production it's worth noting that it's a trivial modification of the
+stock two-chip-on-a-miniboard commodity-GPS-receiver design of engine
+plus USB-to-serial adapter; the GR601-W wires a u-blox 6 to a Prolific
+Logic PL23203.  To get 1PPS out, just wire the 1PPS pin from the GPS
+engine to the Carrier Detect pin on the USB adapter. (This is known as
+the "Macx-1 mod".)
 
 With this design, 1PPS from the engine will turn into a USB event that
 becomes visible to the host system (and GPSD) the next time the USB
@@ -262,7 +205,7 @@ will ensue.
 | PPS                   | &plusmn;5uSec
 | USB 1.1 poll interval | &plusmn;1mSec
 | USB 2.0 poll interval | &plusmn;100&mu;Sec (100000 nSec)
-| Network NTP time      | ~&plusmn;30mSec footnote:[RFC5905 says "a few tens of milliseconds", but asymmetric routing can produce 100mSec offset]
+| Network NTP time      | ~&plusmn;30mSec footnote:[RFC5905 says "a few tens of milliseconds", but asymmetric routing can produce 100mSec jitter]
 |=====================================================
 
 Observed variations from the typical figure increase towards the bottom
@@ -289,40 +232,17 @@ have serious problems.
 
 == Software Prerequisites ==
 
+gpsd includes support for interpreting 1PPS pulses that is mostly
+autoconfiguring and requires no special setup.  If you built GPSD from
+sources, make sure the build is with pps=yes and ntpshm=yes (the
+default).  The command "gpsd -L" should indicate that
+time-service features and PPS are enabled.
+
 If your kernel provides the RFC 2783 KPPS (kernel PPS) API, gpsd will
 use that for extra accuracy. Many Linux distributions have a package
 called "pps-tools" that will install KPPS support and the timepps.h
 header file.  We recommend you do that.  If your kernel is built in
 the normal modular way, this package installation will suffice.
-
-=== Building gpsd ==
-
-A normal gpsd build includes support for interpreting 1PPS pulses that
-is mostly autoconfiguring and requires no special setup.
-
-You can build a version stripped to the mimimum configuration required
-for time service.  This reduces the size of the binary and may be
-helpful on embedded systems or for SBCs like the Raspberry Pi, Odroid,
-or BeagleBone.  Also, when gpsd is built in this way, the -n (nowait)
-option is forced; gpsd opens its command-line devices immediately on
-startup.
-
-Do it like this:
-
------------------------------------------------------------------------------
-scons timeservice=yes nmea0183=yes fixed_port_speed=9600 fixed_stop_bits=1
------------------------------------------------------------------------------
-
-You may substitute a different GPS (e.g. "ublox" or "sirf"), You can
-also fix the serial parameters to avoid autobauding lag; the code
-assumes 8 bit bytes, so the above locks the daemon to 9600 8N1. Besides
-the daemon, this also builds gpsmon and ntpshmmon.
-
-Otherwise, make sure the build is with pps=yes and ntpshm=yes (the
-default).  The command "gpsd -L" should indicate that time-service
-features and PPS are enabled.
-
-=== Kernel support ===
 
 If you are scratch-building a Linux kernel, the configuration
 must include either these two lines, or the same with "y" replaced
@@ -351,20 +271,17 @@ set. Usually they will be set to "m", which is sufficient.
 NetBSD has included the RFC2783 Pulse Per Second API for real serial
 ports by default since 1998, and it works with ntpd.  NetBSD 7
 (forthcoming) includes RFC2783 support for USB-serial devices, and
-this works (with ntpd) with the GR-601W/GR-701W/GR-801W.  However,
-gpsd's code interacts badly with the NetBSD implementation, and gpsd's
-support for RFC2783 PPS does not yet work on NetBSD (for serial or
-USB).
+this works (with ntpd) with the GR601-W.  However, gpsd's code
+interacts badly with the NetBSD implementation, and gpsd's support for
+RFC2783 PPS does not yet work on NetBSD (for serial or USB).
 
 Other OSes have different ways to enable KPPS in their kernels.
 When we learn what those are, we'll document them or point
 at references.
 
-=== Time service daemon ===
-
 You will need to have either ntpd or chrony installed. If you are
 running a Unix variant with a package system, the packages will
-probably be named 'ntp' (or 'ntpsec') and either 'chrony' or 'chronyd'.
+probably be named 'ntpd' and either 'chrony' or 'chronyd'.
 
 Of these two, ntpd is the older and more popular choice - thus, the
 one with the best-established peer community if you need help in
@@ -387,7 +304,7 @@ are unlikely to be significant to you; flip a coin.
 
 To get 1PPS to your NTP daemon, you first need to get it from a
 PPS-capable GPS receiver. As of early 2015 this means either the
-previously mentioned GR devices or a serial GPS receiver with 1PPS.
+previously mentioned GR601-W or a serial GPS receiver with 1PPS.
 
 You can find 1PPS-capable devices supported by GPSD at <<HARDWARE>>.
 Note that the most popular consumer-grade GPS receivers do not usually
@@ -402,7 +319,7 @@ devices have better sensitivity and signal discrimination. This makes
 them superior for indoor use as time sources.
 
 In general, use a GPS receiver with an RS232 interface for time
-service if you can.  The GR-601W was designed (by one of the authors,
+service if you can.  The GR601-W was designed (by one of the authors,
 as it happens) for deployment with commodity TCP/IP routers that only
 have USB ports.  RS232 is more fiddly to set up (with older devices
 like the GPS-18 you may even have to make your own cables) but it can
@@ -410,19 +327,17 @@ deliver three orders of magnitude better accuracy and repeatability -
 enough to meet prevailing standards for a public Stratum 1 server.
 
 Among newer receiver designs the authors found the the u-blox line of
-receivers used in the GR-[678]01W to be particularly good.  Very
-detailed information on its timing performance can be found at
+receivers used in the GR601-W to be particularly good.  Very detailed
+information on its timing performance can be found at
 <<UBLOX-TIMING>>. One of us (Raymond) has recent experience with an
 eval kit, the EVK 6H-0-001, that would make an excellent Stratum 0
 device.
 
-Both the EVK 6H and GR-601W are built around the LEA-6H module, which
+Both the EVK 6H and GR601-W are built around the LEA-6H module, which
 is a relatively inexpensive but high-quality navigation GPS
 receiver. We make a note of this because u-blox also has a specialized
-timing variant, the LEA 6T, which would probably be overkill for an
-NTP server. (The 6T does have the virtue that you could probably get a
-good fix from one satellite in view once it knows its location, but
-the part is expensive and difficult to find.)
+timing variant, the LEA 6T, which would be expensive overkill for an
+NTP server.
 
 Unfortunately as of early 2015 the LEA-6H is still hard to find in a
 packaged RS232 version, as opposed to a bare OEM module exporting TTL
@@ -468,8 +383,8 @@ there will also be a "PPS offset:" field in the data panels above
 showing the delta between PPS and your local clock.
 
 If you don't have gpsmon available, or you don't see PPS lines in it,
-you can run ppscheck.  As a last resort you can gpsd at -D 5 and watch
-for PPS state change messages in the logfile.
+you can run gpsd at -D 5 and watch for carrier-detect state change
+messages in the logfile.
 
 If you don't see evidence of incoming PPS, here are some trouble
 sources to check:
@@ -510,24 +425,18 @@ sources to check:
 == Running GPSD ==
 
 If you're going to use gpsd for time service, you must run in -n mode
-so the clock will be updated even when no clients are active.  This option
-is forced if you built GPSD with timeservice=yes as an option.
+so the clock will be updated even when no clients are active.
 
 Note that gpsd assumes that after each fix the GPS receiver will
 assert 1PPS first and ship sentences reporting time of fix
-second (and the sentence burst will end before the next 1PPS). Every
-GPS we know of does things in this order.  (However, on some very old
-GPSes that defaulted to 4800 baud, long sentence bursts - notably
-those containing a skyview - could slop over into the next second.)
-
-If you ever encounter an exception, it should manifest as reported
-times that look like they're from the future and require a negative
-fudge. If this ever happens, please report the device make and model
-to the GPSD maintainers so we can flag it in our GPS hardware
-database.
+second. Every GPS we know of does things in this order.  If you ever
+encounter an exception, it should manifest as reported times that look
+like they're from the future and require a negative fudge. If this
+ever happens, please report the device make and model to the GPSD
+maintainers so we can flag it in our GPS hardware database.
 
 There is another possible cause of small negative offsets which
-shows up on the GR-601W: implementation bugs in your USB driver,
+shows up on the GR-601-W: implementation bugs in your USB driver,
 combining with quantization by the USB poll interval.  This
 doesn't mean the u-blox 6 inside it is actually emitting PPS
 after the GPS timestamp is shipped.
@@ -567,9 +476,7 @@ OS distribution has done "secure" things with the permissions.
 
 Most Unix systems get their time service through ntpd, a very old and
 stable open-source software suite which is the reference
-implementation of NTP.  The project home page is <<NTP.ORG>>. We
-recommend using NTPsec, a recent fork that is improved and
-security-hardened <<NTPSEC.ORG>>.
+implementation of NTP.  The project home page is <<NTP.ORG>>.
 
 When gpsd receives a sentence with a timestamp, it packages the
 received timestamp with current local time and sends it to a
@@ -582,9 +489,9 @@ When in doubt, the preferred method to start your timekeeping is:
 -----------------------------------------------------------------------------
 $ su - (or sudo -s )
 # killall -9 gpsd ntpd
-# gpsd -n /dev/ttyXX
-# sleep 2
 # ntpd -gN
+# sleep 2
+# gpsd -n /dev/ttyXX
 # sleep 2
 # cgps
 -----------------------------------------------------------------------------
@@ -592,11 +499,6 @@ $ su - (or sudo -s )
 where /dev/ttyXX is whatever 1PPS-capable device you have.  In a
 binary-package-based Linux distribution it is probable that ntpd
 will already have been launched at boot time.
-
-It's best to have gpsd start first.  That way when ntpd restarts it has
-a good local time handy.  If ntpd starts first, it will set the local
-clock using a remote, probably pool, server.  Then ntpd has to spend a
-whole day slowly resynching the clock.
 
 If you're using dhcp3-client to configure your system, make sure
 you disable /etc/dhcp3/dhclient-exit-hooks.d/ntp, as dhclient would
@@ -607,7 +509,7 @@ While gpsd may be runnable as non-root, you will get significantly
 better accuracy of time reporting in root mode; the difference, while
 almost certainly insignificant for feeding Stratum 1 time to clients
 over the Internet, may matter for PTP service over a LAN.  Typically
-only root can access kernel PPS, whereas in non-root mode you're limited to
+Only root can access kernel PPS, whereas in non-root mode you're limited to
 plain PPS (if that feature is available).  As noted in the previous
 section on 1PPS quality issues, this difference has performance
 implications.
@@ -688,11 +590,11 @@ restrict -6 default kod nomodify notrap nopeer noquery
 restrict 127.0.0.1 mask 255.255.255.0
 restrict -6 ::1
 
-# GPS Serial data reference (NTP0)
+# GPS Serial data reference
 server 127.127.28.0
 fudge 127.127.28.0 time1 0.9999 refid GPS
 
-# GPS PPS reference (NTP1)
+# GPS PPS reference
 server 127.127.28.1 prefer
 fudge 127.127.28.1 refid PPS
 -----------------------------------------------------------------------------
@@ -708,11 +610,11 @@ fudge 127.127.28.0 refid GPS
 
 This is equivalent to declaring a time1 of 0.
 
-The pool statement adds a variable number of servers (often 10) as
-additional time references needed by ntpd for redundancy and to give you
-a reference to see how well your local GPS receiver is performing.  If
-you are outside of the USA replace the pool servers with one in your
-local area. See <<USE-POOL>> for further information.
+The pool statement adds 4 servers as additional time references needed
+by ntpd for redundancy and to give you a reference to see how well
+your local GPS receiver is performing.  If you are outside of the USA replace
+the pool servers with one in your local area. See <<USE-POOL>> for
+further information.
 
 The pool statement, and the driftfile and logfile declarations after it,
 will not be strictly necessary if the default ntp.conf that your
@@ -738,11 +640,11 @@ restrict -6 default kod nomodify notrap nopeer noquery
 restrict 127.0.0.1 mask 255.255.255.0
 restrict -6 ::1
 
-# GPS Serial data reference (NTP0)
+# GPS Serial data reference
 server 127.127.28.0 minpoll 4 maxpoll 4
 fudge 127.127.28.0 time1 0.9999 refid GPS
 
-# GPS PPS reference (NTP1)
+# GPS PPS reference
 server 127.127.28.1 minpoll 4 maxpoll 4 prefer
 fudge 127.127.28.1 refid PPS
 -----------------------------------------------------------------------------
@@ -752,16 +654,14 @@ Alternative configurations exist, but it is recommended that you upgrade
 ntpd, if feasible.
 
 The magic pseudo-IP address 127.127.28.0 identifies unit 0 of the ntpd
-shared-memory driver (NTP0); 127.127.28.1 identifies unit 1 (NTP1).
-Unit 0 is used for in-band message timestamps and unit 1 for the (more
-accurate, when available) time derived from combining in-band message
-timestamps with the out-of-band PPS synchronization pulse.  Splitting
-these notifications allows ntpd to use its normal heuristics to weight
-them.
+shared-memory driver; 127.127.28.1 identifies unit 1.  Unit 0 is used
+for in-band message timestamps and unit 1 for the (more accurate,
+when available) time derived from combining in-band message timestamps
+with the out-of-band PPS synchronization pulse.  Splitting these
+notifications allows ntpd to use its normal heuristics to weight them.
 
-Different units - 2 (NTP2) and 3 (NTP3), respectively - must be used
-when gpsd is not started as root.  Some GPS HATs put PPS time on a GPIO
-pin and will also use unit 2 (NTP2) for the PPS time correction.
+(Different units - 2 and 3, respectively - must be used when gpsd is not
+started as root.)
 
 With this configuration, ntpd will read the timestamp posted by gpsd
 every 64 seconds (16 if non-root) and send it to unit 0.
@@ -959,25 +859,8 @@ $ su - (or sudo -s )
 -----------------------------------------------------------------------------
 
 After you have verified with cgps that your GPS receiver has a good 3D
-lock you can check that gpsd is outputing good time by running ntpshmmon.
-
------------------------------------------------------------------------------
-# ntpshmmon
-ntpshmmon version 1
-#      Name   Seen@                Clock                Real               L Prec
-sample NTP0 1461537438.593729271 1461537438.593633306 1461537438.703999996 0 -1
-sample NTP1 1461537439.000421494 1461537439.000007374 1461537439.000000000 0 -20
-sample NTP0 1461537439.093844900 1461537438.593633306 1461537438.703999996 0 -1
-sample NTP0 1461537439.621309382 1461537439.620958240 1461537439.703999996 0 -1
-sample NTP1 1461537440.000615395 1461537439.999994105 1461537440.000000000 0 -20
-sample NTP0 1461537440.122079148 1461537439.620958240 1461537439.703999996 0 -1
-^C
------------------------------------------------------------------------------
-
-If you see only "NTP2", instead, you forgot to go root before starting gpsd.
-
-Once ntpshmmon shows good time data you can see how chrony is doing by
-running 'chronyc sources'.  Your output will look like this:
+lock you can check how chrony is doing by running 'chronyc sources'.
+Your output will look like this:
 
 -----------------------------------------------------------------------------
 # chronyc sources
@@ -1078,60 +961,6 @@ you reboot, expect it to converge to a new/different drift value and
 that may take a while depending on how different the basic calibration
 factors are.
 
-=== ARP is the sound of your server choking ===
-
-By default ntpd and chronyd poll remote servers every 64 seconds.  This
-is an unfortuneate choice.  Linux by default only keeps an ARP table
-entry for 60 seconds, anytime thereafter it may be flushed.
-
-If the ARP table has flushed the entry for a remote peer or server then
-when the NTP server sends a request to the remote server an entire ARP
-cycle will be added to the NTP packet round trip time (RTT).  This will
-throw off the time measurements to servers on the local lan.
-
-On a RasberryPi ARP has been shown to impact the remote offset by up to
-600 uSec in some rare cases.
-
-The solution is the same for both ntpd and chronyd, add the "minpoll 5"
-command to any 'server" or "peer directive.  This will cause the maximum
-polling period to be 32 seconds, well under the 60 second ARP timeout.
-
-=== Watch your temperatures ===
-
-The stability of the system clock is very temperature dependent.  A one
-degree change in room temperature can create 0.1 ppm of clock frequency
-change.  Once simple way to see the effect is to place your running
-NTP server inside bubble wrap.  The time will take a quick and noticeable
-jump.
-
-If you leave your NTP server in the bubble wrap you will notice some
-improved local and remote offsets.
-
-=== Powersaving is not your friend ===
-
-Normally enabling power saving features is a good thing: it saves you power.
-But when your CPU changes power saving modes (cstates for Intel CPUs) the
-impact on PPS timing is noticeable.  For some reason the NO_HZ kernel
-mode has a similar bad effect on timekeeping.
-
-To improve your timekeeping, turn off both features on Intel CPUs by
-adding this to your boot command line:
-
------------------------------------------------------------------------------
-nohz=off intel_idle.max_cstate=0
------------------------------------------------------------------------------
-
-For ARM, be sure NO_HZ is off:
-
------------------------------------------------------------------------------
-nohz=off
------------------------------------------------------------------------------
-
-You will also need to select the 'performance' CPU governor to keep ypur
-CPU set to the maximum speed for continuous usage.  How you see and set
-your governor will be distribution specific.  The easiest way it to
-recompile your kernel to only provide the performance governor.
-
 == NTP tuning and performance details ==
 
 This section deals specifically with ntpd.  It discusses algorithms
@@ -1164,7 +993,7 @@ Note that a server can be a poor performer (what the NTP documentation
 colorfully calls a "falseticker") for any of three reasons. It may be
 shipping bad time, or the best routes between you and it have large
 latency variations (jitter), or it may have a time-asymmetric route,
-to you (that is, B-to-A time is on average very different from A-to-B
+to you (that is, B-to-A time is omn average very different from A-to-B
 time).  Asymmetric routing is the most common cause of serious
 problems.
 
@@ -1266,11 +1095,11 @@ This prints the average offset.
 ==== Loopstats-based procedure ====
 
 Recall that magic pseudo-IP address 127.127.28.0 identifies unit 0 of
-the ntpd shared-memory driver (NTP0); 127.127.28.1 identifies unit
-1(NTP1).  Unit 0 is used for in-band message timestamps (IMT) and unit
-1 for the (more accurate, when available) time derived from combining
-IMT with the out-of-band PPS synchronization pulse.  Splitting these
-notifications allows ntpd to use its normal heuristics to weight them.
+the ntpd shared-memory driver; 127.127.28.1 identifies unit 1.  Unit 0
+is used for in-band message timestamps (IMT) and unit 1 for the (more
+accurate, when available) time derived from combining IMT with the
+out-of-band PPS synchronization pulse.  Splitting these notifications
+allows ntpd to use its normal heuristics to weight them.
 
 We assume that the 1PPS signal, being just one bit long, and directly
 triggering an interrupt, is always on time (sic).  Correcting for latency
@@ -1523,15 +1352,15 @@ If you are using ntpd, then add the last three lines below to your
 master ntp.conf file to configure the SHM.
 
 -----------------------------------------------------------------------------
-# GPS Serial data reference (NTP0)
+# GPS Serial data reference
 server 127.127.28.0
 fudge 127.127.28.0 time1 0.9999 refid GPS
 
-# GPS PPS reference (NTP1)
+# GPS PPS reference
 server 127.127.28.1 prefer
 fudge 127.127.28.1 refid PPS
 
-# local PTP reference (NTP2)
+# local PTP reference
 server 127.127.28.2
 fudge 127.127.28.2 refid PTP
 -----------------------------------------------------------------------------
@@ -1579,7 +1408,7 @@ If you are using ntpd, then add the last three lines below to your
 master ntp.conf file to configure your one and only SHM.
 
 -----------------------------------------------------------------------------
-# local PTP reference (NTP0)
+# local PTP reference
 server 127.127.28.0
 fudge 127.127.28.0 refid PTP
 -----------------------------------------------------------------------------
@@ -1731,8 +1560,6 @@ by Jaap Winius <jwinius@rjsystems.nl>.
 
 - [[[RFC-5905]]] http://tools.ietf.org/html/rfc5905[RFC 5905]
 
-- [[[MACX-1]]] https://www.etsy.com/listing/280336400/navisys-gr-601w-u-blox-6-macx-1-usb-gps[Navisys GR-601W u-blox-6 "Macx-1" USB GPS receiver]
-
 - [[[CHRONY-COMPARE]]] http://chrony.tuxfamily.org/manual.html#Comparison-with-ntpd[ntpd (comparison with chrony)]
 
 - [[[CHRONYDEFAULT]]] https://lists.fedoraproject.org/pipermail/devel/2010-May/135679.html
@@ -1744,8 +1571,6 @@ by Jaap Winius <jwinius@rjsystems.nl>.
 - [[[RPI]]] http://www.satsignal.eu/ntp/Raspberry-Pi-NTP.html[The Raspberry Pi as a Stratum-1 NTP Server]
 
 - [[[NTP.ORG]]] http://www.ntp.org/[Home of the Network Time Protocol project]
-
-- [[[NTPSEC.ORG]]] http://www.ntpsec.org/[Wecome to NTPsec]
 
 - [[[USE-POOL]]] http://www.pool.ntp.org/en/use.html[How do I use pool.ntp.org?]
 
@@ -1810,18 +1635,3 @@ by Jaap Winius <jwinius@rjsystems.nl>.
     Removed some typos, corrected formatting, and minor changes.
     A bit more specificity about root vs. non-root.
 
-2.5 Apr 2016::
-    Note the existence of the GR-701W.
-
-2.6 May 2016::
-    New section on GPS time.  Note the existence of the GR-801W.
-    Describe the special timeserver build of GPSD. Recommend NTPsec.
-    Add Macx-1 link.
-    Add sections on ARP and temperature problems
-
-2.7 June 2016
-    Add section on avoiding power saving.
-
-2.8 July 2016
-    Mention required version of gpsd
-    Fix Typos.

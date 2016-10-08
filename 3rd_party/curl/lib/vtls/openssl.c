@@ -111,6 +111,7 @@
 #define HAVE_OPAQUE_RSA_DSA_DH 1 /* since 1.1.0 -pre5 */
 #define CONST_EXTS const
 #define CONST_ASN1_BIT_STRING const
+#define HAVE_ERR_REMOVE_THREAD_STATE_DEPRECATED 1
 #else
 /* For OpenSSL before 1.1.0 */
 #define ASN1_STRING_get0_data(x) ASN1_STRING_data(x)
@@ -118,7 +119,14 @@
 #define X509_get0_notAfter(x) X509_get_notAfter(x)
 #define CONST_EXTS /* nope */
 #define CONST_ASN1_BIT_STRING /* nope */
+#ifdef LIBRESSL_VERSION_NUMBER
+static unsigned long OpenSSL_version_num(void)
+{
+  return LIBRESSL_VERSION_NUMBER;
+}
+#else
 #define OpenSSL_version_num() SSLeay()
+#endif
 #endif
 
 #if (OPENSSL_VERSION_NUMBER >= 0x1000200fL) && /* 1.0.2 or later */ \
@@ -748,11 +756,6 @@ void Curl_ossl_cleanup(void)
   ENGINE_cleanup();
 #endif
 
-#ifdef HAVE_CRYPTO_CLEANUP_ALL_EX_DATA
-  /* Free OpenSSL ex_data table */
-  CRYPTO_cleanup_all_ex_data();
-#endif
-
   /* Free OpenSSL error strings */
   ERR_free_strings();
 
@@ -1055,6 +1058,14 @@ void Curl_ossl_close_all(struct Curl_easy *data)
   }
 #else
   (void)data;
+#endif
+#if !defined(HAVE_ERR_REMOVE_THREAD_STATE_DEPRECATED) && \
+  defined(HAVE_ERR_REMOVE_THREAD_STATE)
+  /* OpenSSL 1.0.1 and 1.0.2 build an error queue that is stored per-thread
+     so we need to clean it here in case the thread will be killed. All OpenSSL
+     code should extract the error in association with the error so clearing
+     this queue here should be harmless at worst. */
+  ERR_remove_thread_state(NULL);
 #endif
 }
 

@@ -15,12 +15,6 @@
  * This file is Copyright (c) 2010 by the GPSD project
  * BSD terms apply: see the file COPYING in the distribution root for details.
  */
-
-/* isascii() needs _XOPEN_SOURCE, 500 means X/Open 1995 */
-#define _XOPEN_SOURCE 500
-/* strlcpy() needs _DARWIN_C_SOURCE */
-#define _DARWIN_C_SOURCE
-
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -32,8 +26,7 @@
  * Parse the data from the device
  */
 
-static void from_sixbit_untrimmed(unsigned char *bitvec, unsigned int start,
-  int count, char *to)
+static void from_sixbit_untrimmed(unsigned char *bitvec, uint start, int count, char *to)
 /* beginning at bitvec bit start, unpack count sixbit characters */
 {
     const char sixchr[64] =
@@ -69,8 +62,7 @@ static void trim_spaces_on_right_end(char* to)
     }
 }
 
-static void from_sixbit(unsigned char *bitvec, unsigned int start, int count,
-  char *to)
+static void from_sixbit(unsigned char *bitvec, uint start, int count, char *to)
 /* beginning at bitvec bit start, unpack count sixbit characters and remove trailing
  * spaces */
 {

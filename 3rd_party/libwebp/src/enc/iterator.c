@@ -53,7 +53,6 @@ void VP8IteratorReset(VP8EncIterator* const it) {
   VP8IteratorSetRow(it, 0);
   VP8IteratorSetCountDown(it, enc->mb_w_ * enc->mb_h_);  // default
   InitTop(it);
-  InitLeft(it);
   memset(it->bit_count_, 0, sizeof(it->bit_count_));
   it->do_trellis_ = 0;
 }
@@ -309,14 +308,14 @@ void VP8IteratorSaveBoundary(VP8EncIterator* const it) {
 }
 
 int VP8IteratorNext(VP8EncIterator* const it) {
-  it->preds_ += 4;
-  it->mb_ += 1;
-  it->nz_ += 1;
-  it->y_top_ += 16;
-  it->uv_top_ += 16;
-  it->x_ += 1;
-  if (it->x_ == it->enc_->mb_w_) {
+  if (++it->x_ == it->enc_->mb_w_) {
     VP8IteratorSetRow(it, ++it->y_);
+  } else {
+    it->preds_ += 4;
+    it->mb_ += 1;
+    it->nz_ += 1;
+    it->y_top_ += 16;
+    it->uv_top_ += 16;
   }
   return (0 < --it->count_down_);
 }

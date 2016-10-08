@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 #
 # by
 # Robin Wittler <real@the-real.org> (speedometer mode)
@@ -7,16 +7,11 @@
 #
 # BSD terms apply: see the file COPYING in the distribution root for details.
 
-# This code runs compatibly under Python 2 and 3.x for x >= 2.
-# Preserve this property!
-from __future__ import absolute_import, print_function, division
-
-import gi
-gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
-from gi.repository import Gdk
+import pygtk
+pygtk.require('2.0')
+import gtk
 import cairo
-from gi.repository import GObject
+import gobject
 import gps
 from math import pi
 from math import cos
@@ -26,9 +21,9 @@ from math import radians
 from socket import error as SocketError
 
 
-class Speedometer(Gtk.DrawingArea):
+class Speedometer(gtk.DrawingArea):
     def __init__(self, speed_unit=None):
-        GObject.GObject.__init__(self)
+        gtk.DrawingArea.__init__(self)
         self.MPH_UNIT_LABEL = 'mph'
         self.KPH_UNIT_LABEL = 'kmh'
         self.KNOTS_UNIT_LABEL = 'knots'
@@ -48,9 +43,7 @@ class Speedometer(Gtk.DrawingArea):
 class LandSpeedometer(Speedometer):
     def __init__(self, speed_unit=None):
         Speedometer.__init__(self, speed_unit)
-        self.connect('size-allocate', self.on_size_allocate)
-        self.width = self.height = 0
-        self.connect('draw', self.draw)
+        self.connect('expose_event', self.expose_event)
         self.long_ticks = (2, 1, 0, -1, -2, -3, -4, -5, -6, -7, -8)
         self.short_ticks = (0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9)
         self.long_inset = lambda x: 0.1 * x
@@ -73,16 +66,17 @@ class LandSpeedometer(Speedometer):
             2: 100
         }
 
-    def on_size_allocate(self, _unused, allocation):
-        self.width = allocation.width
-        self.height = allocation.height
-
-    def draw(self, _unused, _event, _empty=None):
-        self.cr = self.get_window().cairo_create()
-        self.cr.rectangle(0, 0, self.width, self.height)
+    def expose_event(self, _unused, event, _empty=None):
+        self.cr = self.window.cairo_create()
+        self.cr.rectangle(
+            event.area.x,
+            event.area.y,
+            event.area.width,
+            event.area.height
+        )
         self.cr.clip()
         x, y = self.get_x_y()
-        width, height = self.get_window().get_geometry()[2:4]
+        width, height = self.window.get_size()
         radius = self.get_radius(width, height)
         self.cr.set_line_width(radius / 100)
         self.draw_arc_and_ticks(width, height, radius, x, y)
@@ -230,9 +224,7 @@ class NauticalSpeedometer(Speedometer):
 
     def __init__(self, speed_unit=None, maxspeed=100):
         Speedometer.__init__(self, speed_unit)
-        self.connect('size-allocate', self.on_size_allocate)
-        self.width = self.height = 0
-        self.connect('draw', self.draw)
+        self.connect('expose_event', self.expose_event)
         self.long_inset = lambda x: 0.05 * x
         self.mid_inset = lambda x: self.long_inset(x) / 1.5
         self.short_inset = lambda x: self.long_inset(x) / 3
@@ -252,16 +244,17 @@ class NauticalSpeedometer(Speedometer):
         return a tuple contains (x, y)'''
         return (polex + cos(angle) * radius, poley - sin(angle) * radius)
 
-    def on_size_allocate(self, _unused, allocation):
-        self.width = allocation.width
-        self.height = allocation.height
-
-    def draw(self, _unused, _event, _empty=None):
-        self.cr = self.get_window().cairo_create()
-        self.cr.rectangle(0, 0, self.width, self.height)
+    def expose_event(self, _unused, event, _empty=None):
+        self.cr = self.window.cairo_create()
+        self.cr.rectangle(
+            event.area.x,
+            event.area.y,
+            event.area.width,
+            event.area.height
+        )
         self.cr.clip()
         x, y = self.get_x_y()
-        width, height = self.get_window().get_geometry()[2:4]
+        width, height = self.window.get_size()
         radius = self.get_radius(width, height)
         self.cr.set_line_width(radius / 100)
         self.draw_arc_and_ticks(width, height, radius, x, y)
@@ -303,7 +296,7 @@ class NauticalSpeedometer(Speedometer):
         s_long = self.long_inset(rspeed)
         s_middle = self.mid_inset(radius)
         s_short = self.short_inset(radius)
-        for i in range(11):
+        for i in xrange(11):
             # draw the large ticks
             alpha = (8 - i) * pi / 6
             self.cr.move_to(*NauticalSpeedometer.polar2xy(rspeed, alpha, x, y))
@@ -312,10 +305,10 @@ class NauticalSpeedometer(Speedometer):
             self.cr.stroke()
             self.cr.set_line_width(radius / 200)
             xf, yf = NauticalSpeedometer.polar2xy(rspeed + 10, alpha, x, y)
-            stxt = (self.maxspeed // 10) * i
+            stxt = (self.maxspeed / 10) * i
             self.draw_text(xf, yf, stxt, fontsize=radius / 15)
 
-        for i in range(1, 11):
+        for i in xrange(1, 11):
             # middle tick
             alpha = (8 - i) * pi / 6
             beta = (17 - 2 * i) * pi / 12
@@ -323,7 +316,7 @@ class NauticalSpeedometer(Speedometer):
             self.cr.line_to(*NauticalSpeedometer.polar2xy(rspeed - s_middle, beta, x, y))
 
             #  short tick
-            for n in range(10):
+            for n in xrange(10):
                 gamma = alpha + n * pi / 60
                 self.cr.move_to(*NauticalSpeedometer.polar2xy(rspeed, gamma, x, y))
                 self.cr.line_to(*NauticalSpeedometer.polar2xy(rspeed - s_short, gamma, x, y))
@@ -338,7 +331,7 @@ class NauticalSpeedometer(Speedometer):
         self.cr.set_source_rgba(0, 0, 0)
 
         # heading label 90/180/270
-        for n in range(0, 4):
+        for n in xrange(0, 4):
             label = str(n * 90)
             # self.cr.set_source_rgba(0, 1, 0)
             # radius * (1 + NauticalSpeedometer.HEADING_SAT_GAP),
@@ -374,7 +367,7 @@ class NauticalSpeedometer(Speedometer):
         short_inset = self.short_inset(radius)
 
         # draw the large ticks
-        for i in range(12):
+        for i in xrange(12):
             agllong = i * pi / 6
             self.cr.move_to(*NauticalSpeedometer.polar2xy(radius - long_inset, agllong, x, y))
             self.cr.line_to(*NauticalSpeedometer.polar2xy(radius, agllong, x, y))
@@ -388,7 +381,7 @@ class NauticalSpeedometer(Speedometer):
             self.cr.line_to(*NauticalSpeedometer.polar2xy(radius, aglmid, x, y))
 
             #  short tick
-            for n in range(1, 10):
+            for n in xrange(1, 10):
                 aglshrt = agllong + n * pi / 60
                 self.cr.move_to(*NauticalSpeedometer.polar2xy(radius - short_inset, aglshrt, x, y))
                 self.cr.line_to(*NauticalSpeedometer.polar2xy(radius, aglshrt, x, y))
@@ -442,7 +435,7 @@ class NauticalSpeedometer(Speedometer):
 
     def set_color(self, spec):
         '''Set foreground color for drawing.'''
-        gdkcolor = Gdk.color_parse(spec)
+        gdkcolor = gtk.gdk.color_parse(spec)
         r = gdkcolor.red / 65535.0
         g = gdkcolor.green / 65535.0
         b = gdkcolor.blue / 65535.0
@@ -457,7 +450,7 @@ class NauticalSpeedometer(Speedometer):
         self.cr.set_line_width(2)
         self.cr.set_source_rgb(0, 0, 0)
 
-        x0, y0 = NauticalSpeedometer.polar2xy(radius * (90 - satsoup['el']) // 90, h, x, y)
+        x0, y0 = NauticalSpeedometer.polar2xy(radius * (90 - satsoup['el']) / 90, h, x, y)
 
         self.cr.new_sub_path()
         if gps.is_sbas(satsoup['PRN']):
@@ -520,7 +513,7 @@ class Main(object):
         self.speed_unit = speed_unit
         self.maxspeed = maxspeed
         self.nautical = nautical
-        self.window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         if not self.window.get_display():
             raise Exception("Can't open display")
         self.window.set_title('xgpsspeed')
@@ -534,18 +527,18 @@ class Main(object):
         self.window.connect('delete_event', self.delete_event)
         self.window.connect('destroy', self.destroy)
         self.widget.show()
-        vbox = Gtk.VBox(False, 0)
+        vbox = gtk.VBox(False, 0)
         self.window.add(vbox)
 
         self.window.present()
-        self.uimanager = Gtk.UIManager()
+        self.uimanager = gtk.UIManager()
         self.accelgroup = self.uimanager.get_accel_group()
         self.window.add_accel_group(self.accelgroup)
-        self.actiongroup = Gtk.ActionGroup('gpsspeed-ng')
+        self.actiongroup = gtk.ActionGroup('gpsspeed-ng')
         self.actiongroup.add_actions(
             [
-                ('Quit', Gtk.STOCK_QUIT, '_Quit', None,
-                    'Quit the Program', lambda unused: Gtk.main_quit()),
+                ('Quit', gtk.STOCK_QUIT, '_Quit', None,
+                    'Quit the Program', lambda unused: gtk.main_quit()),
                 ('File', None, '_File'),
                 ('Units', None, '_Units')]
         )
@@ -592,9 +585,9 @@ class Main(object):
     def watch(self, daemon, device):
         self.daemon = daemon
         self.device = device
-        GObject.io_add_watch(daemon.sock, GObject.IO_IN, self.handle_response)
-        GObject.io_add_watch(daemon.sock, GObject.IO_ERR, self.handle_hangup)
-        GObject.io_add_watch(daemon.sock, GObject.IO_HUP, self.handle_hangup)
+        gobject.io_add_watch(daemon.sock, gobject.IO_IN, self.handle_response)
+        gobject.io_add_watch(daemon.sock, gobject.IO_ERR, self.handle_hangup)
+        gobject.io_add_watch(daemon.sock, gobject.IO_HUP, self.handle_hangup)
         return True
 
     def handle_response(self, source, condition):
@@ -608,17 +601,16 @@ class Main(object):
         return True
 
     def handle_hangup(self, _dummy, _unused):
-        w = Gtk.MessageDialog(
-            parent=self.window,
-            type=Gtk.MessageType.ERROR,
-            flags=Gtk.DialogFlags.DESTROY_WITH_PARENT,
-            buttons=Gtk.ButtonsType.OK
+        w = gtk.MessageDialog(
+            type=gtk.MESSAGE_ERROR,
+            flags=gtk.DIALOG_DESTROY_WITH_PARENT,
+            buttons=gtk.BUTTONS_OK
         )
-        w.connect("destroy", lambda unused: Gtk.main_quit())
+        w.connect("destroy", lambda unused: gtk.main_quit())
         w.set_title('gpsd error')
         w.set_markup("gpsd has stopped sending data.")
         w.run()
-        Gtk.main_quit()
+        gtk.main_quit()
         return True
 
     def update_speed(self, data):
@@ -641,7 +633,7 @@ class Main(object):
         return False
 
     def destroy(self, _unused, _empty=None):
-        Gtk.main_quit()
+        gtk.main_quit()
 
     def run(self):
         try:
@@ -652,13 +644,12 @@ class Main(object):
                 verbose=self.debug
             )
             self.watch(daemon, self.device)
-            Gtk.main()
+            gtk.main()
         except SocketError:
-            w = Gtk.MessageDialog(
-                parent=self.window,
-                type=Gtk.MessageType.ERROR,
-                flags=Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                buttons=Gtk.ButtonsType.OK
+            w = gtk.MessageDialog(
+                type=gtk.MESSAGE_ERROR,
+                flags=gtk.DIALOG_DESTROY_WITH_PARENT,
+                buttons=gtk.BUTTONS_OK
             )
             w.set_title('socket error')
             w.set_markup(
@@ -667,7 +658,7 @@ class Main(object):
             w.run()
             w.destroy()
         except KeyboardInterrupt:
-            self.window.emit('delete_event', Gdk.Event(Gdk.NOTHING))
+            self.window.emit('delete_event', gtk.gdk.Event(gtk.gdk.NOTHING))
 
 if __name__ == '__main__':
     import sys
@@ -696,7 +687,7 @@ if __name__ == '__main__':
         '--device',
         dest='device',
         default=None,
-        help='The device to connect. [Default None]'
+        help='The device to connet. [Default None]'
     )
     parser.add_option(
         '--speedunits',
@@ -708,21 +699,14 @@ if __name__ == '__main__':
         '--maxspeed',
         dest='maxspeed',
         default='50',
-        help='Max speed of the speedmeter [Default 50]'
+        help='max speed of the speedmeter [Default 50]'
     )
     parser.add_option(
         '--nautical',
         dest='nautical',
-        default=True,
+        default=False,
         action='store_true',
         help='Enable nautical-style speed and track display.'
-    )
-    parser.add_option(
-        '--landspeed',
-        dest='nautical',
-        default=True,
-        action='store_false',
-        help='Enable dashboard-style speedometer.'
     )
     parser.add_option(
         '--debug',

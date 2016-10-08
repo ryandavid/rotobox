@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>  // for abs()
 
+#include "../mux/animi.h"
 #include "../utils/utils.h"
 #include "../webp/decode.h"
 #include "../webp/encode.h"
@@ -378,10 +379,10 @@ static WEBP_INLINE int PixelsAreSimilar(uint32_t src, uint32_t dst,
   const int dst_g = (dst >> 8) & 0xff;
   const int dst_b = (dst >> 0) & 0xff;
 
-  return (abs(src_r * src_a - dst_r * dst_a) <= (max_allowed_diff * 255)) &&
-         (abs(src_g * src_a - dst_g * dst_a) <= (max_allowed_diff * 255)) &&
-         (abs(src_b * src_a - dst_b * dst_a) <= (max_allowed_diff * 255)) &&
-         (abs(src_a - dst_a) <= max_allowed_diff);
+  return (src_a == dst_a) &&
+         (abs(src_r - dst_r) * dst_a <= (max_allowed_diff * 255)) &&
+         (abs(src_g - dst_g) * dst_a <= (max_allowed_diff * 255)) &&
+         (abs(src_b - dst_b) * dst_a <= (max_allowed_diff * 255));
 }
 
 // Returns true if 'length' number of pixels in 'src' and 'dst' are within an
@@ -584,6 +585,39 @@ static int GetSubRects(const WebPPicture* const prev_canvas,
   return GetSubRect(prev_canvas, curr_canvas, is_key_frame, is_first_frame,
                     params->empty_rect_allowed_, 0, quality,
                     &params->rect_lossy_, &params->sub_frame_lossy_);
+}
+
+static WEBP_INLINE int clip(int v, int min_v, int max_v) {
+  return (v < min_v) ? min_v : (v > max_v) ? max_v : v;
+}
+
+int WebPAnimEncoderRefineRect(
+    const WebPPicture* const prev_canvas, const WebPPicture* const curr_canvas,
+    int is_lossless, float quality, int* const x_offset, int* const y_offset,
+    int* const width, int* const height) {
+  FrameRect rect;
+  const int right = clip(*x_offset + *width, 0, curr_canvas->width);
+  const int left = clip(*x_offset, 0, curr_canvas->width - 1);
+  const int bottom = clip(*y_offset + *height, 0, curr_canvas->height);
+  const int top = clip(*y_offset, 0, curr_canvas->height - 1);
+  if (prev_canvas == NULL || curr_canvas == NULL ||
+      prev_canvas->width != curr_canvas->width ||
+      prev_canvas->height != curr_canvas->height ||
+      !prev_canvas->use_argb || !curr_canvas->use_argb) {
+    return 0;
+  }
+  rect.x_offset_ = left;
+  rect.y_offset_ = top;
+  rect.width_ = clip(right - left, 0, curr_canvas->width - rect.x_offset_);
+  rect.height_ = clip(bottom - top, 0, curr_canvas->height - rect.y_offset_);
+  MinimizeChangeRectangle(prev_canvas, curr_canvas, &rect, is_lossless,
+                          quality);
+  SnapToEvenOffsets(&rect);
+  *x_offset = rect.x_offset_;
+  *y_offset = rect.y_offset_;
+  *width = rect.width_;
+  *height = rect.height_;
+  return 1;
 }
 
 static void DisposeFrameRectangle(int dispose_method,
@@ -845,6 +879,9 @@ static WebPEncodingError GenerateCandidates(
   if (!enc->options_.allow_mixed) {
     candidate_ll->evaluate_ = is_lossless;
     candidate_lossy->evaluate_ = !is_lossless;
+  } else if (enc->options_.minimize_size) {
+    candidate_ll->evaluate_ = 1;
+    candidate_lossy->evaluate_ = 1;
   } else {  // Use a heuristic for trying lossless and/or lossy compression.
     const int num_colors = WebPGetColorPalette(&params->sub_frame_ll_, NULL);
     candidate_ll->evaluate_ = (num_colors < MAX_COLORS_LOSSLESS);
@@ -1187,16 +1224,20 @@ static int CacheFrame(WebPAnimEncoder* const enc,
       enc->prev_candidate_undecided_ = 0;
     } else {
       int64_t curr_delta;
+      FrameRect prev_rect_key, prev_rect_sub;
 
       // Add this as a frame rectangle to enc.
       error_code = SetFrame(enc, config, 0, encoded_frame, &frame_skipped);
       if (error_code != VP8_ENC_OK) goto End;
       if (frame_skipped) goto Skip;
+      prev_rect_sub = enc->prev_rect_;
+
 
       // Add this as a key-frame to enc, too.
       error_code = SetFrame(enc, config, 1, encoded_frame, &frame_skipped);
       if (error_code != VP8_ENC_OK) goto End;
       assert(frame_skipped == 0);  // Key-frame cannot be an empty rectangle.
+      prev_rect_key = enc->prev_rect_;
 
       // Analyze size difference of the two variants.
       curr_delta = KeyFramePenalty(encoded_frame);
@@ -1207,11 +1248,13 @@ static int CacheFrame(WebPAnimEncoder* const enc,
           old_keyframe->is_key_frame_ = 0;
         }
         encoded_frame->is_key_frame_ = 1;
+        enc->prev_candidate_undecided_ = 1;
         enc->keyframe_ = (int)position;
         enc->best_delta_ = curr_delta;
         enc->flush_count_ = enc->count_ - 1;  // We can flush previous frames.
       } else {
         encoded_frame->is_key_frame_ = 0;
+        enc->prev_candidate_undecided_ = 0;
       }
       // Note: We need '>=' below because when kmin and kmax are both zero,
       // count_since_key_frame will always be > kmax.
@@ -1221,7 +1264,10 @@ static int CacheFrame(WebPAnimEncoder* const enc,
         enc->keyframe_ = KEYFRAME_NONE;
         enc->best_delta_ = DELTA_INFINITY;
       }
-      enc->prev_candidate_undecided_ = 1;
+      if (!enc->prev_candidate_undecided_) {
+        enc->prev_rect_ =
+            encoded_frame->is_key_frame_ ? prev_rect_key : prev_rect_sub;
+      }
     }
   }
 

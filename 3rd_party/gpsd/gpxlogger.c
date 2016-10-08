@@ -2,10 +2,6 @@
  * This file is Copyright (c) 2010 by the GPSD project
  * BSD terms apply: see the file COPYING in the distribution root for details.
  */
-
-/* daemon() needs _DEFAULT_SOURCE */
-#define _DEFAULT_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -91,23 +87,20 @@ static void print_fix(struct gps_data_t *gpsdata, double time)
 	(void)fprintf(logfile,"    <ele>%f</ele>\n", gpsdata->fix.altitude);
     (void)fprintf(logfile,"    <time>%s</time>\n",
 		 unix_to_iso8601(time, tbuf, sizeof(tbuf)));
-    if (gpsdata->status == STATUS_DGPS_FIX)
-	(void)fprintf(logfile,"    <fix>dgps</fix>\n");
-    else
-	switch (gpsdata->fix.mode) {
-	case MODE_3D:
-	    (void)fprintf(logfile,"    <fix>3d</fix>\n");
-	    break;
-	case MODE_2D:
-	    (void)fprintf(logfile,"    <fix>2d</fix>\n");
-	    break;
-	case MODE_NO_FIX:
-	    (void)fprintf(logfile,"    <fix>none</fix>\n");
-	    break;
-	default:
-	    /* don't print anything if no fix indicator */
-	    break;
-	}
+    switch (gpsdata->fix.mode) {
+    case MODE_3D:
+	(void)fprintf(logfile,"    <fix>3d</fix>\n");
+	break;
+    case MODE_2D:
+	(void)fprintf(logfile,"    <fix>2d</fix>\n");
+	break;
+    case MODE_NO_FIX:
+	(void)fprintf(logfile,"    <fix>none</fix>\n");
+	break;
+    default:
+	/* don't print anything if no fix indicator */
+	break;
+    }
 
     if ((gpsdata->fix.mode > MODE_NO_FIX) && (gpsdata->satellites_used > 0))
 	(void)fprintf(logfile,"    <sat>%d</sat>\n", gpsdata->satellites_used);
@@ -186,7 +179,7 @@ static void usage(void)
 {
     fprintf(stderr,
 	    "Usage: %s [-V] [-h] [-d] [-i timeout] [-f filename] [-m minmove]\n"
-	    "\t[-r] [-e exportmethod] [server[:port:[device]]]\n\n"
+	    "\t[-e exportmethod] [server[:port:[device]]]\n\n"
 	    "defaults to '%s -i 5 -e %s localhost:2947'\n",
 	    progname, progname, export_default()->name);
     exit(EXIT_FAILURE);
@@ -196,10 +189,8 @@ int main(int argc, char **argv)
 {
     int ch;
     bool daemonize = false;
-    bool reconnect = false;
     unsigned int flags = WATCH_ENABLE;
     struct exportmethod_t *method = NULL;
-    const int GPS_TIMEOUT = 5000000;    /* microseconds */
 
     progname = argv[0];
 
@@ -210,7 +201,7 @@ int main(int argc, char **argv)
     }
 
     logfile = stdout;
-    while ((ch = getopt(argc, argv, "dD:e:f:hi:lm:rV")) != -1) {
+    while ((ch = getopt(argc, argv, "dD:e:f:hi:lm:V")) != -1) {
 	switch (ch) {
 	case 'd':
 	    openlog(basename(progname), LOG_PID | LOG_PERROR, LOG_DAEMON);
@@ -260,7 +251,7 @@ int main(int argc, char **argv)
                 free(fname);
                 break;
             }
-	case 'i':		/* set polling interval */
+	case 'i':		/* set polling interfal */
 	    timeout = (time_t) atoi(optarg);
 	    if (timeout < 1)
 		timeout = 1;
@@ -273,9 +264,6 @@ int main(int argc, char **argv)
 	    exit(EXIT_SUCCESS);
         case 'm':
 	    minmove = (double )atoi(optarg);
-	    break;
-        case 'r':
-	    reconnect = true;
 	    break;
 	case 'V':
 	    (void)fprintf(stderr, "%s: version %s (revision %s)\n",
@@ -337,14 +325,7 @@ int main(int argc, char **argv)
     (void)gps_stream(&gpsdata, flags, source.device);
 
     print_gpx_header();
-
-    while (gps_mainloop(&gpsdata, GPS_TIMEOUT, conditionally_log_fix) < 0 &&
-	   reconnect) {
-	/* avoid busy-calling gps_mainloop() */
-	(void)sleep(GPS_TIMEOUT / 1000000);
-	syslog(LOG_INFO, "timeout; about to reconnect");
-    }
-
+    (void)gps_mainloop(&gpsdata, 5000000, conditionally_log_fix);
     print_gpx_footer();
     (void)gps_close(&gpsdata);
 

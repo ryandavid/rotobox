@@ -2,10 +2,6 @@
  * This file is Copyright (c) 2010 by the GPSD project
  * BSD terms apply: see the file COPYING in the distribution root for details.
  */
-
-/* for vsnprintf() FreeBSD wants __ISO_C_VISIBLE >= 1999 */
-#define __ISO_C_VISIBLE 1999
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -25,16 +21,7 @@
  **************************************************************************/
 
 static void do_lat_lon(char *field[], struct gps_fix_t *out)
-/* process a pair of latitude/longitude fields starting at field index BEGIN
- * The input fields look like this:
- *     field[0]: 4404.1237962
- *     field[1]: N
- *     field[2]: 12118.8472460
- *     field[3]: W
- * input format of lat/lon is NMEA style  DDDMM.mmmmmmm
- * yes, 7 digits of precision from survey grade GPS
- *
- */
+/* process a pair of latitude/longitude fields starting at field index BEGIN */
 {
     double d, m;
     char str[20], *p;
@@ -42,7 +29,7 @@ static void do_lat_lon(char *field[], struct gps_fix_t *out)
     if (*(p = field[0]) != '\0') {
 	double lat;
 	(void)strlcpy(str, p, sizeof(str));
-	lat = safe_atof(str);
+	lat = atof(str);
 	m = 100.0 * modf(lat / 100.0, &d);
 	lat = d + m / 60.0;
 	p = field[1];
@@ -53,7 +40,7 @@ static void do_lat_lon(char *field[], struct gps_fix_t *out)
     if (*(p = field[2]) != '\0') {
 	double lon;
 	(void)strlcpy(str, p, sizeof(str));
-	lon = safe_atof(str);
+	lon = atof(str);
 	m = 100.0 * modf(lon / 100.0, &d);
 	lon = d + m / 60.0;
 
@@ -129,7 +116,8 @@ static void register_fractional_time(const char *tag, const char *fld,
 				     struct gps_device_t *session)
 {
     if (fld[0] != '\0') {
-	session->nmea.last_frac_time = session->nmea.this_frac_time;
+	session->nmea.last_frac_time =
+	    session->nmea.this_frac_time;
 	session->nmea.this_frac_time = safe_atof(fld);
 	session->nmea.latch_frac_time = true;
 	gpsd_log(&session->context->errout, LOG_DATA,
@@ -290,24 +278,10 @@ static gps_mask_t processGLL(int count, char *field[],
 
 	do_lat_lon(&field[1], &session->newdata);
 	mask |= LATLON_SET;
-
-	newstatus = STATUS_FIX;
-	if (count >= 8 ) {
-	    switch ( *status ) {
-	    case 'D':	/* differential */
-	    case 'F':	/* float RTK */
-	    case 'R':	/* integer RTK */
-		newstatus = STATUS_DGPS_FIX;	/* differential */
-		break;
-	    case 'S':	/* simulator */
-		newstatus = STATUS_NO_FIX;
-		break;
-	    case 'A':
-	    default:
-		newstatus = STATUS_FIX;
-		break;
-	    }
-        }
+	if (count >= 8 && *status == 'D')
+	    newstatus = STATUS_DGPS_FIX;	/* differential */
+	else
+	    newstatus = STATUS_FIX;
 	/*
 	 * This is a bit dodgy.  Technically we shouldn't set the mode
 	 * bit until we see GSA.  But it may be later in the cycle,
@@ -390,10 +364,7 @@ static gps_mask_t processGGA(int c UNUSED, char *field[],
 	}
 	do_lat_lon(&field[2], &session->newdata);
 	mask |= LATLON_SET;
-	/* FIXME: satellites_visible is used as an accumulator in xxGSV
-	 * so if we set it here we break xxGSV
-	 * session->gpsdata.satellites_visible = atoi(field[7]);
-	 */
+	session->gpsdata.satellites_used = atoi(field[7]);
 	altitude = field[9];
 	/*
 	 * SiRF chipsets up to version 2.2 report a null altitude field.
@@ -445,7 +416,7 @@ static gps_mask_t processGST(int count, char *field[], struct gps_device_t *sess
 {
     /*
      * GST,hhmmss.ss,x,x,x,x,x,x,x,*hh
-     * 1 UTC time of associated GGA fix
+     * 1 TC time of associated GGA fix
      * 2 Total RMS standard deviation of ranges inputs to the navigation solution
      * 3 Standard deviation (meters) of semi-major axis of error ellipse
      * 4 Standard deviation (meters) of semi-minor axis of error ellipse
@@ -460,10 +431,6 @@ static gps_mask_t processGST(int count, char *field[], struct gps_device_t *sess
     }
 
 #define PARSE_FIELD(n) (*field[n]!='\0' ? safe_atof(field[n]) : NAN)
-    /* note this is not full UTC, just HHMMSS.ss */
-    /* this is not the current time,
-     * it references another GPA of the same stamp. So do not set
-     * any time stamps with it */
     session->gpsdata.gst.utctime             = PARSE_FIELD(1);
     session->gpsdata.gst.rms_deviation       = PARSE_FIELD(2);
     session->gpsdata.gst.smajor_deviation    = PARSE_FIELD(3);
@@ -473,12 +440,10 @@ static gps_mask_t processGST(int count, char *field[], struct gps_device_t *sess
     session->gpsdata.gst.lon_err_deviation   = PARSE_FIELD(7);
     session->gpsdata.gst.alt_err_deviation   = PARSE_FIELD(8);
 #undef PARSE_FIELD
-    /* add in the time of start of today */
-    /* since it is NOT current time, do not register_fractional_time() */
-    session->gpsdata.gst.utctime += mkgmtime(&session->nmea.date);
+    register_fractional_time(field[0], field[1], session);
 
     gpsd_log(&session->context->errout, LOG_DATA,
-	     "GST: utc = %.3f, rms = %.2f, maj = %.2f, min = %.2f, ori = %.2f, lat = %.2f, lon = %.2f, alt = %.2f\n",
+	     "GST: utc = %.2f, rms = %.2f, maj = %.2f, min = %.2f, ori = %.2f, lat = %.2f, lon = %.2f, alt = %.2f\n",
 	     session->gpsdata.gst.utctime,
 	     session->gpsdata.gst.rms_deviation,
 	     session->gpsdata.gst.smajor_deviation,
@@ -524,14 +489,14 @@ static int nmeaid_to_prn(char *talker, int satnum)
     // NMEA-ID (33..64) to SBAS PRN 120-151.
     if (satnum >= 33 && satnum <= 64)
 	satnum += 87;
-    if (satnum != 0 && satnum < 32) {
+    if (satnum < 32) {
 	/* map Beidou IDs */
 	if (talker[0] == 'B' && talker[1] == 'D')
 	    satnum += 200;
 	else if (talker[0] == 'G' && talker[1] == 'B')
 	    satnum += 200;
 	/* GLONASS GL doesn't seem to do this, but better safe than sorry */
-	if (talker[0] == 'G' && talker[1] == 'L')
+	if (talker[0] == 'G' && (talker[1] == 'L' || talker[1] == 'N'))
 	    satnum += 37;
 	/* QZSS */
 	if (talker[0] == 'Q' && talker[1] == 'Z')
@@ -545,7 +510,6 @@ static gps_mask_t processGSA(int count, char *field[],
 			       struct gps_device_t *session)
 /* GPS DOP and Active Satellites */
 {
-#define GSA_TALKER	field[0][1]
     /*
      * eg1. $GPGSA,A,3,,,,,,16,18,,22,24,,,3.6,2.1,2.2*3C
      * eg2. $GPGSA,A,3,19,28,14,18,27,22,31,39,,,,,1.7,1.0,1.3*35
@@ -557,31 +521,8 @@ static gps_mask_t processGSA(int count, char *field[],
      * 15   = PDOP
      * 16   = HDOP
      * 17   = VDOP
-     *
-     * Not all documentation specifies the number of PRN fields, it
-     * may be variable.  Most doc that specifies says 12 PRNs.
-     *
-     * the CH-4701 ourputs 24 PRNs!
-     *
-     * The Skytraq S2525F8-BD-RTK output both GPGSA and BDGSA in the
-     * same cycle:
-     * $GPGSA,A,3,23,31,22,16,03,07,,,,,,,1.8,1.1,1.4*3E
-     * $BDGSA,A,3,214,,,,,,,,,,,,1.8,1.1,1.4*18
-     * These need to be combined like GPGSV and BDGSV
-     *
-     * Some GPS emit GNGSA.  So far we have not seen a GPS emit GNGSA
-     * and then another flavor of xxGSA
-     *
-     * Some Skytraq will emit all GPS in one GNGSA, Then follow with
-     * another GNGSA with the BeiDou birds.
-     *
-     * SEANEXX and others also do it:
-     * $GNGSA,A,3,31,26,21,,,,,,,,,,3.77,2.55,2.77*1A
-     * $GNGSA,A,3,75,86,87,,,,,,,,,,3.77,2.55,2.77*1C
-     * seems like the first is GNSS and the second GLONASS
      */
     gps_mask_t mask;
-    char last_last_gsa_talker = session->nmea.last_gsa_talker;
 
     /*
      * One chipset called the i.Trek M3 issues GPGSA lines that look like
@@ -592,7 +533,7 @@ static gps_mask_t processGSA(int count, char *field[],
      */
     if (count < 17) {
 	gpsd_log(&session->context->errout, LOG_DATA,
-		 "xxGSA: malformed, setting ONLINE_SET only.\n");
+		 "GPGSA: malformed, setting ONLINE_SET only.\n");
 	mask = ONLINE_SET;
     } else if (session->nmea.latch_mode) {
 	/* last GGA had a non-advancing timestamp; don't trust this GSA */
@@ -610,72 +551,32 @@ static gps_mask_t processGSA(int count, char *field[],
 	else
 	    mask = MODE_SET;
 	gpsd_log(&session->context->errout, LOG_PROG,
-		 "xxGSA sets mode %d\n", session->newdata.mode);
+		 "GPGSA sets mode %d\n", session->newdata.mode);
 	if (field[15][0] != '\0')
 	    session->gpsdata.dop.pdop = safe_atof(field[15]);
 	if (field[16][0] != '\0')
 	    session->gpsdata.dop.hdop = safe_atof(field[16]);
 	if (field[17][0] != '\0')
 	    session->gpsdata.dop.vdop = safe_atof(field[17]);
-	/*
-	 * might have gone from GPGSA to GLGSA/BDGSA
-	 * or GNGSA to GNGSA
-	 * in which case accumulate
-	 */
-	if ( '\0' == session->nmea.last_gsa_talker
-          || (GSA_TALKER == session->nmea.last_gsa_talker
-              && 'N' != GSA_TALKER) ) {
-	    session->gpsdata.satellites_used = 0;
-	    memset(session->nmea.sats_used, 0, sizeof(session->nmea.sats_used));
-	}
-	session->nmea.last_gsa_talker = GSA_TALKER;
-	if (session->nmea.last_gsa_talker == 'D')
-	    session->nmea.seen_bdgsa = true;
-	else if (session->nmea.last_gsa_talker == 'L')
-	    session->nmea.seen_glgsa = true;
-	else if (session->nmea.last_gsa_talker == 'N')
-	    session->nmea.seen_gngsa = true;
-
+	session->gpsdata.satellites_used = 0;
+	memset(session->nmea.sats_used, 0, sizeof(session->nmea.sats_used));
 	/* the magic 6 here counts the tag, two mode fields, and the DOP fields */
 	for (i = 0; i < count - 6; i++) {
-	    int prn;
-	    /* skip empty fields, otherwise empty becomes prn=200 */
-	    if ( '\0' == field[i + 3][0] ) {
-		continue;
-	    }
-	    prn = nmeaid_to_prn(field[0], atoi(field[i + 3]));
-	    if (prn > 0) {
-		/* check first BEFORE over-writing memory */
-		if ( MAXCHANNELS <= session->gpsdata.satellites_used ) {
-		    /* this should never happen as xxGSA is limited to 12 */
-		    break;
-		}
+	    int prn = nmeaid_to_prn(field[0], atoi(field[i + 3]));
+	    if (prn > 0)
 		session->nmea.sats_used[session->gpsdata.satellites_used++] =
 		    (unsigned short)prn;
-            }
 	}
 	mask |= DOP_SET | USED_IS;
 	gpsd_log(&session->context->errout, LOG_DATA,
-		 "xxGSA: mode=%d used=%d pdop=%.2f hdop=%.2f vdop=%.2f\n",
+		 "GPGSA: mode=%d used=%d pdop=%.2f hdop=%.2f vdop=%.2f\n",
 		 session->newdata.mode,
 		 session->gpsdata.satellites_used,
 		 session->gpsdata.dop.pdop,
 		 session->gpsdata.dop.hdop,
 		 session->gpsdata.dop.vdop);
     }
-    /* assumes GLGSA or BDGSA, if present, is emitted  directly
-     * after the GPGSA*/
-    if ((session->nmea.seen_glgsa || session->nmea.seen_bdgsa)
-       && GSA_TALKER == 'P')
-	return ONLINE_SET;
-
-    /* first of two GNGSA */
-    /* if mode == 1 some GPS only output 1 GNGSA, so ship mode always */
-    if ( 'N' != last_last_gsa_talker && 'N' == GSA_TALKER)
-	return ONLINE_SET | MODE_SET;
-
     return mask;
-#undef GSA_TALKER
 }
 
 static gps_mask_t processGSV(int count, char *field[],
@@ -693,6 +594,7 @@ static gps_mask_t processGSV(int count, char *field[],
      * 083         Azimuth, degrees
      * 46          Signal-to-noise ratio in decibels
      * <repeat for up to 4 satellites per sentence>
+     * There my be up to three GSV sentences in a data packet
      *
      * Can occur with talker IDs:
      *   BD (Beidou),
@@ -707,27 +609,14 @@ static gps_mask_t processGSV(int count, char *field[],
      * GLONASS, GN may be (incorrectly) used when GSVs contain GLONASS
      * only.  Usage is inconsistent.
      *
-     * In the GLONASS version sat IDs run from 65-96 (NMEA0183
-     * standardizes this). At least two GPSes, the BU-353 GLONASS and
-     * the u-blox NEO-M8N, emit a GPGSV set followed by a GLGSV set.
-     * We have also seen two GPSes, the Skytraq S2525F8-BD-RTK and a
-     * SiRF-IV variant, that emit GPGSV followed by BDGSV. We need to
+     * In the GLONASS version sat IDs run from 65-96 (NMEA0183 standardizes
+     * this). At least two GPS, the BU-353 GLONASS and the u-blox NEO-M8N,
+     * emit a GPGSV set followed by a GLGSV set.  We have also seen a
+     * SiRF-IV variant that emits GPGSV followed by BDGSV. We need to
      * combine these.
      *
-     * The following shows how the Skytraq S2525F8-BD-RTK output both
-     * GPGSV and BDGSV in the same cycle:
-     * $GPGSV,4,1,13,23,66,310,29,03,65,186,33,26,43,081,27,16,41,124,38*78
-     * $GPGSV,4,2,13,51,37,160,38,04,37,066,25,09,34,291,07,22,26,156,37*77
-     * $GPGSV,4,3,13,06,19,301,,31,17,052,20,193,11,307,,07,11,232,27*4F
-     * $GPGSV,4,4,13,01,03,202,30*4A
-     * $BDGSV,1,1,02,214,55,153,40,208,01,299,*67
-     *
-     * The driver automatically adapts to either case, but it takes until the
-     * second cycle (usually 10 seconds from device connect) for it to
-     * learn to expect BSDGV or GLGSV.
-     *
      * NMEA 4.1 adds a signal-ID field just before the checksum. First
-     * seen in May 2015 on a u-blox M8.
+     * seen in May 2015 on a u-blox M8,
      */
 
     int n, fldnum;
@@ -741,7 +630,7 @@ static gps_mask_t processGSV(int count, char *field[],
     }
     /*
      * This check used to be !=0, but we have loosen it a little to let by
-     * NMEA 4.1 GSVs with an extra signal-ID field at the end.
+     * NMEA 4.1 GSVs with an extra signal-ID field at the end.  
      */
     if (count % 4 > 1) {
 	gpsd_log(&session->context->errout, LOG_WARN,
@@ -775,7 +664,7 @@ static gps_mask_t processGSV(int count, char *field[],
 	    session->nmea.seen_qzss = true;
     }
 
-    for (fldnum = 4; fldnum < count / 4 * 4;) {
+    for (fldnum = 4; fldnum < count;) {
 	struct satellite_t *sp;
 	if (session->gpsdata.satellites_visible >= MAXCHANNELS) {
 	    gpsd_log(&session->context->errout, LOG_ERROR,
@@ -807,8 +696,8 @@ static gps_mask_t processGSV(int count, char *field[],
     }
 
     /*
-     * Alas, we can't sanity check field counts when there are multiple sat
-     * pictures, because the visible member counts *all* satellites - you
+     * Alas, we can't sanity check field counts when there are multiple sat 
+     * pictures, because the visible member counts *all* satellites - you 
      * get a bad result on the second and later SV spans.  Note, this code
      * assumes that if any of the special sat pics occur they come right
      * after a stock GPGSV one.
@@ -1216,63 +1105,6 @@ static gps_mask_t processTNTHTM(int c UNUSED, char *field[],
 	     session->gpsdata.attitude.mag_st);
     return mask;
 }
-
-static gps_mask_t processTNTA(int c UNUSED, char *field[],
-			      struct gps_device_t *session)
-{
-    /*
-     * Proprietary sentence for iSync GRClok/LNRClok.
-
-     $PTNTA,20000102173852,1,T4,,,6,1,0*32
-
-     1. Date/time in format year, month, day, hour, minute, second
-     2. Oscillator quality 0:warming up, 1:freerun, 2:disciplined.
-     3. Always T4. Format indicator.
-     4. Interval ppsref-ppsout in [ns]. Blank if no ppsref.
-     5. Fine phase comparator in approx. [ns]. Always close to -500 or
-        +500 if not disciplined. Blank if no ppsref.
-     6. iSync Status.  0:warming up or no light, 1:tracking set-up,
-        2:track to PPSREF, 3:synch to PPSREF, 4:Free Run. Track OFF,
-        5:FR. PPSREF unstable, 6:FR. No PPSREF, 7:FREEZE, 8:factory
-        used, 9:searching Rb line
-     7. GPS messages indicator. 0:do not take account, 1:take account,
-        but no message, 2:take account, partially ok, 3:take account,
-        totally ok.
-     8. Transfer quality of date/time. 0:no, 1:manual, 2:GPS, older
-        than x hours, 3:GPS, fresh.
-
-     */
-    gps_mask_t mask;
-    mask = ONLINE_SET;
-
-    if (strcmp(field[3], "T4") == 0) {
-	struct oscillator_t *osc = &session->gpsdata.osc;
-	unsigned int quality = atoi(field[2]);
-	unsigned int delta = atoi(field[4]);
-	unsigned int fine = atoi(field[5]);
-	unsigned int status = atoi(field[6]);
-	char deltachar = field[4][0];
-
-	osc->running = (quality > 0);
-	osc->reference = (deltachar && (deltachar != '?'));
-	if (osc->reference) {
-	    if (delta < 500) {
-		osc->delta = fine;
-	    } else {
-		osc->delta = ((delta < 500000000) ? delta : 1000000000 - delta);
-	    }
-	} else {
-	    osc->delta = 0;
-	}
-	osc->disciplined = ((quality == 2) && (status == 3));
-	mask |= OSCILLATOR_SET;
-
-	gpsd_log(&session->context->errout, LOG_DATA,
-		 "PTNTA,T4: quality=%s, delta=%s, fine=%s, status=%s\n",
-		 field[2], field[4], field[5], field[6]);
-    }
-    return mask;
-}
 #endif /* TNT_ENABLE */
 
 #ifdef OCEANSERVER_ENABLE
@@ -1515,207 +1347,6 @@ static gps_mask_t processMTK3301(int c UNUSED, char *field[],
 }
 #endif /* MTK3301_ENABLE */
 
-#ifdef SKYTRAQ_ENABLE
-
-static gps_mask_t processPSTI030(int count, char *field[],
-			       struct gps_device_t *session)
-/*  Recommended Minimum 3D GNSS Data */
-{
-    /*
-     * $PSTI,030,hhmmss.sss,A,dddmm.mmmmmmm,a,dddmm.mmmmmmm,a,x.x,x.x,x.x,x.x,ddmmyy,a.x.x,x.x*hh<CR><LF>
-     * 1     225446.334    Time of fix 22:54:46 UTC
-     * 2     A          Status of Fix: A = Autonomous, valid;
-     *                                 V = invalid
-     * 3,4   4916.45,N    Latitude 49 deg. 16.45 min North
-     * 5,6   12311.12,W   Longitude 123 deg. 11.12 min West
-     * 7     103.323      Mean Sea Level meters
-     * 8     0.00         East Velocity meters/sec
-     * 9     0.00         North Velocity meters/sec
-     * 10    0.00         Up Velocity meters/sec
-     * 11    181194       Date of fix  18 November 1994
-     * 12    A            FAA mode indicator
-     * A=autonomous, D=differential, E=Estimated,
-     * F=Float RTK, M=Manual input mode, N=not valid, R=Integer RTK
-     * S=Simulator
-     * 13    1.2          RTK Age
-     * 14    4.2          RTK Ratio
-     * 15    *68          mandatory nmea_checksum
-     *
-     * In private email, SkyTraq says F mode is 10x more accurate
-     * than R mode.
-     */
-    gps_mask_t mask = 0;
-
-    if ( 16 != count )
-	    return 0;
-
-    if ( 0 == strcmp(field[3], "V")) {
-        /* nav warning, ignore the rest of the data */
-	session->gpsdata.status = STATUS_NO_FIX;
-	session->newdata.mode = MODE_NO_FIX;
-	mask |= STATUS_SET | MODE_SET;
-    } else if ( 0 == strcmp(field[3], "A")) {
-	double east, north;
-
-        /* data valid */
-	if (field[2][0] != '\0' && field[12][0] != '\0') {
-	    /* good date and time */
-	    merge_hhmmss(field[2], session);
-	    merge_ddmmyy(field[12], session);
-	    mask |= TIME_SET;
-	    register_fractional_time( "PSTI030", field[2], session);
-	}
-	do_lat_lon(&field[4], &session->newdata);
-	mask |= LATLON_SET;
-
-	/* convert ENU to speed/track */
-	/* this has more precision than GPVTG, GPVTG comes earlier
-	 * in the cycle */
-	east = safe_atof(field[9]);     /* east velocity m/s */
-	north = safe_atof(field[10]);   /* north velocity m/s */
-	session->newdata.speed = sqrt(pow(east, 2) + pow(north, 2));
-	session->newdata.track = atan2(east, north) * RAD_2_DEG;
-	if ( 0 > session->newdata.track )
-	    session->newdata.track += 360.0;
-
-	/* up velocity m/s */
-	session->newdata.climb = safe_atof(field[11]);
-        mask |= SPEED_SET | TRACK_SET | CLIMB_SET;
-
-        switch ( field[13][0] ) {
-	case 'A':
-	    session->gpsdata.status = STATUS_FIX;
-	    break;
-	case 'D':
-	    session->gpsdata.status = STATUS_DGPS_FIX;
-	    break;
-        default:
-	    session->gpsdata.status = STATUS_NO_FIX;
-	    break;
-        }
-	mask |= STATUS_SET;
-	/* RTK Age and RTK Ratio, for now */
-    }
-    // else WTF?
-
-    gpsd_log(&session->context->errout, LOG_DATA,
-	     "PSTI,030: ddmmyy=%s hhmmss=%s lat=%.2f lon=%.2f "
-	     "status=%d, RTK(Age=%s Ratio=%s)\n",
-	     field[12], field[2],
-	     session->newdata.latitude,
-	     session->newdata.longitude,
-	     session->gpsdata.status,
-	     field[14], field[15]);
-    return mask;
-}
-
-/*
- * Skytraq sentences take this format:
- * $PSTI,type[,val[,val]]*CS
- * type is a 2 or 3 digit subsentence type
- *
- * Note: this sentence can be at least 100 chars long.
- * That violates the NMEA max of 82.
- *
- */
-static gps_mask_t processPSTI(int count, char *field[],
-			       struct gps_device_t *session)
-{
-    gps_mask_t mask;
-
-    /* set something, so it won't look like an unknown sentence */
-    mask |= ONLINE_SET;
-
-    if ( 0 != strncmp(session->subtype, "Skytraq", 7) ) {
-	/* this is skytraq, but marked yet, so probe for Skytraq */
-	(void)gpsd_write(session, "\xA0\xA1\x00\x02\x02\x01\x03\x0d\x0a",9);
-    }
-
-    if (0 == strcmp("00", field[1]) ) {
-	if ( 4 != count )
-		return 0;
-	/* 1 PPS Timing report ID */
-	gpsd_log(&session->context->errout, LOG_DATA,
-		 "PSTI,00: Mode: %s, Length: %s, Quant: %s\n",
-		field[2], field[3], field[4]);
-	return mask;
-    }
-    if (0 == strcmp("001", field[1])) {
-	/* Active Antenna Status Report */
-	gpsd_log(&session->context->errout, LOG_DATA,
-		 "PSTI,001: Count: %d\n", count);
-	return mask;
-    }
-    if (0 == strcmp("005", field[1])) {
-	/* GPIO 10 event-triggered time & position stamp. */
-	gpsd_log(&session->context->errout, LOG_DATA,
-		 "PSTI,005: Count: %d\n", count);
-	return mask;
-    }
-    if (0 == strcmp("030", field[1])) {
-	/*  Recommended Minimum 3D GNSS Data */
-	return processPSTI030( count, field, session);
-    }
-    if (0 == strcmp("032", field[1])) {
-
-	if ( 16 != count )
-		return 0;
-	/* RTK Baseline */
-	if ( 0 == strcmp(field[4], "A")) {
-	    /* Status Valid */
-	    if (field[2][0] != '\0' && field[3][0] != '\0') {
-		/* good date and time */
-		merge_hhmmss(field[2], session);
-		merge_ddmmyy(field[3], session);
-		mask |= TIME_SET;
-		register_fractional_time( "PSTI032", field[2], session);
-	    }
-	}
-	gpsd_log(&session->context->errout, LOG_DATA,
-		 "PSTI,032: stat:%s mode: %s E: %s N: %s U:%s L:%s C:%s\n",
-		field[4], field[5],
-		field[6], field[7], field[8],
-		field[9], field[10]);
-	return mask;
-    }
-    gpsd_log(&session->context->errout, LOG_DATA,
-		 "PSTI,%s: Unknown type, Count: %d\n", field[1], count);
-
-    return 0;
-}
-
-/*
- * Skytraq undocumented debug sentences take this format:
- * $STI,type,val*CS
- * type is a 2 char subsentence type
- * Note: NO checksum
- */
-static gps_mask_t processSTI(int count, char *field[],
-			       struct gps_device_t *session)
-{
-    gps_mask_t mask;
-
-    /* set something, so it won't look like an unknown sentence */
-    mask |= ONLINE_SET;
-
-    if ( 0 != strncmp(session->subtype, "Skytraq", 7) ) {
-	/* this is skytraq, but marked yet, so probe for Skytraq */
-	(void)gpsd_write(session, "\xA0\xA1\x00\x02\x02\x01\x03\x0d\x0a",9);
-    }
-
-    if ( 0 == strcmp( field[1], "IC") ) {
-	/* $STI,IC,error=XX, this is always very bad, but undocumented */
-	gpsd_log(&session->context->errout, LOG_ERROR,
-		     "Skytraq: $STI,%s,%s\n", field[1], field[2]);
-        return mask;
-    }
-    gpsd_log(&session->context->errout, LOG_DATA,
-		 "STI,%s: Unknown type, Count: %d\n", field[1], count);
-
-    return mask;
-}
-#endif /* SKYTRAQ_ENABLE */
-
 /**************************************************************************
  *
  * Entry points begin here
@@ -1777,12 +1408,7 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
 #endif /* MTK3301_ENABLE */
 #ifdef TNT_ENABLE
 	{"PTNTHTM", 9, false, processTNTHTM},
-	{"PTNTA", 8, false, processTNTA},
 #endif /* TNT_ENABLE */
-#ifdef SKYTRAQ_ENABLE
-	{"PSTI", 2, false, processPSTI},	/* $PSTI Skytraq */
-	{"STI", 2, false, processSTI},		/* $STI  Skytraq */
-#endif /* SKYTRAQ_ENABLE */
 	{"RMC", 8,  false, processRMC},
 	{"TXT", 5,  false, processTXT},
 	{"ZDA", 4,  false, processZDA},
@@ -1794,9 +1420,6 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
     unsigned int i, thistag;
     char *p, *s, *e;
     volatile char *t;
-#ifdef SKYTRAQ_ENABLE
-    bool skytraq_sti = false;
-#endif
 
     /*
      * We've had reports that on the Garmin GPS-10 the device sometimes
@@ -1821,13 +1444,6 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
 	++p;
     if (*p == '*')
 	*p++ = ',';		/* otherwise we drop the last field */
-#ifdef SKYTRAQ_ENABLE_UNUSED
-    /* $STI is special, no trailing *, or chacksum */
-    if ( 0 != strncmp( "STI,", sentence, 4) ) {
-	skytraq_sti = true;
-	*p++ = ',';		/* otherwise we drop the last field */
-    }
-#endif
     *p = '\0';
     e = p;
 
@@ -1859,14 +1475,8 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
     for (thistag = i = 0;
 	 i < (unsigned)(sizeof(nmea_phrase) / sizeof(nmea_phrase[0])); ++i) {
 	s = session->nmea.field[0];
-	if (strlen(nmea_phrase[i].name) == 3
-#ifdef SKYTRAQ_ENABLE
-	        /* $STI is special */
-		&& !skytraq_sti
-#endif
-		) {
+	if (strlen(nmea_phrase[i].name) == 3)
 	    s += 2;		/* skip talker ID */
-        }
 	if (strcmp(nmea_phrase[i].name, s) == 0) {
 	    if (nmea_phrase[i].decoder != NULL
 		&& (count >= nmea_phrase[i].nf)) {
@@ -1890,8 +1500,6 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
     /* prevent overaccumulation of sat reports */
     if (!str_starts_with(session->nmea.field[0] + 2, "GSV"))
 	session->nmea.last_gsv_talker = '\0';
-    if (!str_starts_with(session->nmea.field[0] + 2, "GSA"))
-	session->nmea.last_gsa_talker = '\0';
 
     /* timestamp recording for fixes happens here */
     if ((retval & TIME_SET) != 0) {
@@ -1915,7 +1523,7 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
 	 * information for a sharper test, so we'll leave it up to the
 	 * PPS code to do its own sanity filtering.
 	 */
-	retval |= NTPTIME_IS;
+	retval |= PPSTIME_IS;
     }
 
     /*
@@ -1926,10 +1534,9 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
      * this should work perfectly, locking in detection after one
      * cycle.  Most split-cycle devices (Garmin 48, for example) will
      * work fine.  Problems will only arise if a a sentence that
-     * occurs just before timestamp increments also occurs in
+     * occurs just befiore timestamp increments also occurs in
      * mid-cycle, as in the Garmin eXplorist 210; those might jitter.
      */
-    /* FIXME, Skytraq may end in $PSTI,030 and $PSTI,032 */
     if (session->nmea.latch_frac_time) {
 	gpsd_log(&session->context->errout, LOG_PROG,
 		 "%s sentence timestamped %.2f.\n",
@@ -1938,7 +1545,7 @@ gps_mask_t nmea_parse(char *sentence, struct gps_device_t * session)
 	if (!GPS_TIME_EQUAL
 	    (session->nmea.this_frac_time,
 	     session->nmea.last_frac_time)) {
-	    unsigned int lasttag = session->nmea.lasttag;
+	    uint lasttag = session->nmea.lasttag;
 	    retval |= CLEAR_IS;
 	    gpsd_log(&session->context->errout, LOG_PROG,
 		     "%s starts a reporting cycle.\n",

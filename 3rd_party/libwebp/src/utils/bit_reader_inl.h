@@ -20,9 +20,7 @@
 #include "../webp/config.h"
 #endif
 
-#ifdef WEBP_FORCE_ALIGNED
-#include <string.h>  // memcpy
-#endif
+#include <string.h>  // for memcpy
 
 #include "../dsp/dsp.h"
 #include "./bit_reader.h"
@@ -62,10 +60,7 @@ void VP8LoadNewBytes(VP8BitReader* const br) {
   if (br->buf_ < br->buf_max_) {
     // convert memory type to register type (with some zero'ing!)
     bit_t bits;
-#if defined(WEBP_FORCE_ALIGNED)
-    lbit_t in_bits;
-    memcpy(&in_bits, br->buf_, sizeof(in_bits));
-#elif defined(WEBP_USE_MIPS32)
+#if defined(WEBP_USE_MIPS32)
     // This is needed because of un-aligned read.
     lbit_t in_bits;
     lbit_t* p_buf_ = (lbit_t*)br->buf_;
@@ -80,7 +75,8 @@ void VP8LoadNewBytes(VP8BitReader* const br) {
       : "memory", "at"
     );
 #else
-    const lbit_t in_bits = *(const lbit_t*)br->buf_;
+    lbit_t in_bits;
+    memcpy(&in_bits, br->buf_, sizeof(in_bits));
 #endif
     br->buf_ += BITS >> 3;
 #if !defined(WORDS_BIGENDIAN)
@@ -149,7 +145,8 @@ static WEBP_INLINE int VP8GetBit(VP8BitReader* const br, int prob) {
 }
 
 // simplified version of VP8GetBit() for prob=0x80 (note shift is always 1 here)
-static WEBP_INLINE int VP8GetSigned(VP8BitReader* const br, int v) {
+static WEBP_UBSAN_IGNORE_UNSIGNED_OVERFLOW WEBP_INLINE
+int VP8GetSigned(VP8BitReader* const br, int v) {
   if (br->bits_ < 0) {
     VP8LoadNewBytes(br);
   }

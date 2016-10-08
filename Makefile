@@ -141,7 +141,7 @@ rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o $(DUMP978_DEP
 		 $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS)
 
-rotobox-deps: libgeos librtlsdr libusb librasterlite2 libspatialite sqlite proj4 gpsd libmetar
+rotobox-deps: libgeos librtlsdr libusb librasterlite2 spatialite sqlite proj4 gpsd libmetar
 
 clean:
 	rm -rf *.o
@@ -249,6 +249,7 @@ $(PIXMAN_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	autoreconf -if -Wall && \
 	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
 
 ########################################
@@ -407,8 +408,8 @@ libmetar:
 ########################################
 $(LIBRASTERLITE2_LIB): librasterlite2
 
-librasterlite2: $(CURL_LIB) $(LIBXML2_LIB) $(LIBSPATIALITE_LIB) $(PROJ4_LIB) $(LIBPNG_LIB) \
-				$($LIBWEBP_LIB) $(LIBJPEG_LIB) $(LIBGEOTIFF_LIB) $(XZ_LIB) $(LIBCAIRO_LIB) $(LIBRASTERLITE2_MAKEFILE)
+librasterlite2: $(CURL_LIB) $(LIBXML2_LIB) $(LIBSPATIALITE_LIB) $(PROJ4_LIB) $(LIBPNG_LIB) $(GIFLIB_LIB)\
+				$(LIBWEBP_LIB) $(LIBJPEG_LIB) $(LIBGEOTIFF_LIB) $(XZ_LIB) $(LIBCAIRO_LIB) $(LIBRASTERLITE2_MAKEFILE)
 	$(MAKE) -C $(LIBRASTERLITE2_SUBDIR) install
 
 $(LIBRASTERLITE2_MAKEFILE):

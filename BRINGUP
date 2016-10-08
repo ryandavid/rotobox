@@ -1,5 +1,5 @@
 Install dependencies
-	sudo apt-get install build-essential libncurses-dev subversion git cmake libusb-1.0-0-dev socat python-pip libxml2-dev libxslt-dev libproj-dev scons
+	sudo apt-get install build-essential libncurses-dev subversion git cmake socat python-pip scons
 
 Python dependencies
 	sudo pip install lxml requests clint
@@ -51,28 +51,6 @@ Resize the root partition
 Edit /etc/modprobe.d/blacklist.conf, and add:
 	blacklist dvb_usb_rtl28xxu
 
-Make librtlsdr
-	git clone git@github.com:librtlsdr/librtlsdr.git
-	cd librtlsdr
-	makedir build
-	cd build
-	cmake ../ -DINSTALL_UDEV_RULES=ON
-	make -j4
-	sudo make install
-	sudo ldconfig
-
-Make dump1090
-git clone git@github.com:mutability/dump1090.git
-make -j4
-
-
-
-
-building on osx
-sudo port install cmake libusb pkgconfig
-export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
-
-
 Enabling PPS on rotobox
 http://odroid.com/dokuwiki/doku.php?id=en:c2_gpio_pps
 
@@ -120,13 +98,6 @@ Update /etc/ntp.conf
 
 Install prerequisites on rotobox
 	sudo apt-get install libcap-dev libdbus-1-dev libdbus-glib-1-dev
-
-Clone GPSD
-	cd ~/src
-	git clone git://git.sv.gnu.org/gpsd.git
-	cd gpsd
-	scons pps=False
-	scons install
 
 Add the following to /etc/rc.local
 	gpsd -nG /dev/ttyS1 /dev/pps0

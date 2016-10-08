@@ -10,7 +10,8 @@ sudo port install cmake pkgconfig automake autoconf libtool
 
 Build it!
 ````
-make install
+make rotobox-deps
+make rotobox
 ````
 
 A reverse tunnel is no longer required if you are running rotobox on a host other than where GPSD is running. Provide the IP address to the rotobox HW using the 'a' flag
@@ -61,4 +62,4 @@ https://github.com/steve-m/kalibrate-rtl
 kal -s GSM850
 kal -c 130
 ```
-Where 130 is a strong channel.
+Where 130 is a strong channel shown by the first command.

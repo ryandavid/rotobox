@@ -17,6 +17,12 @@ ECHO=echo
 UNAME=$(shell uname -s)
 CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include -DMAKE_DUMP_978_LIB -DMAKE_DUMP_1090_LIB
 
+
+ifeq ($(UNAME), Darwin)
+LIB_EXT=dylib
+else
+LIB_EXT=so
+endif
 ########################################
 # 3rd-party lib locations              #
 ########################################
@@ -26,62 +32,83 @@ DUMP1090_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/dump1090
 LIBRTLSDR_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/librtlsdr
 LIBRTLSDR_BUILDDIR=$(LIBRTLSDR_SUBDIR)/build
 LIBRTLSDR_MAKEFILE=$(LIBRTLSDR_BUILDDIR)/Makefile
+LIBRTLSDR_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/librtlsdr.$(LIB_EXT)
 
 LIBUSB_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libusb
 LIBUSB_MAKEFILE=$(LIBUSB_SUBDIR)/Makefile
+LIBUSB_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libusb-1.0.0.$(LIB_EXT)
 
 GIFLIB_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/giflib
 GIFLIB_MAKEFILE=$(GIFLIB_SUBDIR)/Makefile
+GIFLIB_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libgif.$(LIB_EXT)
 
 GPSD_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/gpsd
+GPSD_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libgps.$(LIB_EXT)
 
 LIBCAIRO_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libcairo
 LIBCAIRO_MAKEFILE=$(LIBCAIRO_SUBDIR)/Makefile
+LIBCAIRO_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libcairo.$(LIB_EXT)
 
 PIXMAN_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/pixman
 PIXMAN_MAKEFILE=$(PIXMAN_SUBDIR)/Makefile
+PIXMAN_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/pixman.$(LIB_EXT)
 
 LIBGEOS_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libgeos
 LIBGEOS_MAKEFILE=$(LIBGEOS_SUBDIR)/Makefile
+LIBGEOS_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libgeos.$(LIB_EXT)
 
 LIBGEOTIFF_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libgeotiff
 LIBGEOTIFF_MAKEFILE=$(LIBGEOTIFF_SUBDIR)/Makefile
+LIBGEOTIFF_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libgeotiff.$(LIB_EXT)
 
 LIBJPEG_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libjpeg
 LIBJPEG_MAKEFILE=$(LIBJPEG_SUBDIR)/Makefile
+LIBJPEG_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libjpeg.$(LIB_EXT)
 
 LIBPNG_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libpng
 LIBPNG_MAKEFILE=$(LIBPNG_SUBDIR)/Makefile
+LIBPNG_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libpng.$(LIB_EXT)
 
 LIBTIFF_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libtiff
 LIBTIFF_MAKEFILE=$(LIBTIFF_SUBDIR)/Makefile
+LIBTIFF_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libtiff.$(LIB_EXT)
 
 LIBWEBP_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libwebp
 LIBWEBP_MAKEFILE=$(LIBWEBP_SUBDIR)/Makefile
+LIBWEBP_LIB=(ROTOBOX_3RD_PARTY_DIR)/lib/libwebp.$(LIB_EXT)
 
 PROJ4_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/proj.4
 PROJ4_MAKEFILE=$(PROJ4_SUBDIR)/Makefile
+PROJ4_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libproj.$(LIB_EXT)
 
 SQLITE_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/sqlite
 SQLITE_MAKEFILE=$(SQLITE_SUBDIR)/Makefile
+SQLITE3_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libsqlite3.$(LIB_EXT)
 
 XZ_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/xz
 XZ_MAKEFILE=$(XZ_SUBDIR)/Makefile
+XZ_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/liblzma.$(LIB_EXT)
 
 LIBMETAR_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/mdsplib
 LIBMETAR_MAKEFILE=$(LIBMETAR_SUBDIR)/Makefile
+LIBMETAR_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libmetar.a
 
 LIBRASTERLITE2_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/librasterlite2
 LIBRASTERLITE2_MAKEFILE=$(LIBRASTERLITE2_SUBDIR)/Makefile
+LIBRASTERLITE2_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/librasterlite2.$(LIB_EXT)
 
 LIBSPATIALITE_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libspatialite
 LIBSPATIALITE_MAKEFILE=$(LIBSPATIALITE_SUBDIR)/Makefile
+LIBSPATIALITE_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libspatialite.$(LIB_EXT)
 
 CURL_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/curl
 CURL_MAKEFILE=$(CURL_SUBDIR)/Makefile
+CURL_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libcurl.$(LIB_EXT)
 
 LIBXML2_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libxml2
 LIBXML2_MAKEFILE=$(LIBXML2_SUBDIR)/Makefile
+LIBXML2_LIB=$(ROTOBOX_3RD_PARTY_DIR)/lib/libxml2.$(LIB_EXT)
+
 
 ########################################
 # TODO: Convert these to libs          #
@@ -110,54 +137,14 @@ endif
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
+rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o $(DUMP978_DEPENDS) \
+		 $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS)
+
+rotobox-deps: libgeos librtlsdr libusb librasterlite2 libspatialite sqlite proj4 gpsd libmetar
 
 clean:
 	rm -rf *.o
-
-########################################
-# libusb                               #
-########################################
-libusb: $(LIBUSB_MAKEFILE)
-	$(MAKE) -C $(LIBUSB_SUBDIR) install
-
-$(LIBUSB_MAKEFILE):
-	cd $(LIBUSB_SUBDIR) && \
-	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
-	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
-	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
-	./bootstrap.sh && sleep 2 && \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
-
-########################################
-# Librtlsdr                            #
-########################################
-librtlsdr: libusb $(LIBRTLSDR_MAKEFILE)
-	$(ECHO) "Building librtlsdr"
-	$(MAKE) -C $(LIBRTLSDR_BUILDDIR) install
-
-$(LIBRTLSDR_MAKEFILE):
-	$(ECHO) "Need to run cmake for librtlsdr"
-	mkdir -p $(LIBRTLSDR_BUILDDIR) && rm -f $(LIBRTLSDR_BUILDDIR)/CMakeCache.txt
-	cd $(LIBRTLSDR_BUILDDIR) \
-	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
-	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
-	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
-	&& cmake ../ -DCMAKE_INSTALL_PREFIX=$(ROTOBOX_3RD_PARTY_BUILD_DIR)
-
-########################################
-# GIFLIB                               #
-########################################
-giflib: $(GIFLIB_MAKEFILE)
-	$(MAKE) -C $(GIFLIB_SUBDIR) install
-
-$(GIFLIB_MAKEFILE):
-	cd $(GIFLIB_SUBDIR) && \
-	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
-	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
-	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
 
 ########################################
 # dump978                              #
@@ -174,8 +161,57 @@ dump1090:
 	$(MAKE) -C $(DUMP1090_SUBDIR)
 
 ########################################
+# libusb                               #
+########################################
+$(LIBUSB_LIB): libusb
+
+libusb: $(LIBUSB_MAKEFILE)
+	$(MAKE) -C $(LIBUSB_SUBDIR) install
+
+$(LIBUSB_MAKEFILE):
+	cd $(LIBUSB_SUBDIR) && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
+	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
+	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	./bootstrap.sh && sleep 2 && \
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
+
+########################################
+# Librtlsdr                            #
+########################################
+$(LIBRTLSDR_LIB): librtlsdr
+
+librtlsdr: $(LIBUSB_LIB) $(LIBRTLSDR_MAKEFILE)
+	$(ECHO) "Building librtlsdr"
+	$(MAKE) -C $(LIBRTLSDR_BUILDDIR) install
+
+$(LIBRTLSDR_MAKEFILE):
+	$(ECHO) "Need to run cmake for librtlsdr"
+	mkdir -p $(LIBRTLSDR_BUILDDIR) && rm -f $(LIBRTLSDR_BUILDDIR)/CMakeCache.txt
+	cd $(LIBRTLSDR_BUILDDIR) && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
+	cmake ../ -DCMAKE_INSTALL_PREFIX=$(ROTOBOX_3RD_PARTY_BUILD_DIR)
+
+########################################
+# GIFLIB                               #
+########################################
+$(GIFLIB_LIB): giflib
+
+giflib: $(GIFLIB_MAKEFILE)
+	$(MAKE) -C $(GIFLIB_SUBDIR) install
+
+$(GIFLIB_MAKEFILE):
+	cd $(GIFLIB_SUBDIR) && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
+	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
+	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
+
+########################################
 # gpsd                                 #
 ########################################
+$(GPSD_LIB): gpsd
+
 gpsd:
 	mkdir -p $(ROTOBOX_3RD_PARTY_BUILD_DIR)/python
 	cd $(GPSD_SUBDIR) && \
@@ -188,7 +224,9 @@ gpsd:
 ########################################
 # libcairo                             #
 ########################################
-libcairo: pixman $(LIBCAIRO_MAKEFILE)
+$(LIBCAIRO_LIB): libcairo
+
+libcairo: $(PIXMAN_LIB) $(LIBCAIRO_MAKEFILE)
 	$(MAKE) -C $(LIBCAIRO_SUBDIR) install
 
 $(LIBCAIRO_MAKEFILE):
@@ -201,6 +239,8 @@ $(LIBCAIRO_MAKEFILE):
 ########################################
 # pixman                               #
 ########################################
+$(PIXMAN_LIB): pixman
+
 pixman: $(PIXMAN_MAKEFILE)
 	$(MAKE) -C $(PIXMAN_SUBDIR) install
 
@@ -214,6 +254,8 @@ $(PIXMAN_MAKEFILE):
 ########################################
 # libgeos                              #
 ########################################
+$(LIBGEOS_LIB): libgeos
+
 libgeos: $(LIBGEOS_MAKEFILE)
 	$(MAKE) -C $(LIBGEOS_SUBDIR) install
 
@@ -222,11 +264,14 @@ $(LIBGEOS_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	./autogen.sh && \
 	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
 
 ########################################
 # libgeotiff                           #
 ########################################
+$(LIBGEOTIFF_LIB): libgeotiff
+
 libgeotiff: libtiff $(LIBGEOTIFF_MAKEFILE)
 	$(MAKE) -C $(LIBGEOTIFF_SUBDIR) install
 
@@ -240,8 +285,10 @@ $(LIBGEOTIFF_MAKEFILE):
 ########################################
 # libjpeg                              #
 ########################################
+$(LIBJPEG_LIB): libjpeg
+
 libjpeg: $(LIBJPEG_MAKEFILE)
-	$(MAKE) -C $(LIBJPEG_SUBDIR) install install-lib
+	$(MAKE) -C $(LIBJPEG_SUBDIR) install
 
 $(LIBJPEG_MAKEFILE):
 	cd $(LIBJPEG_SUBDIR) && \
@@ -256,6 +303,8 @@ $(LIBJPEG_MAKEFILE):
 ########################################
 # libpng                               #
 ########################################
+$(LIBPNG_LIB): libpng
+
 libpng: $(LIBPNG_MAKEFILE)
 	$(MAKE) -C $(LIBPNG_SUBDIR) install
 
@@ -264,11 +313,14 @@ $(LIBPNG_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	./autogen.sh && \
 	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
 
 ########################################
 # libtiff                              #
 ########################################
+$(LIBTIFF_LIB): libtiff
+
 libtiff: $(LIBTIFF_MAKEFILE)
 	$(MAKE) -C $(LIBTIFF_SUBDIR) install
 
@@ -282,6 +334,8 @@ $(LIBTIFF_MAKEFILE):
 ########################################
 # libwebp                              #
 ########################################
+$(LIBWEBP_LIB): libwebp
+
 libwebp: $(LIBWEBP_MAKEFILE)
 	$(MAKE) -C $(LIBWEBP_SUBDIR) install
 
@@ -296,6 +350,8 @@ $(LIBWEBP_MAKEFILE):
 ########################################
 # proj.4                               #
 ########################################
+$(PROJ4_LIB): proj4
+
 proj4: $(PROJ4_MAKEFILE)
 	$(MAKE) -C $(PROJ4_SUBDIR) install
 
@@ -304,11 +360,14 @@ $(PROJ4_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	./autogen.sh && \
 	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
 
 ########################################
 # sqlite                               #
 ########################################
+$(SQLITE3_LIB): sqlite
+
 sqlite: $(SQLITE_MAKEFILE)
 	$(MAKE) -C $(SQLITE_SUBDIR) install
 
@@ -317,11 +376,13 @@ $(SQLITE_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --disable-tcl
 
 ########################################
 # xz                                   #
 ########################################
+$(XZ_LIB): xz
+
 xz: $(XZ_MAKEFILE)
 	$(MAKE) -C $(XZ_SUBDIR) install
 
@@ -330,18 +391,24 @@ $(XZ_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	./autogen.sh && \
 	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
 
 ########################################
 # libmetar                             #
 ########################################
+$(LIBMETAR_LIB): libmetar
+
 libmetar:
 	$(MAKE) -C $(LIBMETAR_SUBDIR) install
 
 ########################################
 # librasterlite2                       #
 ########################################
-librasterlite2: curl libxml2 spatialite proj4 libpng libwebp libjpeg $(LIBRASTERLITE2_MAKEFILE)
+$(LIBRASTERLITE2_LIB): librasterlite2
+
+librasterlite2: $(CURL_LIB) $(LIBXML2_LIB) $(LIBSPATIALITE_LIB) $(PROJ4_LIB) $(LIBPNG_LIB) \
+				$($LIBWEBP_LIB) $(LIBJPEG_LIB) $(LIBGEOTIFF_LIB) $(XZ_LIB) $(LIBCAIRO_LIB) $(LIBRASTERLITE2_MAKEFILE)
 	$(MAKE) -C $(LIBRASTERLITE2_SUBDIR) install
 
 $(LIBRASTERLITE2_MAKEFILE):
@@ -354,7 +421,9 @@ $(LIBRASTERLITE2_MAKEFILE):
 ########################################
 # spatialite                           #
 ########################################
-spatialite: $(LIBSPATIALITE_MAKEFILE)
+$(LIBSPATIALITE_LIB): spatialite
+
+spatialite: $(SQLITE3_LIB) $(PROJ4_LIB) $(LIBGEOS_LIB) $(LIBSPATIALITE_MAKEFILE)
 	$(MAKE) -C $(LIBSPATIALITE_SUBDIR) install
 
 $(LIBSPATIALITE_MAKEFILE):
@@ -367,6 +436,8 @@ $(LIBSPATIALITE_MAKEFILE):
 ########################################
 # curl                                 #
 ########################################
+$(CURL_LIB): curl
+
 curl: $(CURL_MAKEFILE)
 	$(MAKE) -C $(CURL_SUBDIR) install
 
@@ -375,11 +446,14 @@ $(CURL_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
+	./buildconf && \
 	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
 
 ########################################
 # libxml2                              #
 ########################################
+$(LIBXML2_LIB): libxml2
+
 libxml2: $(LIBXML2_MAKEFILE)
 	mkdir -p $(ROTOBOX_3RD_PARTY_BUILD_DIR)/python
 	$(MAKE) -C $(LIBXML2_SUBDIR) install
@@ -389,4 +463,4 @@ $(LIBXML2_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib/pkgconfig \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_BUILD_DIR)/include \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_BUILD_DIR)/lib \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --with-python-install-dir=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/python
+	./autogen.sh --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --with-python-install-dir=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/python

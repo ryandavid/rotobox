@@ -8,6 +8,9 @@ THEDIR=`pwd`
 cd $srcdir
 DIE=0
 
+case `uname` in Darwin*) LIBTOOLIZE_CMD=glibtoolize;;
+  *) LIBTOOLIZE_CMD=libtoolize;; esac
+
 (autoconf --version) < /dev/null > /dev/null 2>&1 || {
 	echo
 	echo "You must have autoconf installed to compile libxml."
@@ -16,7 +19,7 @@ DIE=0
 	DIE=1
 }
 
-(libtoolize --version) < /dev/null > /dev/null 2>&1 || {
+($LIBTOOLIZE_CMD --version) < /dev/null > /dev/null 2>&1 || {
 	echo
 	echo "You must have libtool installed to compile libxml."
 	echo "Download the appropriate package for your distribution,"

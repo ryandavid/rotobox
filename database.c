@@ -18,6 +18,7 @@ bool database_init() {
         success = true;
         // Dump the assembled queries to stdout.
         sqlite3_trace(db, database_trace, NULL);
+        fprintf(stdout, "Successfully connected to the database!\n");
     }
 
     spatialite_initialize();

@@ -1047,7 +1047,7 @@ void api_metar_by_airport_id(struct mg_connection *nc, int ev, void *ev_data) {
 
 // Based on uat_decode.c printf's.
 void api_get_traffic(struct mg_connection *nc, int ev, void *ev_data) {
-    struct http_message *message = (struct http_message *)ev_data;
+    //struct http_message *message = (struct http_message *)ev_data;
 
     pthread_mutex_lock(&uat_traffic_mutex);
     mg_printf(nc, "HTTP/1.0 200 OK\r\n\r\n[\n");
@@ -1067,15 +1067,15 @@ void api_get_traffic(struct mg_connection *nc, int ev, void *ev_data) {
             mg_printf(nc, "        \"latitude\": %.6f,\n", tracked_traffic[i].lat);
             mg_printf(nc, "        \"longitude\": %.6f,\n", tracked_traffic[i].lon);
             mg_printf(nc, "        \"pos_valid\": %d,\n", tracked_traffic[i].position_valid != 0);
-            mg_printf(nc, "        \"altitude\": %.1f,\n", tracked_traffic[i].altitude);
+            mg_printf(nc, "        \"altitude\": %d,\n", tracked_traffic[i].altitude);
             mg_printf(nc, "        \"altitude_type\": %d,\n", tracked_traffic[i].altitude_type);
-            mg_printf(nc, "        \"ns_vel\": %.1f,\n", tracked_traffic[i].ns_vel);
+            mg_printf(nc, "        \"ns_vel\": %d,\n", tracked_traffic[i].ns_vel);
             mg_printf(nc, "        \"ns_vel_valid\": %d,\n", tracked_traffic[i].ns_vel_valid != 0);
-            mg_printf(nc, "        \"ew_vel\": %.1f,\n", tracked_traffic[i].ew_vel);
+            mg_printf(nc, "        \"ew_vel\": %d,\n", tracked_traffic[i].ew_vel);
             mg_printf(nc, "        \"ew_vel_valid\": %d,\n", tracked_traffic[i].ew_vel_valid != 0);
             mg_printf(nc, "        \"track_type\": %d,\n", tracked_traffic[i].track_type);
             mg_printf(nc, "        \"track\": %d,\n", tracked_traffic[i].track);
-            mg_printf(nc, "        \"speed\": %.1f,\n", tracked_traffic[i].speed);
+            mg_printf(nc, "        \"speed\": %d,\n", tracked_traffic[i].speed);
             mg_printf(nc, "        \"speed_valid\": %d,\n", tracked_traffic[i].speed_valid != 0);
             mg_printf(nc, "        \"vert_rate_source\": %d,\n", tracked_traffic[i].vert_rate_source);
             mg_printf(nc, "        \"dimensions_valid\": %d,\n", tracked_traffic[i].dimensions_valid != 0);

@@ -13,7 +13,6 @@ CFLAGS+=-O2 -g -Wall -Ifec
 LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB)
 LIBS=-lm -lpthread -ldl -lgeos_c -lusb-1.0 -lspatialite -lrasterlite2 -lsqlite3 \
 	 -lrtlsdr -lproj -lgps -lmetar
-
 CC=gcc
 MAKE=make
 CMAKE=cmake
@@ -55,6 +54,7 @@ LIBJPEG_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libjpeg
 LIBJPEG_MAKEFILE=$(LIBJPEG_SUBDIR)/Makefile
 
 LIBPNG_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libpng
+LIBPNG_CONFIGURE=$(LIBPNG_SUBDIR)/configure
 LIBPNG_MAKEFILE=$(LIBPNG_SUBDIR)/Makefile
 
 LIBTIFF_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libtiff
@@ -112,8 +112,8 @@ DUMP1090_DEPENDS+=$(ROTOBOX_3RD_PARTY_DIR)/dump1090/compat/clock_gettime/clock_g
 				  $(ROTOBOX_3RD_PARTY_DIR)/dump1090/compat/clock_nanosleep/clock_nanosleep.o
 endif
 
-rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o $(DUMP978_DEPENDS) \
-		 $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
+rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o \
+		 $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS)
 
 %.o: %.c *.h
@@ -156,16 +156,14 @@ libusb: $(LIBUSB_MAKEFILE)
 	$(MAKE) -C $(LIBUSB_SUBDIR) install
 
 libusb-clean:
-	if [ -a $(LIBUSB_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBUSB_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBUSB_MAKEFILE))","")
+	$(MAKE) -C $(LIBUSB_SUBDIR) clean
+endif
 
 libusb-reset: libusb-clean
-	if [ -a $(LIBUSB_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBUSB_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBUSB_MAKEFILE))","")
+	rm $(LIBUSB_MAKEFILE)
+endif
 
 $(LIBUSB_MAKEFILE):
 	cd $(LIBUSB_SUBDIR) && \
@@ -182,16 +180,14 @@ librtlsdr: libusb $(LIBRTLSDR_MAKEFILE)
 	$(MAKE) -C $(LIBRTLSDR_BUILDDIR) install
 
 librtlsdr-clean:
-	if [ -a $(LIBRTLSDR_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBRTLSDR_BUILDDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBRTLSDR_MAKEFILE))","")
+	$(MAKE) -C $(LIBRTLSDR_BUILDDIR) clean
+endif
 
 librtlsdr-reset: librtlsdr-clean
-	if [ -a $(LIBRTLSDR_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBRTLSDR_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBRTLSDR_MAKEFILE))","")
+	rm $(LIBRTLSDR_MAKEFILE)
+endif
 
 $(LIBRTLSDR_MAKEFILE):
 	mkdir -p $(LIBRTLSDR_BUILDDIR) && rm -f $(LIBRTLSDR_BUILDDIR)/CMakeCache.txt
@@ -206,16 +202,14 @@ giflib: $(GIFLIB_MAKEFILE)
 	$(MAKE) -C $(GIFLIB_SUBDIR) install
 
 giflib-clean:
-	if [ -a $(GIFLIB_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(GIFLIB_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(GIFLIB_MAKEFILE))","")
+	$(MAKE) -C $(GIFLIB_SUBDIR) clean
+endif
 
 giflib-reset: giflib-clean
-	if [ -a $(GIFLIB_MAKEFILE) ] ; \
-	then \
-	  rm $(GIFLIB_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(GIFLIB_MAKEFILE))","")
+	rm $(GIFLIB_MAKEFILE)
+endif
 
 $(GIFLIB_MAKEFILE):
 	cd $(GIFLIB_SUBDIR) && \
@@ -237,7 +231,7 @@ gpsd-reset: gpsd-clean
 gpsd:
 	mkdir -p $(ROTOBOX_3RD_PARTY_BUILD_DIR)/python
 	cd $(GPSD_SUBDIR) && \
-	scons prefix=$(ROTOBOX_3RD_PARTY_BUILD_DIR) python_libdir=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/python shared=False --config=force && \
+	scons prefix=$(ROTOBOX_3RD_PARTY_BUILD_DIR) python_libdir=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/python --config=force && \
 	scons install
 
 ########################################
@@ -247,16 +241,14 @@ libcairo: pixman $(LIBCAIRO_MAKEFILE)
 	$(MAKE) -C $(LIBCAIRO_SUBDIR) install
 
 libcairo-clean:
-	if [ -a $(LIBCAIRO_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBCAIRO_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBCAIRO_MAKEFILE))","")
+	$(MAKE) -C $(LIBCAIRO_SUBDIR) clean
+endif
 
 libcairo-reset: libcairo-clean
-	if [ -a $(LIBCAIRO_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBCAIRO_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBCAIRO_MAKEFILE))","")
+	rm $(LIBCAIRO_MAKEFILE)
+endif
 
 $(LIBCAIRO_MAKEFILE):
 	cd $(LIBCAIRO_SUBDIR) && \
@@ -272,16 +264,14 @@ pixman: $(PIXMAN_MAKEFILE)
 	$(MAKE) -C $(PIXMAN_SUBDIR) install
 
 pixman-clean:
-	if [ -a $(PIXMAN_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(PIXMAN_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(PIXMAN_MAKEFILE))","")
+	$(MAKE) -C $(PIXMAN_SUBDIR) clean
+endif
 
 pixman-reset: pixman-clean
-	if [ -a $(PIXMAN_MAKEFILE) ] ; \
-	then \
-	  rm $(PIXMAN_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(PIXMAN_MAKEFILE))","")
+	rm $(PIXMAN_MAKEFILE)
+endif
 
 $(PIXMAN_MAKEFILE):
 	cd $(PIXMAN_SUBDIR) && \
@@ -298,16 +288,14 @@ libgeos: $(LIBGEOS_MAKEFILE)
 	$(MAKE) -C $(LIBGEOS_SUBDIR) install
 
 libgeos-clean:
-	if [ -a $(LIBGEOS_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBGEOS_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBGEOS_MAKEFILE))","")
+	$(MAKE) -C $(LIBGEOS_SUBDIR) clean
+endif
 
 libgeos-reset: libgeos-clean
-	if [ -a $(LIBGEOS_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBGEOS_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBGEOS_MAKEFILE))","")
+	rm $(LIBGEOS_MAKEFILE)
+endif
 
 $(LIBGEOS_MAKEFILE):
 	cd $(LIBGEOS_SUBDIR) && \
@@ -324,16 +312,14 @@ libgeotiff: libtiff $(LIBGEOTIFF_MAKEFILE)
 	$(MAKE) -C $(LIBGEOTIFF_SUBDIR) install
 
 libgeotiff-clean:
-	if [ -a $(LIBGEOTIFF_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBGEOTIFF_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBGEOTIFF_MAKEFILE))","")
+	$(MAKE) -C $(LIBGEOTIFF_SUBDIR) clean
+endif
 
 libgeotiff-reset: libgeotiff-clean
-	if [ -a $(LIBGEOTIFF_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBGEOTIFF_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBGEOTIFF_MAKEFILE))","")
+	rm $(LIBGEOTIFF_MAKEFILE)
+endif
 
 $(LIBGEOTIFF_MAKEFILE):
 	cd $(LIBGEOTIFF_SUBDIR) && \
@@ -349,16 +335,14 @@ libjpeg: $(LIBJPEG_MAKEFILE)
 	$(MAKE) -C $(LIBJPEG_SUBDIR) install
 
 libjpeg-clean:
-	if [ -a $(LIBJPEG_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBJPEG_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBJPEG_MAKEFILE))","")
+	$(MAKE) -C $(LIBJPEG_SUBDIR) clean
+endif
 
 libjpeg-reset: libjpeg-clean
-	if [ -a $(LIBJPEG_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBJPEG_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBJPEG_MAKEFILE))","")
+	rm $(LIBJPEG_MAKEFILE)
+endif
 
 $(LIBJPEG_MAKEFILE):
 	cd $(LIBJPEG_SUBDIR) && \
@@ -377,18 +361,23 @@ libpng: $(LIBPNG_MAKEFILE)
 	$(MAKE) -C $(LIBPNG_SUBDIR) install
 
 libpng-clean:
-	if [ -a $(LIBPNG_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBPNG_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBPNG_MAKEFILE))","")
+	$(MAKE) -C $(LIBPNG_SUBDIR) clean
+endif
 
 libpng-reset: libpng-clean
-	if [ -a $(LIBPNG_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBPNG_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBPNG_MAKEFILE))","")
+	rm $(LIBPNG_MAKEFILE)
+endif
 
-$(LIBPNG_MAKEFILE):
+$(LIBPNG_CONFIGURE):
+	cd $(LIBPNG_SUBDIR) && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
+	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
+	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
+	./autogen.sh
+
+$(LIBPNG_MAKEFILE): $(LIBPNG_CONFIGURE)
 	cd $(LIBPNG_SUBDIR) && \
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
@@ -402,16 +391,14 @@ libtiff: xz $(LIBTIFF_MAKEFILE)
 	$(MAKE) -C $(LIBTIFF_SUBDIR) install
 
 libtiff-clean:
-	if [ -a $(LIBTIFF_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBTIFF_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBTIFF_MAKEFILE))","")
+	$(MAKE) -C $(LIBTIFF_SUBDIR) clean
+endif
 
 libtiff-reset: libtiff-clean
-	if [ -a $(LIBTIFF_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBTIFF_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBTIFF_MAKEFILE))","")
+	rm $(LIBTIFF_MAKEFILE)
+endif
 
 $(LIBTIFF_MAKEFILE):
 	cd $(LIBTIFF_SUBDIR) && \
@@ -427,16 +414,14 @@ libwebp: $(LIBWEBP_MAKEFILE)
 	$(MAKE) -C $(LIBWEBP_SUBDIR) install
 
 libwebp-clean:
-	if [ -a $(LIBWEBP_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBWEBP_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBWEBP_MAKEFILE))","")
+	$(MAKE) -C $(LIBWEBP_SUBDIR) clean 
+endif
 
 libwebp-reset: libwebp-clean
-	if [ -a $(LIBWEBP_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBWEBP_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBWEBP_MAKEFILE))","")
+	rm $(LIBWEBP_MAKEFILE)
+endif
 
 $(LIBWEBP_MAKEFILE):
 	cd $(LIBWEBP_SUBDIR) && \
@@ -453,16 +438,14 @@ proj4: $(PROJ4_MAKEFILE)
 	$(MAKE) -C $(PROJ4_SUBDIR) install
 
 proj4-clean:
-	if [ -a $(PROJ4_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(PROJ4_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(PROJ4_MAKEFILE))","")
+	$(MAKE) -C $(PROJ4_SUBDIR) clean
+endif
 
 proj4-reset: proj4-clean
-	if [ -a $(PROJ4_MAKEFILE) ] ; \
-	then \
-	  rm $(PROJ4_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(PROJ4_MAKEFILE))","")
+	  rm $(PROJ4_MAKEFILE)
+endif
 
 $(PROJ4_MAKEFILE):
 	cd $(PROJ4_SUBDIR) && \
@@ -479,23 +462,21 @@ sqlite: $(SQLITE_MAKEFILE)
 	$(MAKE) -C $(SQLITE_SUBDIR) install
 
 sqlite-clean:
-	if [ -a $(SQLITE_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(SQLITE_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(SQLITE_MAKEFILE))","")
+	$(MAKE) -C $(SQLITE_SUBDIR) clean
+endif
 
 sqlite-reset: sqlite-clean
-	if [ -a $(SQLITE_MAKEFILE) ] ; \
-	then \
-	  rm $(SQLITE_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(SQLITE_MAKEFILE))","")
+	rm $(SQLITE_MAKEFILE)
+endif
 
 $(SQLITE_MAKEFILE):
 	cd $(SQLITE_SUBDIR) && \
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --disable-tcl
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --disable-tcl --enable-rtree
 
 ########################################
 # xz                                   #
@@ -504,16 +485,14 @@ xz: $(XZ_MAKEFILE)
 	$(MAKE) -C $(XZ_SUBDIR) install
 
 xz-clean:
-	if [ -a $(XZ_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(XZ_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(XZ_MAKEFILE))","")
+	$(MAKE) -C $(XZ_SUBDIR) clean
+endif
 
 xz-reset: xz-clean
-	if [ -a $(XZ_MAKEFILE) ] ; \
-	then \
-	  rm $(XZ_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(XZ_MAKEFILE))","")
+	rm $(XZ_MAKEFILE)
+endif
 
 $(XZ_MAKEFILE):
 	cd $(XZ_SUBDIR) && \
@@ -543,16 +522,14 @@ librasterlite2: curl libxml2 spatialite proj4 libpng giflib libwebp \
 	$(MAKE) -C $(LIBRASTERLITE2_SUBDIR) install
 
 librasterlite2-clean:
-	if [ -a $(LIBRASTERLITE2_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBRASTERLITE2_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBRASTERLITE2_MAKEFILE))","")
+	$(MAKE) -C $(LIBRASTERLITE2_SUBDIR) clean
+endif
 
 librasterlite2-reset: xz-clean
-	if [ -a $(XZ_MAKEFILE) ] ; \
-	then \
-	  rm $(XZ_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBRASTERLITE2_MAKEFILE))","")
+	rm $(LIBRASTERLITE2_MAKEFILE)
+endif
 
 $(LIBRASTERLITE2_MAKEFILE):
 	cd $(LIBRASTERLITE2_SUBDIR) && \
@@ -568,16 +545,14 @@ spatialite: sqlite proj4 libgeos libxml2 $(LIBSPATIALITE_MAKEFILE)
 	$(MAKE) -C $(LIBSPATIALITE_SUBDIR) install
 
 spatialite-clean:
-	if [ -a $(LIBSPATIALITE_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBSPATIALITE_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBSPATIALITE_MAKEFILE))","")
+	$(MAKE) -C $(LIBSPATIALITE_SUBDIR) clean
+endif
 
 spatialite-reset: spatialite-clean
-	if [ -a $(LIBSPATIALITE_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBSPATIALITE_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBSPATIALITE_MAKEFILE))","")
+	rm $(LIBSPATIALITE_MAKEFILE)
+endif
 
 $(LIBSPATIALITE_MAKEFILE):
 	cd $(LIBSPATIALITE_SUBDIR) && \
@@ -593,16 +568,14 @@ curl: $(CURL_MAKEFILE)
 	$(MAKE) -C $(CURL_SUBDIR) install
 
 curl-clean:
-	if [ -a $(CURL_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(CURL_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(CURL_MAKEFILE))","")
+	$(MAKE) -C $(CURL_SUBDIR) clean
+endif
 
 curl-reset: curl-clean
-	if [ -a $(CURL_MAKEFILE) ] ; \
-	then \
-	  rm $(CURL_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(CURL_MAKEFILE))","")
+	rm $(CURL_MAKEFILE)
+endif
 
 $(CURL_MAKEFILE):
 	cd $(CURL_SUBDIR) && \
@@ -620,16 +593,14 @@ libxml2: $(LIBXML2_MAKEFILE)
 	$(MAKE) -C $(LIBXML2_SUBDIR) install
 
 libxml2-clean:
-	if [ -a $(LIBXML2_MAKEFILE) ] ; \
-	then \
-	  $(MAKE) -C $(LIBXML2_SUBDIR) clean ; \
-	fi;
+ifneq ("$(wildcard $(LIBXML2_MAKEFILE))","")
+	$(MAKE) -C $(LIBXML2_SUBDIR) clean
+endif
 
 libxml2-reset: libxml2-clean
-	if [ -a $(LIBXML2_MAKEFILE) ] ; \
-	then \
-	  rm $(LIBXML2_MAKEFILE) ; \
-	fi;
+ifneq ("$(wildcard $(LIBXML2_MAKEFILE))","")
+	rm $(LIBXML2_MAKEFILE)
+endif
 
 $(LIBXML2_MAKEFILE):
 	cd $(LIBXML2_SUBDIR) && \

@@ -38,4 +38,5 @@ src/rtl_tcp
 CMakeCache.txt
 */CMakeFiles
 CMakeFiles
-*.cmake
+
+build/

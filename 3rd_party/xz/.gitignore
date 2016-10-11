@@ -21,6 +21,7 @@ Makefile.in
 /configure
 /libtool
 /stamp-h1
+m4/extern-inline.m4
 
 build-aux/compile
 build-aux/config.guess

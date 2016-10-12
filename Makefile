@@ -231,7 +231,7 @@ gpsd-reset: gpsd-clean
 gpsd:
 	mkdir -p $(ROTOBOX_3RD_PARTY_BUILD_DIR)/python
 	cd $(GPSD_SUBDIR) && \
-	scons prefix=$(ROTOBOX_3RD_PARTY_BUILD_DIR) python_libdir=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/python --config=force && \
+	scons prefix=$(ROTOBOX_3RD_PARTY_BUILD_DIR) shared=False python_libdir=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/python --config=force && \
 	scons install
 
 ########################################

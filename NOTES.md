@@ -1,31 +1,39 @@
 # rotobox
 ## Compiling on Ubuntu
-Should be identical to the steps outlined in BRINGUP.md, ignoring the ones that are specific to rotobox HW configuration.
+Install dependencies via apt-get
+````
+sudo apt-get install build-essential libncurses-dev git cmake python-pip scons autoconf automake
+````
 
 ## Compiling on OS X
+Install dependencies via MacPorts
 ````
-# Install dependencies via MacPorts
 sudo port install cmake pkgconfig automake autoconf libtool
 ````
 
 Build it!
 ````
 make rotobox-deps
-make rotobox
+make
 ````
 
-A reverse tunnel is no longer required if you are running rotobox on a host other than where GPSD is running. Provide the IP address to the rotobox HW using the 'a' flag
-````
-./rotobox -a <IP_OF_ROTOBOX>
-````
+The following targets are available in the Makefile in case the dependencies take a poop when trying to build:
+```
+# Executes the clean target from the dependency's Makefile
+make <DEPENDENCY_NAME>-clean
 
-Before this, you would have to set up a reverse tunnel from the rotobox.
+# Or, do a clean and then blow away the dependency's Makefile, forcing a reconfigure
+make <DEPENDENCY_NAME>-reset
+```
+
+If you are running rotobox on a host other than where GPSD is running, provide the IP address to the GPSD host using the 'a' flag
 ````
-# On rotobox:
-ssh -NR 2947:localhost:2947 <username>@<mac_ip>
-# Fill in your username and IP for your Mac.  Now you should be able to open cgps on you Mac and see
-# live data from the GPS on rotobox
+./rotobox -a <IP_OF_GPSD_HOST>
 ````
+Otherwise, if you want to fake out the GPS, you can use gpsfake along with the test GPS trace.  Update the paths below accordingly.
+```
+PYTHONPATH=~/src/rotobox/3rd_party_build/python/ GPSD_HOME=~/src/rotobox/3rd_party_build/sbin/ python ~/src/rotobox/3rd_party_build/bin/gpsfake -c 0.5 ~/src/rotobox/data/sample_tracklog.nmea
+```
 
 ## SQLite Database
 The SQLite database uses spatialite extensions for representing airspaces, airport locations, etc.  There are a set of tools under the scripts folder for creating/maintaining this DB.
@@ -51,7 +59,7 @@ The leaflet map expects map tiles under 'wwwroot/charts' directory.  The followi
 
 ## Programming SDR serial numbers
 ```
-rtl_eeprom -d 0 -s 1090
+3rd_party_build/bin/rtl_eeprom -d 0 -s 1090
 ```
 
 ## Calibrating SDR

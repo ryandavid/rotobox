@@ -33,6 +33,7 @@ bool database_close();
 bool database_fetch_row();
 void database_finish_query();
 void database_execute_query(const char * query);
+void database_prepare(const char *query);
 
 int database_num_columns();
 enum database_column_type_t database_column_type(int i);
@@ -40,7 +41,6 @@ const char* database_column_name(int i);
 const unsigned char* database_column_text(int i);
 int database_column_int(int i);
 double database_column_double(int i);
-void database_alter_table(const char* table_name, const char* column_name, const char* column_type);
 
 void database_search_airport_by_id(const char* airport_id);
 void database_search_radio_by_airport_id(const char* airport_id);

@@ -1,0 +1,339 @@
+# SandroFurieri (c) 2009
+# Makefile Spatialite statically linked CLI-tools [Win MSYS/MinGW]
+
+CFLAGS = -Wall -Wextra -Wunused -pedantic -I/usr/local/include
+GG = g++
+CC = gcc
+
+all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
+	./static_bin/spatialite_network.exe ./static_bin/shp_doctor.exe \
+	./static_bin/exif_loader.exe ./static_bin/spatialite_osm_net.exe \
+	./static_bin/spatialite_osm_map.exe ./static_bin/spatialite_gml.exe \
+	./static_bin/spatialite_osm_raw.exe ./static_bin/spatialite_osm_filter.exe \
+	./static_bin/spatialite_convert.exe ./static_bin/spatialite_dxf.exe \
+	./static_bin/spatialite_osm_overpass.exe \
+	./static_bin/spatialite_xml_collapse.exe \
+	./static_bin/spatialite_xml_validator.exe \
+	./static_bin/spatialite_xml_load.exe \
+	./static_bin/spatialite_xml_print.exe
+
+./static_bin/spatialite.exe: shell.o 
+	$(GG) shell.o -o ./static_bin/spatialite.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite.exe
+
+./static_bin/spatialite_tool.exe: spatialite_tool.o
+	$(GG) spatialite_tool.o -o \
+	./static_bin/spatialite_tool.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_tool.exe
+
+./static_bin/spatialite_convert.exe: spatialite_convert.o
+	$(GG) spatialite_convert.o -o \
+	./static_bin/spatialite_convert.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_convert.exe
+
+./static_bin/spatialite_dxf.exe: spatialite_dxf.o
+	$(GG) spatialite_dxf.o -o \
+	./static_bin/spatialite_dxf.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_dxf.exe
+
+./static_bin/spatialite_network.exe: spatialite_network.o
+	$(GG) spatialite_network.o -o ./static_bin/spatialite_network.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_network.exe
+
+./static_bin/shp_doctor.exe: shp_doctor.o
+	$(GG) shp_doctor.o -o ./static_bin/shp_doctor.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/shp_doctor.exe
+	
+./static_bin/exif_loader.exe: exif_loader.o
+	$(GG) exif_loader.o -o ./static_bin/exif_loader.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/exif_loader.exe
+	
+./static_bin/spatialite_osm_net.exe: spatialite_osm_net.o
+	$(GG) spatialite_osm_net.o -o ./static_bin/spatialite_osm_net.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
+	/usr/local/lib/libiconv.a \
+	/usr/local/lib/libexpat.a \
+	/usr/local/lib/libz.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_osm_net.exe
+
+./static_bin/spatialite_osm_map.exe: spatialite_osm_map.o
+	$(GG) spatialite_osm_map.o -o ./static_bin/spatialite_osm_map.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libiconv.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
+	/usr/local/lib/libexpat.a \
+	/usr/local/lib/libz.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_osm_map.exe
+
+./static_bin/spatialite_gml.exe: spatialite_gml.o
+	$(GG) spatialite_gml.o -o ./static_bin/spatialite_gml.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	/usr/local/lib/libexpat.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_gml.exe
+
+./static_bin/spatialite_osm_raw.exe: spatialite_osm_raw.o
+	$(GG) spatialite_osm_raw.o -o ./static_bin/spatialite_osm_raw.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
+	/usr/local/lib/libiconv.a \
+	/usr/local/lib/libexpat.a \
+	/usr/local/lib/libz.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	strip --strip-all ./static_bin/spatialite_osm_raw.exe
+
+./static_bin/spatialite_osm_filter.exe: spatialite_osm_filter.o
+	$(GG) spatialite_osm_filter.o -o ./static_bin/spatialite_osm_filter.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_osm_filter.exe
+
+./static_bin/spatialite_osm_overpass.exe: spatialite_osm_overpass.o
+	$(GG) spatialite_osm_overpass.o -o ./static_bin/spatialite_osm_overpass.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_osm_overpass.exe
+
+./static_bin/spatialite_xml_collapse.exe: spatialite_xml_collapse.o
+	$(GG) spatialite_xml_collapse.o -o ./static_bin/spatialite_xml_collapse.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_xml_collapse.exe
+
+./static_bin/spatialite_xml_validator.exe: spatialite_xml_validator.o
+	$(CC) spatialite_xml_validator.o -o ./static_bin/spatialite_xml_validator.exe \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lws2_32 -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_xml_validator.exe
+
+./static_bin/spatialite_xml_load.exe: spatialite_xml_load.o
+	$(GG) spatialite_xml_load.o -o ./static_bin/spatialite_xml_load.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libexpat.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_xml_load.exe
+
+./static_bin/spatialite_xml_print.exe: spatialite_xml_print.o
+	$(GG) spatialite_xml_print.o -o ./static_bin/spatialite_xml_print.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/liblwgeom.a \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_xml_print.exe
+
+shell.o: 
+	$(CC) $(CFLAGS) shell.c -c
+	
+spatialite_tool.o:
+	$(CC) $(CFLAGS) spatialite_tool.c -c
+
+spatialite_network.o:
+	$(CC) $(CFLAGS) spatialite_network.c -c
+
+shp_doctor.o:
+	$(CC) $(CFLAGS) shp_doctor.c -c
+	
+exif_loader.o:
+	$(CC) $(CFLAGS) exif_loader.c -c
+	
+spatialite_osm_net.o:
+	$(CC) $(CFLAGS) spatialite_osm_net.c -c
+	
+spatialite_osm_map.o:
+	$(CC) $(CFLAGS) spatialite_osm_map.c -c
+
+spatialite_gml.o:
+	$(CC) $(CFLAGS) spatialite_gml.c -c
+
+spatialite_osm_raw.o:
+	$(CC) $(CFLAGS) spatialite_osm_raw.c -c
+
+spatialite_osm_filter.o:
+	$(CC) $(CFLAGS) spatialite_osm_filter.c -c
+
+spatialite_osm_overpass.o:
+	$(CC) $(CFLAGS) spatialite_osm_overpass.c -c
+
+spatialite_xml_collapse.o:
+	$(CC) $(CFLAGS) spatialite_xml_collapse.c -c
+
+spatialite_xml_validator.o:
+	$(CC) $(CFLAGS) spatialite_xml_validator.c -c
+
+spatialite_xml_load.o:
+	$(CC) $(CFLAGS) spatialite_xml_load.c -c
+
+spatialite_xml_print.o:
+	$(CC) $(CFLAGS) spatialite_xml_print.c -c

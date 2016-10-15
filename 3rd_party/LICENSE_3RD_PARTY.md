@@ -24,4 +24,5 @@ All libraries under the '3rd_party' are licensed as shown in the table below.  M
 |pixman|http://www.pixman.org|MIT||
 |proj.4|https://github.com/OSGeo/proj.4|MIT||
 |sqlite|https://www.sqlite.org|Public Domain||
+|spatialite-tools|https://www.gaia-gis.it/fossil/spatialite-tools/index|GPL v3||
 |xz|http://tukaani.org/xz/|Public Domain||

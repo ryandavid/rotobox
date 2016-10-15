@@ -99,6 +99,10 @@ LIBSPATIALITE_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libspatialite
 LIBSPATIALITE_MAKEFILE=$(LIBSPATIALITE_SUBDIR)/Makefile
 LIBSPATIALITE_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libspatialite.a
 
+SPATIALITE_TOOLS_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/spatialite-tools
+SPATIALITE_TOOLS_MAKEFILE=$(SPATIALITE_TOOLS_SUBDIR)/Makefile
+SPATIALITE_TOOLS_BIN=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/bin/spatialite
+
 CURL_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/curl
 CURL_MAKEFILE=$(CURL_SUBDIR)/Makefile
 CURL_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libcurl.a
@@ -615,6 +619,31 @@ endif
 spatialite-reset: spatialite-clean
 ifneq ("$(wildcard $(LIBSPATIALITE_MAKEFILE))","")
 	rm $(LIBSPATIALITE_MAKEFILE)
+endif
+
+########################################
+# spatialite-tools                     #
+########################################
+spatialite-tools: spatialite $(SPATIALITE_TOOLS_BIN)
+
+$(SPATIALITE_TOOLS_BIN): $(SPATIALITE_TOOLS_MAKEFILE)
+	$(MAKE) -C $(SPATIALITE_TOOLS_SUBDIR) install
+
+$(SPATIALITE_TOOLS_MAKEFILE):
+	cd $(SPATIALITE_TOOLS_SUBDIR) && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
+	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
+	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --disable-freexl --disable-readosm --with-geosconfig=$(ROTOBOX_3RD_PARTY_BUILD_DIR)/bin/geos-config
+
+spatialite-tools-clean:
+ifneq ("$(wildcard $(SPATIALITE_TOOLS_MAKEFILE))","")
+	$(MAKE) -C $(SPATIALITE_TOOLS_SUBDIR) clean
+endif
+
+spatialite-tools-reset: spatialite-tools-clean
+ifneq ("$(wildcard $(SPATIALITE_TOOLS_MAKEFILE))","")
+	rm $(SPATIALITE_TOOLS_SUBDIR)
 endif
 
 ########################################

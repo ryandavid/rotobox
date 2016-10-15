@@ -1,0 +1,155 @@
+# SandroFurieri (c) 2009
+# Makefile RasterLite statically linked tools [MacOsX]
+
+CFLAGS = -DSPATIALITE_AMALGAMATION
+
+all: ./static_bin/spatialite ./static_bin/spatialite_tool \
+	./static_bin/spatialite_network ./static_bin/shp_doctor \
+	./static_bin/exif_loader ./static_bin/spatialite_osm_net \
+	./static_bin/spatialite_osm_map ./static_bin/spatialite_gml \
+	./static_bin/spatialite_osm_raw ./static_bin/spatialite_osm_filter \
+	./static_bin/spatialite_convert
+
+./static_bin/spatialite: shell.o
+	$(CC) shell.o -o ./static_bin/spatialite \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libreadline.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	/opt/local/lib/libncurses.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite
+
+./static_bin/spatialite_tool: spatialite_tool.o
+	$(CC) spatialite_tool.o -o ./static_bin/spatialite_tool \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_tool
+
+./static_bin/spatialite_convert: spatialite_convert.o
+	$(CC) spatialite_convert.o -o ./static_bin/spatialite_convert \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_convert
+
+./static_bin/spatialite_network: spatialite_network.o
+	$(CC) spatialite_network.o -o ./static_bin/spatialite_network \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_network
+
+./static_bin/shp_doctor: shp_doctor.o
+	$(CC) shp_doctor.o -o ./static_bin/shp_doctor \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/shp_doctor
+	
+./static_bin/exif_loader: exif_loader.o
+	$(CC) exif_loader.o -o ./static_bin/exif_loader \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/exif_loader
+	
+./static_bin/spatialite_osm_net: spatialite_osm_net.o
+	$(CC) spatialite_osm_net.o -o ./static_bin/spatialite_osm_net \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	/opt/local/lib/libexpat.a \
+	/opt/local/lib/libz.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_osm_net
+
+./static_bin/spatialite_osm_map: spatialite_osm_map.o
+	$(CC) spatialite_osm_map.o -o ./static_bin/spatialite_osm_map \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	/opt/local/lib/libexpat.a \
+	/opt/local/lib/libz.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_osm_map
+
+./static_bin/spatialite_gml: spatialite_gml.o
+	$(CC) spatialite_gml.o -o ./static_bin/spatialite_gml \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	/opt/local/lib/libexpat.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_gml
+
+./static_bin/spatialite_osm_raw: spatialite_osm_raw.o
+	$(CC) spatialite_osm_raw.o -o ./static_bin/spatialite_osm_raw \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	/opt/local/lib/libexpat.a \
+	/opt/local/lib/libz.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_osm_raw
+
+./static_bin/spatialite_osm_filter: spatialite_osm_filter.o
+	$(CC) spatialite_osm_filter.o -o ./static_bin/spatialite_osm_filter \
+	/usr/local/lib/libspatialite.a \
+	/opt/local/lib/libproj.a \
+	/opt/local/lib/libgeos_c.a \
+	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/opt/local/lib/libiconv.a \
+	/opt/local/lib/libcharset.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_osm_filter

@@ -1,0 +1,138 @@
+  --------------------- spatialite-tools ------------------------
+
+PLEASE read the following information.
+
+1 - Installation
+2 - Required dependencies
+3 - Build notes
+  3.1: Building on Linux
+  3.2: Building on MacOsX
+  3.3: Building on Windows
+    3.3.1: using MinGW / MSYS
+    3.3.2: using Visual Studio .NET
+  
+=====================================================================
+
+1 - Installation:
+=================
+
+The default destination path prefix for installed files is /usr/local.
+Results from the installation script will be placed into subdirectories
+include and lib.  If this default path prefix is proper, then execute:
+
+    ./configure
+
+If another path prefix is required, then execute:
+
+    ./configure --prefix=/my/path
+
+In either case, the directory of the prefix path must exist and be
+writable by the installer.
+
+After executing configure, execute:
+
+    make
+    make install
+
+Or even better, you can *strip* any executable binary, in order
+to eliminate any debugging symbol, and thus widely reducing
+their size:
+
+    make install-strip
+
+2- Required dependencies:
+=========================
+    
+The external dependencies needed in order to build 'spatialite-tools'
+are exactly the ones inherited by 'libspatialite'.
+'spatialite-tools' are built on the top of 'libspatialite', so it's very
+alike you've already resolved any required dependency while building 
+'libspatialite';
+
+3 - Build notes
+===============
+
+3.1: Building on Linux
+----------------------
+
+Building 'spatialite-tools' under Linux does not require any special 
+setting; we'll suppose you have unpacked the sources as 
+./spatialite-tools-2.4.0
+
+# cd spatialite-tools-2.4.0
+# ./configure
+# make
+# sudo make install
+#     or (in order to save some disk space)
+# sudo make install-strip
+
+3.2: Building on MacOsX
+-----------------------
+
+Building 'spatialite-tools' on MacOsX is quite the same as for 
+Linux; simply setting some ENV variable is required because the 
+libs layout on MacOsX is a little bit peculiar.
+We'll suppose you have unpacked the sources as 
+./spatialite-tools-2.4.0
+
+# cd spatialite-tools-2.4.0
+# export "CFLAGS=-I/opt/local/include"
+# export "LDFLAGS=-L/opt/local/lib"
+# export "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig"
+# ./configure
+# make
+# sudo make install
+#     or (in order to save some disk space)
+# sudo make install-strip
+
+IMPORTANT NOTICE: this will build an executable for your
+specific platform. i.e. when building on a PPC Mac,
+resulting binary will be targeted to run on PPC anyway.
+And when building on Intel Mac, resulting binary will
+run on Intel target.
+
+3.3: building on Windows
+------------------------
+
+On Windows systems you can choose using two different compilers:
+- MinGW / MSYS
+  this represents a smart porting of a minimalistic Linux-like
+  devel-toolkit
+- Microsoft Visual Studio .NET
+  this one is the standard platform devel-toolkit
+
+3.3.1: using MinGW / MSYS
+-------------------------
+
+We suppose you have already installed the MinGW compiler and the MSYS shell.
+Building 'spatialite-tools' under Windows is then more or less like building
+on any other UNIX-like system; simply an --target=mingw32 is required to
+sane any specific Windows idiosyncrasy.
+We'll suppose you have unpacked the sources as 
+C:\spatialite-tools-2.4.0
+
+$ cd c:/spatialite-tool-2.4.0
+$ export "CFLAGS=-I/usr/local/include"
+$ export "LDFLAGS=-L/usr/local/lib"
+$ export "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig"
+$ ./configure --target=mingw32
+$ make
+$ make install-strip
+$     or (in order to save some disk space)
+$ make install-strip
+
+
+3.3.2: using Microsoft Visual Studio .NET
+-----------------------------------------
+
+We suppose you have already installed Visual Studio enabling the command
+line tools [you are expected to use the command prompt shell].
+We'll suppose you have unpacked the sources as 
+C:\spatialite-tools-2.4.0
+
+> cd c:\spatialite-tools-2.4.0
+> nmake /f makefile.vc
+> nmake /f makefile.vc install
+
+If you want to alter this 'basic' behaviour you have then to
+adapt 'makefile.vc'.

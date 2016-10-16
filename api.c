@@ -1,5 +1,6 @@
+#include "metar.h"
+
 #include "api.h"
-#include "3rd_party/mdsplib/include/metar.h"
 #include "3rd_party/dump978/uat_decode.h"
 
 extern pthread_mutex_t gps_mutex;

@@ -1,33 +1,6 @@
 #include "database.h"
 #include "database_maintenance.h"
 
-/*
-static bool verify_db_table_airports() {
-    bool success = true;
-
-    database_execute_query("PRAGMA table_info('airports');");
-    while (database_fetch_row() == true) {
-        // Column 1 - Name
-        // Column 2 - Type
-        bool foundMatch = false;
-        for(size_t i = 0; i < sizeof(database_airports_table) / sizeof(database_airports_table[0]); i++) {
-            if((strncmp(database_column_text(1), database_airports_table[i][0], strlen(database_airports_table[i][0])) == 0) &&
-               (strncmp(database_column_text(2), database_airports_table[i][1], strlen(database_airports_table[i][1])) == 0)) {
-                foundMatch = true;
-                break;
-            }
-        }
-
-        if(foundMatch == false) {
-            fprintf(stdout, "Failed match for %s\n", database_column_text(1));
-        }
-        success &= foundMatch;
-    }
-
-    return success;
-}
-*/
-
 static bool create_db_table_airports() {
     const char* create_table_query = "CREATE TABLE airports(" \
         "id VARCHAR(32) PRIMARY KEY UNIQUE, " \
@@ -151,7 +124,7 @@ static bool create_db_table_airspaces() {
         "type VARCHAR(16))";
 
     const char* geometry_query = "SELECT AddGeometryColumn(" \
-        "'airspaces', 'geometry', 4326, 'POLYGON', 'XY');";
+        "'airspaces', 'geometry', 4326, 'MULTIPOLYGON', 'XY');";
 
     database_execute_query("BEGIN TRANSACTION;");
     database_execute_query("DROP TABLE IF EXISTS airspaces;");
@@ -415,47 +388,34 @@ static bool create_db_table_waypoints() {
     return true;
 }
 
-const char* database_table_cmds[][2] = {
-    {"airports",    "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='airports';"},
-    {"airspaces",   "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='airspaces';"},
-    {"awos",        "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='awos';"},
-    {"charts",      "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='charts';"},
-    {"runways",     "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='runways';"},
-    {"tpp",         "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='tpp';"},
-    {"uat_text",    "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='uat_text';"},
-    {"updates",     "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='updates';"},
-    {"waypoints",   "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='waypoints';"}
+const struct database_maintenance_t database_tables[] = {
+    {"airports",    "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='airports';",    create_db_table_airports},
+    {"airspaces",   "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='airspaces';",   create_db_table_airspaces},
+    {"awos",        "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='awos';",        create_db_table_awos},
+    {"charts",      "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='charts';",      create_db_table_charts},
+    {"runways",     "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='runways';",     create_db_table_runways},
+    {"tpp",         "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='tpp';",         create_db_table_tpp},
+    {"uat_text",    "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='uat_text';",    create_db_table_uat_text},
+    {"updates",     "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='updates';",     create_db_table_updates},
+    {"waypoints",   "SELECT count(name) FROM sqlite_master WHERE type='table' AND name='waypoints';",   create_db_table_waypoints}
 };
-
-bool (*database_table_helpers[])(void) = {
-    create_db_table_airports,
-    create_db_table_airspaces,
-    create_db_table_awos,
-    create_db_table_charts,
-    create_db_table_runways,
-    create_db_table_tpp,
-    create_db_table_uat_text,
-    create_db_table_updates,
-    create_db_table_waypoints
-};
-
 
 bool database_maintenance(bool rebuild) {
     fprintf(stdout, "Verifying database tables.\n");
-    for(size_t i = 0; i < (sizeof(database_table_cmds) / sizeof(database_table_cmds[0])); i++) {
+    for(size_t i = 0; i < (sizeof(database_tables) / sizeof(database_tables[0])); i++) {
         bool tableValid = false;
 
-        database_prepare(database_table_cmds[i][1]);
+        database_prepare(database_tables[i].verify_query);
         if(database_fetch_row() == true) {
             tableValid = (database_column_int(0) == 1);
         }
 
         if(tableValid == false) {
             if(rebuild == true) {
-                fprintf(stdout, "Table '%s' is borked.  Rebuilding it.\n", database_table_cmds[i][0]);
-                database_table_helpers[i]();
+                fprintf(stdout, "Table '%s' is borked.  Rebuilding it.\n", database_tables[i].table_name);
+                database_tables[i].table_create_fn();
             } else {
-                fprintf(stdout, "Table '%s' is borked, but skipping rebuild.\n", database_table_cmds[i][0]);
+                fprintf(stdout, "Table '%s' is borked, but skipping rebuild.\n", database_tables[i].table_name);
             }
         }
     }

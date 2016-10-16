@@ -92,3 +92,8 @@ util/cairo-script/Makefile.in
 util/cairo-script/examples/Makefile.in
 util/cairo-sphinx/Makefile.in
 util/cairo-trace/Makefile.in
+
+cairo-quartz-font-uninstalled.pc
+cairo-quartz-uninstalled.pc
+src/cairo-quartz-font.pc
+src/cairo-quartz.pc

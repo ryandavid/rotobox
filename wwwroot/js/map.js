@@ -30,7 +30,7 @@ const airspace_styles = {
     "fillOpacity": 0.1,
     "dashArray": "10, 5"
   },
-  "class_e": {
+  "class_e0": {
     "stroke": true,
     "weight": 4,
     "opacity": 0.3,
@@ -270,7 +270,7 @@ function map_init(){
 
   // Display airspace shapefiles
   // Skip Class-E5 ('class_e5') because IMHO not very useful.
-  var available_airspaces = ["class_b", "class_c", "class_d", "class_e"];
+  var available_airspaces = ["class_b", "class_c", "class_d", "class_e0"];
   var layerCtrl = L.control.layers(null, null).addTo(map);
 
   for (var i = 0; i < available_airspaces.length; i++) {

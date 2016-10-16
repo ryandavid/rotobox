@@ -20,6 +20,7 @@
 
 #include "api.h"
 #include "database.h"
+#include "download.h"
 #include "gdl90.h"
 #include "rotobox.h"
 
@@ -54,6 +55,9 @@ int main(int argc, char **argv) {
     struct mg_mgr mgr;
     struct mg_connection *nc;
     char gpsd_address[GPSD_ADDRESS_BUFFER_SIZE];
+    char update_product_name[256];
+
+    memset(&update_product_name, 0x00, sizeof(update_product_name));
 
     // Clear out the tracked traffic.
     memset(&tracked_traffic, 0x00, sizeof(tracked_traffic));
@@ -61,15 +65,31 @@ int main(int argc, char **argv) {
     // By default, use 'localhost' for the GPSD address
     snprintf(&gpsd_address[0], GPSD_ADDRESS_BUFFER_SIZE, "%s", "localhost");
     char c;
-    while ((c = getopt(argc, argv, "a:")) != -1) {
+    while ((c = getopt(argc, argv, "a:u:")) != -1) {
         switch (c) {
             case('a'):
                 snprintf(&gpsd_address[0], GPSD_ADDRESS_BUFFER_SIZE, "%s", optarg);
                 break;
 
+            case('u'):
+                snprintf(&update_product_name[0], sizeof(update_product_name), "%s", optarg);
+                break;
+
             default:
                 fprintf(stdout, "Unknown flag %c\n", c);
         }
+    }
+
+    // Init sqlite3
+    if(database_init() == false) {
+        fprintf(stdout, "ERROR: Could not open SQLite DB\n");
+    }
+
+    download_init();
+    if(strlen(update_product_name) > 0) {
+        download_updates(update_product_name);
+        database_close();
+        return 0;
     }
 
     // Signal Handlers
@@ -83,11 +103,6 @@ int main(int argc, char **argv) {
     } else {
         gps_stream(&rx_gps_data, WATCH_ENABLE | WATCH_JSON, NULL);
         gpsd_available = true;
-    }
-
-    // Init sqlite3
-    if(database_init() == false) {
-        fprintf(stdout, "ERROR: Could not open SQLite DB\n");
     }
 
     // Init Webserver
@@ -180,6 +195,8 @@ int main(int argc, char **argv) {
     mg_mgr_free(&mgr);
 
     database_close();
+
+    download_cleanup();
     
     fprintf(stdout, "Exiting!\n");
 }

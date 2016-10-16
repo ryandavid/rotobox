@@ -21,6 +21,7 @@ depcomp
 install-sh
 libpng-config
 libpng.pc
+libpng.sym
 libpng.vers
 libpng16-config
 libpng16.pc

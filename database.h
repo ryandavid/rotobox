@@ -8,11 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "geos_c.h"
-#include "proj_api.h"
-#include "rasterlite2/rasterlite2.h"
 #include "sqlite3.h"
-#include "spatialite.h"
 
 #define DATABASE_FILEPATH       "./rotobox.sqlite"
 #define DATABASE_WILDCARD       '%'
@@ -58,5 +54,7 @@ void database_insert_uat_text_product(char* receivedTime, char* productType, cha
 void database_get_recent_winds();
 void database_get_metar_by_airport_id(const char* airport_id);
 void database_empty_old_uat_text(uint16_t age_hours);
+bool database_empty_table(const char* table);
+bool database_load_airspace_shapefile(char* shapefile_path, char* airspace_class);
 
 #endif  // DATABASE_H_

@@ -8,7 +8,7 @@ from distutils.core import setup, Extension
 # Below ROOT, we expect to find include, include/libxml2, lib and bin.
 # On *nix, it is not needed (but should not harm),
 # on Windows, it is set by configure.js.
-ROOT = r'/home/ryan/src/rotobox/3rd_party_build'
+ROOT = r'/Users/ryan/src/rotobox/3rd_party_build'
 
 # Thread-enabled libxml2
 with_threads = 1

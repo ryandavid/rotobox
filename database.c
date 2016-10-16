@@ -1,3 +1,9 @@
+#include "geos_c.h"
+#include "proj_api.h"
+#include "rasterlite2/rasterlite2.h"
+#include "sqlite3.h"
+#include "spatialite.h"
+
 #include "database.h"
 #include "database_maintenance.h"
 
@@ -18,7 +24,6 @@ bool database_init() {
         success = true;
         // Dump the assembled queries to stdout.
         sqlite3_trace(db, database_trace, NULL);
-        fprintf(stdout, "Successfully connected to the database!\n");
     }
 
     spatialite_initialize();
@@ -35,14 +40,10 @@ bool database_init() {
     // Clear out any old received METAR's, TAF's, etc.
     database_empty_old_uat_text(UAT_TEXT_MAX_AGE_HOURS);
 
-    fprintf(stdout, "DB Path: %s\n", DATABASE_FILEPATH);
-    fprintf(stdout, "SQLite version: %s\n", sqlite3_libversion());
-    fprintf(stdout, "SpatiaLite version: %s\n", spatialite_version());
-    fprintf(stdout, "RasterLite2 version: %s\n", rl2_version());
-    fprintf(stdout, "GEOS version: %s\n", GEOSversion());
-    fprintf(stdout, "PROJ version: %s\n", pj_get_release());
-    fprintf(stdout, "\n\n");
-
+    fprintf(stdout, " => DB Path: %s\n", DATABASE_FILEPATH);
+    fprintf(stdout, " => SQLite version: %s\n", sqlite3_libversion());
+    fprintf(stdout, " => SpatiaLite version: %s\n", spatialite_version());
+    fprintf(stdout, " => RasterLite2 version: %s\n", rl2_version());
     return success;
 }
 
@@ -345,3 +346,37 @@ void database_empty_old_uat_text(uint16_t age_hours) {
 
     database_execute_query("END TRANSACTION;");
 }
+
+bool database_empty_table(const char* table) {
+    char statement[1024];
+    snprintf(&statement[0], sizeof(statement), "DELETE FROM %s; VACUUM;", table);
+    database_execute_query(statement);
+
+    return true;
+}
+
+bool database_load_airspace_shapefile(char* shapefile_path, char* airspace_class) {
+    char statement[1024];
+
+    // Hacky. But the bind_text doesn't seem to work on queries that don't return rows.
+    snprintf(&statement[0], sizeof(statement),
+        "CREATE VIRTUAL TABLE vt_shapefile USING VirtualShape(%s, 'UTF-8', 4326);", shapefile_path);
+
+    char* query;
+    sqlite3_prepare_v2(db, statement, -1, &stmt, NULL);
+    sqlite3_step(stmt);
+
+    query = "INSERT INTO airspaces(name, airspace, low_alt, high_alt, geometry, type) " \
+            "SELECT \"NAME\", \"AIRSPACE\", \"LOWALT\", \"HIGHALT\", \"Geometry\", ? FROM vt_shapefile;";
+    sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, airspace_class, strlen(airspace_class), SQLITE_STATIC);
+    sqlite3_step(stmt);
+
+    database_execute_query("DROP TABLE vt_shapefile;");
+
+    return true;
+}
+
+
+
+

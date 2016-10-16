@@ -12,7 +12,7 @@ ROTOBOX_PKG_CONFIG_PATH=$(ROTOBOX_3RD_PARTY_LIB)/pkgconfig
 CFLAGS+=-O2 -g -Wall -Ifec
 LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB)
 LIBS=-lm -lpthread -ldl -lgeos_c -lusb-1.0 -lspatialite -lrasterlite2 -lsqlite3 \
-	 -lrtlsdr -lproj -lgps -lmetar
+	 -lrtlsdr -lproj -lgps -lmetar -lcurl -larchive
 CC=gcc
 MAKE=make
 CMAKE=cmake
@@ -111,6 +111,10 @@ LIBXML2_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libxml2
 LIBXML2_MAKEFILE=$(LIBXML2_SUBDIR)/Makefile
 LIBXML2_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libxml2.a
 
+LIBARCHIVE_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libarchive
+LIBARCHIVE_MAKEFILE=$(LIBARCHIVE_SUBDIR)/Makefile
+LIBARCHIVE_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libarchive.a
+
 
 ########################################
 # TODO: Convert these to libs          #
@@ -136,14 +140,14 @@ DUMP1090_DEPENDS+=$(ROTOBOX_3RD_PARTY_DIR)/dump1090/compat/clock_gettime/clock_g
 				  $(ROTOBOX_3RD_PARTY_DIR)/dump1090/compat/clock_nanosleep/clock_nanosleep.o
 endif
 
-rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o \
+rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o download.o \
 		 $(DUMP978_DEPENDS) $(DUMP1090_DEPENDS) $(MONGOOSE_DEPENDS)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS)
 
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-rotobox-deps: libgeos librtlsdr libusb sqlite proj4 gpsd libmetar spatialite librasterlite2
+rotobox-deps: libgeos librtlsdr libusb sqlite proj4 gpsd libmetar spatialite librasterlite2 libarchive
 
 clean:
 	rm -rf *.o
@@ -153,7 +157,7 @@ clean-deps: libgeos-clean librtlsdr-clean libusb-clean librasterlite2-clean spat
 			sqlite-clean proj4-clean gpsd-clean libmetar-clean giflib-clean pixman-clean libcairo-clean \
 			libgeotiff-clean libjpeg-clean libpng-clean libtiff-clean curl-clean xz-clean libxml2-clean
 
-reset: clean libgeos-reset librtlsdr-reset libusb-reset librasterlite2-reset spatialite-reset \
+reset: clean libgeos-reset librtlsdr-reset libusb-reset librasterlite2-reset spatialite-reset libarchive-reset \
 	   sqlite-reset proj4-reset gpsd-reset libmetar-reset giflib-reset pixman-reset libcairo-reset \
 	   libgeotiff-reset libjpeg-reset libpng-reset libtiff-reset curl-reset xz-reset libxml2-reset
 	   rm -rf $(ROTOBOX_3RD_PARTY_BUILD_DIR)/*/
@@ -697,3 +701,32 @@ libxml2-reset: libxml2-clean
 ifneq ("$(wildcard $(LIBXML2_MAKEFILE))","")
 	rm $(LIBXML2_MAKEFILE)
 endif
+
+########################################
+# libarchive                           #
+########################################
+libarchive: $(LIBARCHIVE_LIB)
+
+$(LIBARCHIVE_LIB): $(LIBARCHIVE_MAKEFILE)
+	$(MAKE) -C $(LIBARCHIVE_SUBDIR) install
+
+$(LIBARCHIVE_MAKEFILE):
+	cd $(LIBARCHIVE_SUBDIR)/build && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
+	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
+	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
+	./autogen.sh && \
+	cd $(LIBARCHIVE_SUBDIR) && \
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --without-iconv
+
+libarchive-clean:
+ifneq ("$(wildcard $(LIBARCHIVE_MAKEFILE))","")
+	$(MAKE) -C $(LIBARCHIVE_SUBDIR)/build clean
+endif
+
+libarchive-reset: libxml2-clean
+ifneq ("$(wildcard $(LIBARCHIVE_MAKEFILE))","")
+	rm $(LIBARCHIVE_MAKEFILE)
+endif
+
+

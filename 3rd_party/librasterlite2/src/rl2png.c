@@ -20,7 +20,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -117,7 +117,7 @@ compress_palette_png (const unsigned char *pixels, unsigned int width,
 /* compressing a PNG image of the PALETTE type */
     png_structp png_ptr;
     png_infop info_ptr;
-    int bit_depth;
+    int bit_depth = 0;
     png_bytep *row_pointers = NULL;
     png_bytep p_out;
     unsigned int row;
@@ -228,13 +228,13 @@ compress_palette_png (const unsigned char *pixels, unsigned int width,
 }
 
 static int
-compress_grayscale_png (const unsigned char *pixels, const unsigned char *mask,
-			double opacity, unsigned int width,
-			unsigned int height, unsigned char sample_type,
-			unsigned char pixel_type, unsigned char **png,
-			int *png_size)
+compress_grayscale_png8 (const unsigned char *pixels,
+			 const unsigned char *mask, double opacity,
+			 unsigned int width, unsigned int height,
+			 unsigned char sample_type, unsigned char pixel_type,
+			 unsigned char **png, int *png_size)
 {
-/* compressing a PNG image of the GRAYSCALE type */
+/* compressing a PNG image of the GRAYSCALE type - 8 bits */
     png_structp png_ptr;
     png_infop info_ptr;
     int bit_depth;
@@ -361,11 +361,101 @@ compress_grayscale_png (const unsigned char *pixels, const unsigned char *mask,
 }
 
 static int
-compress_rgb_png (const unsigned char *pixels, const unsigned char *mask,
-		  double opacity, unsigned int width, unsigned int height,
-		  unsigned char **png, int *png_size)
+compress_grayscale_png16 (const unsigned char *pixels, unsigned int width,
+			  unsigned int height, unsigned char sample_type,
+			  unsigned char **png, int *png_size)
 {
-/* compressing a PNG image of the RGB type */
+/* compressing a PNG image of the GRAYSCALE type - 16 bits */
+    png_structp png_ptr;
+    png_infop info_ptr;
+    int bit_depth;
+    png_bytep *row_pointers = NULL;
+    png_bytep p_out;
+    unsigned int row;
+    unsigned int col;
+    const unsigned short *p_in;
+    int nBands;
+    int type;
+    struct png_memory_buffer membuf;
+    membuf.buffer = NULL;
+    membuf.size = 0;
+
+    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png_ptr)
+	return RL2_ERROR;
+    info_ptr = png_create_info_struct (png_ptr);
+    if (!info_ptr)
+      {
+	  png_destroy_write_struct (&png_ptr, NULL);
+	  return RL2_ERROR;
+      }
+    if (setjmp (png_jmpbuf (png_ptr)))
+      {
+	  goto error;
+      }
+
+    png_set_write_fn (png_ptr, &membuf, rl2_png_write_data, rl2_png_flush);
+    switch (sample_type)
+      {
+      case RL2_SAMPLE_UINT8:
+	  bit_depth = 8;
+	  break;
+      case RL2_SAMPLE_UINT16:
+	  bit_depth = 16;
+	  break;
+      };
+    type = PNG_COLOR_TYPE_GRAY;
+    nBands = 1;
+    png_set_IHDR (png_ptr, info_ptr, width, height, bit_depth,
+		  type, PNG_INTERLACE_NONE,
+		  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_write_info (png_ptr, info_ptr);
+    png_set_packing (png_ptr);
+    row_pointers = malloc (sizeof (png_bytep) * height);
+    if (row_pointers == NULL)
+	goto error;
+    for (row = 0; row < height; ++row)
+	row_pointers[row] = NULL;
+    p_in = (unsigned short *) pixels;
+    for (row = 0; row < height; row++)
+      {
+	  if ((row_pointers[row] = malloc (width * nBands * 2)) == NULL)
+	      goto error;
+	  p_out = row_pointers[row];
+	  for (col = 0; col < width; col++)
+	    {
+		unsigned int value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+	    }
+      }
+
+    png_write_image (png_ptr, row_pointers);
+    png_write_end (png_ptr, info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    *png = membuf.buffer;
+    *png_size = membuf.size;
+    return RL2_OK;
+
+  error:
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    if (membuf.buffer != NULL)
+	free (membuf.buffer);
+    return RL2_ERROR;
+}
+
+static int
+compress_rgb_png8 (const unsigned char *pixels, const unsigned char *mask,
+		   double opacity, unsigned int width, unsigned int height,
+		   unsigned char **png, int *png_size)
+{
+/* compressing a PNG image of the RGB type - 8 bits */
     png_structp png_ptr;
     png_infop info_ptr;
     png_bytep *row_pointers = NULL;
@@ -464,6 +554,330 @@ compress_rgb_png (const unsigned char *pixels, const unsigned char *mask,
 }
 
 static int
+compress_rgba_png8 (const unsigned char *pixels, const unsigned char *alpha,
+		    unsigned int width, unsigned int height,
+		    unsigned char **png, int *png_size)
+{
+/* compressing a PNG image of the RGBA type - 8 bits */
+    png_structp png_ptr;
+    png_infop info_ptr;
+    png_bytep *row_pointers = NULL;
+    png_bytep p_out;
+    unsigned int row;
+    unsigned int col;
+    const unsigned char *p_in;
+    const unsigned char *p_alpha;
+    int nBands;
+    int type;
+    struct png_memory_buffer membuf;
+    membuf.buffer = NULL;
+    membuf.size = 0;
+
+    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png_ptr)
+	return RL2_ERROR;
+    info_ptr = png_create_info_struct (png_ptr);
+    if (!info_ptr)
+      {
+	  png_destroy_write_struct (&png_ptr, NULL);
+	  return RL2_ERROR;
+      }
+    if (setjmp (png_jmpbuf (png_ptr)))
+      {
+	  goto error;
+      }
+
+    png_set_write_fn (png_ptr, &membuf, rl2_png_write_data, rl2_png_flush);
+    type = PNG_COLOR_TYPE_RGB_ALPHA;
+    nBands = 4;
+    png_set_IHDR (png_ptr, info_ptr, width, height, 8,
+		  type, PNG_INTERLACE_NONE,
+		  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_write_info (png_ptr, info_ptr);
+    row_pointers = malloc (sizeof (png_bytep) * height);
+    if (row_pointers == NULL)
+	goto error;
+    for (row = 0; row < height; ++row)
+	row_pointers[row] = NULL;
+    p_in = pixels;
+    p_alpha = alpha;
+    for (row = 0; row < height; row++)
+      {
+	  if ((row_pointers[row] = malloc (width * nBands)) == NULL)
+	      goto error;
+	  p_out = row_pointers[row];
+	  for (col = 0; col < width; col++)
+	    {
+		*p_out++ = *p_in++;
+		*p_out++ = *p_in++;
+		*p_out++ = *p_in++;
+		*p_out++ = *p_alpha++;
+	    }
+      }
+    png_write_image (png_ptr, row_pointers);
+    png_write_end (png_ptr, info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    *png = membuf.buffer;
+    *png_size = membuf.size;
+    return RL2_OK;
+
+  error:
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    if (membuf.buffer != NULL)
+	free (membuf.buffer);
+    return RL2_ERROR;
+}
+
+static int
+compress_rgb_png16 (const unsigned char *pixels, unsigned int width,
+		    unsigned int height, unsigned char **png, int *png_size)
+{
+/* compressing a PNG image of the RGB type - 16 bits */
+    png_structp png_ptr;
+    png_infop info_ptr;
+    png_bytep *row_pointers = NULL;
+    png_bytep p_out;
+    unsigned int row;
+    unsigned int col;
+    const unsigned short *p_in;
+    int nBands;
+    int type;
+    struct png_memory_buffer membuf;
+    membuf.buffer = NULL;
+    membuf.size = 0;
+
+    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png_ptr)
+	return RL2_ERROR;
+    info_ptr = png_create_info_struct (png_ptr);
+    if (!info_ptr)
+      {
+	  png_destroy_write_struct (&png_ptr, NULL);
+	  return RL2_ERROR;
+      }
+    if (setjmp (png_jmpbuf (png_ptr)))
+      {
+	  goto error;
+      }
+
+    png_set_write_fn (png_ptr, &membuf, rl2_png_write_data, rl2_png_flush);
+    type = PNG_COLOR_TYPE_RGB;
+    nBands = 3;
+    png_set_IHDR (png_ptr, info_ptr, width, height, 16,
+		  type, PNG_INTERLACE_NONE,
+		  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_write_info (png_ptr, info_ptr);
+    row_pointers = malloc (sizeof (png_bytep) * height);
+    if (row_pointers == NULL)
+	goto error;
+    for (row = 0; row < height; ++row)
+	row_pointers[row] = NULL;
+    p_in = (unsigned short *) pixels;
+    for (row = 0; row < height; row++)
+      {
+	  if ((row_pointers[row] = malloc (width * nBands * 2)) == NULL)
+	      goto error;
+	  p_out = row_pointers[row];
+	  for (col = 0; col < width; col++)
+	    {
+		unsigned int value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+		value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+		value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+	    }
+      }
+    png_write_image (png_ptr, row_pointers);
+    png_write_end (png_ptr, info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    *png = membuf.buffer;
+    *png_size = membuf.size;
+    return RL2_OK;
+
+  error:
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    if (membuf.buffer != NULL)
+	free (membuf.buffer);
+    return RL2_ERROR;
+}
+
+static int
+compress_4bands_png8 (const unsigned char *pixels, unsigned int width,
+		      unsigned int height, unsigned char **png, int *png_size)
+{
+/* compressing a PNG image of the 4-bands type - 8 bits */
+    png_structp png_ptr;
+    png_infop info_ptr;
+    png_bytep *row_pointers = NULL;
+    png_bytep p_out;
+    unsigned int row;
+    unsigned int col;
+    const unsigned char *p_in;
+    int type;
+    struct png_memory_buffer membuf;
+    membuf.buffer = NULL;
+    membuf.size = 0;
+
+    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png_ptr)
+	return RL2_ERROR;
+    info_ptr = png_create_info_struct (png_ptr);
+    if (!info_ptr)
+      {
+	  png_destroy_write_struct (&png_ptr, NULL);
+	  return RL2_ERROR;
+      }
+    if (setjmp (png_jmpbuf (png_ptr)))
+      {
+	  goto error;
+      }
+
+    png_set_write_fn (png_ptr, &membuf, rl2_png_write_data, rl2_png_flush);
+    type = PNG_COLOR_TYPE_RGB_ALPHA;
+    png_set_IHDR (png_ptr, info_ptr, width, height, 8,
+		  type, PNG_INTERLACE_NONE,
+		  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_write_info (png_ptr, info_ptr);
+    row_pointers = malloc (sizeof (png_bytep) * height);
+    if (row_pointers == NULL)
+	goto error;
+    for (row = 0; row < height; ++row)
+	row_pointers[row] = NULL;
+    p_in = pixels;
+    for (row = 0; row < height; row++)
+      {
+	  if ((row_pointers[row] = malloc (width * 4)) == NULL)
+	      goto error;
+	  p_out = row_pointers[row];
+	  for (col = 0; col < width; col++)
+	    {
+		*p_out++ = *p_in++;
+		*p_out++ = *p_in++;
+		*p_out++ = *p_in++;
+		*p_out++ = *p_in++;
+	    }
+      }
+    png_write_image (png_ptr, row_pointers);
+    png_write_end (png_ptr, info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    *png = membuf.buffer;
+    *png_size = membuf.size;
+    return RL2_OK;
+
+  error:
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    if (membuf.buffer != NULL)
+	free (membuf.buffer);
+    return RL2_ERROR;
+}
+
+static int
+compress_4bands_png16 (const unsigned char *pixels, unsigned int width,
+		       unsigned int height, unsigned char **png, int *png_size)
+{
+/* compressing a PNG image of the 4-bands type - 16 bits */
+    png_structp png_ptr;
+    png_infop info_ptr;
+    png_bytep *row_pointers = NULL;
+    png_bytep p_out;
+    unsigned int row;
+    unsigned int col;
+    const unsigned short *p_in;
+    int type;
+    struct png_memory_buffer membuf;
+    membuf.buffer = NULL;
+    membuf.size = 0;
+
+    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png_ptr)
+	return RL2_ERROR;
+    info_ptr = png_create_info_struct (png_ptr);
+    if (!info_ptr)
+      {
+	  png_destroy_write_struct (&png_ptr, NULL);
+	  return RL2_ERROR;
+      }
+    if (setjmp (png_jmpbuf (png_ptr)))
+      {
+	  goto error;
+      }
+
+    png_set_write_fn (png_ptr, &membuf, rl2_png_write_data, rl2_png_flush);
+    type = PNG_COLOR_TYPE_RGB_ALPHA;
+    png_set_IHDR (png_ptr, info_ptr, width, height, 16,
+		  type, PNG_INTERLACE_NONE,
+		  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_write_info (png_ptr, info_ptr);
+    row_pointers = malloc (sizeof (png_bytep) * height);
+    if (row_pointers == NULL)
+	goto error;
+    for (row = 0; row < height; ++row)
+	row_pointers[row] = NULL;
+    p_in = (unsigned short *) pixels;
+    for (row = 0; row < height; row++)
+      {
+	  if ((row_pointers[row] = malloc (width * 4 * 2)) == NULL)
+	      goto error;
+	  p_out = row_pointers[row];
+	  for (col = 0; col < width; col++)
+	    {
+		unsigned int value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+		value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+		value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+		value = *p_in++;
+		png_save_uint_16 (p_out, value);
+		p_out += 2;
+	    }
+      }
+    png_write_image (png_ptr, row_pointers);
+    png_write_end (png_ptr, info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    *png = membuf.buffer;
+    *png_size = membuf.size;
+    return RL2_OK;
+
+  error:
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+    for (row = 0; row < height; ++row)
+	free (row_pointers[row]);
+    free (row_pointers);
+    if (membuf.buffer != NULL)
+	free (membuf.buffer);
+    return RL2_ERROR;
+}
+
+static int
 check_png_compatibility (unsigned char sample_type, unsigned char pixel_type,
 			 unsigned char num_samples)
 {
@@ -474,6 +888,7 @@ check_png_compatibility (unsigned char sample_type, unsigned char pixel_type,
       case RL2_SAMPLE_2_BIT:
       case RL2_SAMPLE_4_BIT:
       case RL2_SAMPLE_UINT8:
+      case RL2_SAMPLE_UINT16:
 	  break;
       default:
 	  return RL2_ERROR;
@@ -484,6 +899,8 @@ check_png_compatibility (unsigned char sample_type, unsigned char pixel_type,
       case RL2_PIXEL_PALETTE:
       case RL2_PIXEL_GRAYSCALE:
       case RL2_PIXEL_RGB:
+      case RL2_PIXEL_MULTIBAND:
+      case RL2_PIXEL_DATAGRID:
 	  break;
       default:
 	  return RL2_ERROR;
@@ -534,12 +951,39 @@ check_png_compatibility (unsigned char sample_type, unsigned char pixel_type,
 	  switch (sample_type)
 	    {
 	    case RL2_SAMPLE_UINT8:
+	    case RL2_SAMPLE_UINT16:
 		break;
 	    default:
 		return RL2_ERROR;
 	    };
 	  if (num_samples != 3)
 	      return RL2_ERROR;
+      }
+    if (pixel_type == RL2_PIXEL_MULTIBAND)
+      {
+	  switch (sample_type)
+	    {
+	    case RL2_SAMPLE_UINT8:
+	    case RL2_SAMPLE_UINT16:
+		break;
+	    default:
+		return RL2_ERROR;
+	    };
+	  if (num_samples == 3 || num_samples == 4)
+	      ;
+	  else
+	      return RL2_ERROR;
+      }
+    if (pixel_type == RL2_PIXEL_DATAGRID)
+      {
+	  switch (sample_type)
+	    {
+	    case RL2_SAMPLE_UINT8:
+	    case RL2_SAMPLE_UINT16:
+		break;
+	    default:
+		return RL2_ERROR;
+	    };
       }
     return RL2_OK;
 }
@@ -591,7 +1035,8 @@ rl2_raster_to_png (rl2RasterPtr rst, unsigned char **png, int *png_size)
 
     if (rl2_data_to_png
 	(raster->rasterBuffer, raster->maskBuffer, 1.0, plt, raster->width,
-	 raster->height, sample_type, pixel_type, &blob, &blob_size) != RL2_OK)
+	 raster->height, sample_type, pixel_type, num_samples, &blob,
+	 &blob_size) != RL2_OK)
 	return RL2_ERROR;
     *png = blob;
     *png_size = blob_size;
@@ -610,7 +1055,7 @@ rl2_rgb_to_png (unsigned int width, unsigned int height,
 
     if (rl2_data_to_png
 	(rgb, NULL, 1.0, NULL, width, height, RL2_SAMPLE_UINT8, RL2_PIXEL_RGB,
-	 &blob, &blob_size) != RL2_OK)
+	 3, &blob, &blob_size) != RL2_OK)
 	return RL2_ERROR;
     *png = blob;
     *png_size = blob_size;
@@ -630,7 +1075,27 @@ rl2_rgb_alpha_to_png (unsigned int width, unsigned int height,
 
     if (rl2_data_to_png
 	(rgb, alpha, opacity, NULL, width, height, RL2_SAMPLE_UINT8,
-	 RL2_PIXEL_RGB, &blob, &blob_size) != RL2_OK)
+	 RL2_PIXEL_RGB, 3, &blob, &blob_size) != RL2_OK)
+	return RL2_ERROR;
+    *png = blob;
+    *png_size = blob_size;
+    return RL2_OK;
+}
+
+RL2_DECLARE int
+rl2_rgb_real_alpha_to_png (unsigned int width, unsigned int height,
+			   const unsigned char *rgb,
+			   const unsigned char *alpha, unsigned char **png,
+			   int *png_size)
+{
+/* creating a PNG image from two distinct RGB + Alpha buffer */
+    unsigned char *blob;
+    int blob_size;
+    if (rgb == NULL || alpha == NULL)
+	return RL2_ERROR;
+
+    if (compress_rgba_png8 (rgb, alpha, width, height,
+			    &blob, &blob_size) != RL2_OK)
 	return RL2_ERROR;
     *png = blob;
     *png_size = blob_size;
@@ -649,7 +1114,7 @@ rl2_gray_to_png (unsigned int width, unsigned int height,
 
     if (rl2_data_to_png
 	(gray, NULL, 1.0, NULL, width, height, RL2_SAMPLE_UINT8,
-	 RL2_PIXEL_GRAYSCALE, &blob, &blob_size) != RL2_OK)
+	 RL2_PIXEL_GRAYSCALE, 1, &blob, &blob_size) != RL2_OK)
 	return RL2_ERROR;
     *png = blob;
     *png_size = blob_size;
@@ -669,7 +1134,7 @@ rl2_gray_alpha_to_png (unsigned int width, unsigned int height,
 
     if (rl2_data_to_png
 	(gray, alpha, opacity, NULL, width, height, RL2_SAMPLE_UINT8,
-	 RL2_PIXEL_GRAYSCALE, &blob, &blob_size) != RL2_OK)
+	 RL2_PIXEL_GRAYSCALE, 1, &blob, &blob_size) != RL2_OK)
 	return RL2_ERROR;
     *png = blob;
     *png_size = blob_size;
@@ -680,10 +1145,11 @@ RL2_PRIVATE int
 rl2_data_to_png (const unsigned char *pixels, const unsigned char *mask,
 		 double opacity, rl2PalettePtr plt, unsigned int width,
 		 unsigned int height, unsigned char sample_type,
-		 unsigned char pixel_type, unsigned char **png, int *png_size)
+		 unsigned char pixel_type, unsigned char num_bands,
+		 unsigned char **png, int *png_size)
 {
 /* encoding a PNG image */
-    int ret;
+    int ret = RL2_ERROR;
     unsigned char *blob;
     int blob_size;
 
@@ -697,16 +1163,55 @@ rl2_data_to_png (const unsigned char *pixels, const unsigned char *mask,
 				    &blob, &blob_size);
 	  break;
       case RL2_PIXEL_MONOCHROME:
-      case RL2_PIXEL_GRAYSCALE:
 	  ret =
-	      compress_grayscale_png (pixels, mask, opacity, width, height,
-				      sample_type, pixel_type, &blob,
-				      &blob_size);
+	      compress_grayscale_png8 (pixels, mask, opacity, width, height,
+				       sample_type, pixel_type, &blob,
+				       &blob_size);
+	  break;
+      case RL2_PIXEL_GRAYSCALE:
+      case RL2_PIXEL_DATAGRID:
+	  if (sample_type == RL2_SAMPLE_UINT16)
+	      ret =
+		  compress_grayscale_png16 (pixels, width, height,
+					    sample_type, &blob, &blob_size);
+	  else
+	      ret =
+		  compress_grayscale_png8 (pixels, mask, opacity, width,
+					   height, sample_type, pixel_type,
+					   &blob, &blob_size);
 	  break;
       case RL2_PIXEL_RGB:
-	  ret =
-	      compress_rgb_png (pixels, mask, opacity, width, height, &blob,
-				&blob_size);
+	  if (sample_type == RL2_SAMPLE_UINT8)
+	      ret =
+		  compress_rgb_png8 (pixels, mask, opacity, width, height,
+				     &blob, &blob_size);
+	  else if (sample_type == RL2_SAMPLE_UINT16)
+	      ret =
+		  compress_rgb_png16 (pixels, width, height, &blob, &blob_size);
+	  break;
+      case RL2_PIXEL_MULTIBAND:
+	  if (sample_type == RL2_SAMPLE_UINT8)
+	    {
+		if (num_bands == 3)
+		    ret =
+			compress_rgb_png8 (pixels, mask, opacity, width,
+					   height, &blob, &blob_size);
+		else if (num_bands == 4)
+		    ret =
+			compress_4bands_png8 (pixels, width, height, &blob,
+					      &blob_size);
+	    }
+	  else if (sample_type == RL2_SAMPLE_UINT16)
+	    {
+		if (num_bands == 3)
+		    ret =
+			compress_rgb_png16 (pixels, width, height, &blob,
+					    &blob_size);
+		else
+		    ret =
+			compress_4bands_png16 (pixels, width, height, &blob,
+					       &blob_size);
+	    }
 	  break;
       };
     if (ret != RL2_OK)
@@ -728,7 +1233,7 @@ rl2_section_from_png (const char *path)
 /* attempting to create a raster */
     if (rl2_blob_from_file (path, &blob, &blob_size) != RL2_OK)
 	return NULL;
-    rst = rl2_raster_from_png (blob, blob_size);
+    rst = rl2_raster_from_png (blob, blob_size, 0);
     free (blob);
     if (rst == NULL)
 	return NULL;
@@ -741,14 +1246,14 @@ rl2_section_from_png (const char *path)
 }
 
 RL2_DECLARE rl2RasterPtr
-rl2_raster_from_png (const unsigned char *blob, int blob_size)
+rl2_raster_from_png (const unsigned char *blob, int blob_size, int alpha_mask)
 {
 /* attempting to create a raster from a PNG image */
     rl2RasterPtr rst = NULL;
     unsigned int width;
     unsigned int height;
     unsigned char sample_type;
-    unsigned char pixel_type;
+    unsigned char pixel_type = RL2_PIXEL_UNKNOWN;
     unsigned char nBands;
     unsigned char *data = NULL;
     int data_size;
@@ -758,11 +1263,17 @@ rl2_raster_from_png (const unsigned char *blob, int blob_size)
 
     if (rl2_decode_png
 	(blob, blob_size, &width, &height, &sample_type, &pixel_type, &nBands,
-	 &data, &data_size, &mask, &mask_sz, &palette) != RL2_OK)
+	 &data, &data_size, &mask, &mask_sz, &palette, alpha_mask) != RL2_OK)
 	goto error;
-    rst =
-	rl2_create_raster (width, height, sample_type, pixel_type, nBands, data,
-			   data_size, palette, mask, mask_sz, NULL);
+    if (alpha_mask)
+	rst =
+	    rl2_create_raster_alpha (width, height, sample_type, pixel_type,
+				     nBands, data, data_size, palette, mask,
+				     mask_sz, NULL);
+    else
+	rst =
+	    rl2_create_raster (width, height, sample_type, pixel_type, nBands,
+			       data, data_size, palette, mask, mask_sz, NULL);
     if (rst == NULL)
 	goto error;
     return rst;
@@ -783,7 +1294,7 @@ rl2_decode_png (const unsigned char *blob, int blob_size,
 		unsigned char *xsample_type, unsigned char *xpixel_type,
 		unsigned char *num_bands, unsigned char **pixels,
 		int *pixels_sz, unsigned char **xmask, int *xmask_sz,
-		rl2PalettePtr * xpalette)
+		rl2PalettePtr * xpalette, int alpha_mask)
 {
 /* attempting to decode a PNG image - raw block */
     png_uint_32 width;
@@ -797,7 +1308,7 @@ rl2_decode_png (const unsigned char *blob, int blob_size,
     struct png_memory_buffer membuf;
     unsigned char sample_type = RL2_SAMPLE_UNKNOWN;
     unsigned char pixel_type = RL2_PIXEL_UNKNOWN;
-    int nBands;
+    int nBands = 1;
     int i;
     png_colorp palette;
     int red[256];
@@ -820,6 +1331,7 @@ rl2_decode_png (const unsigned char *blob, int blob_size,
     int nTransp;
     png_color_16p transpValues;
     int has_alpha = 0;
+    int sampleSz = 1;
 
     if (blob == NULL || blob_size == 0)
 	return RL2_ERROR;
@@ -858,6 +1370,10 @@ rl2_decode_png (const unsigned char *blob, int blob_size,
       case 8:
 	  sample_type = RL2_SAMPLE_UINT8;
 	  break;
+      case 16:
+	  sample_type = RL2_SAMPLE_UINT16;
+	  sampleSz = 2;
+	  break;
       };
     if (bit_depth < 8)
 	png_set_packing (png_ptr);
@@ -888,10 +1404,21 @@ rl2_decode_png (const unsigned char *blob, int blob_size,
 	  nBands = 3;
 	  break;
       };
+    if (*xpixel_type == RL2_PIXEL_MULTIBAND)
+      {
+	  pixel_type = RL2_PIXEL_MULTIBAND;
+	  if (color_type == PNG_COLOR_TYPE_RGB)
+	      nBands = 3;
+	  if (color_type == PNG_COLOR_TYPE_RGB_ALPHA)
+	      nBands = 4;
+      }
+    if (*xpixel_type == RL2_PIXEL_DATAGRID)
+	pixel_type = RL2_PIXEL_DATAGRID;
     if (pixel_type == RL2_PIXEL_PALETTE)
       {
-	  if (png_get_tRNS (png_ptr, info_ptr, &transp, &nTransp, &transpValues)
-	      == PNG_INFO_tRNS)
+	  if (png_get_tRNS
+	      (png_ptr, info_ptr, &transp, &nTransp,
+	       &transpValues) == PNG_INFO_tRNS)
 	    {
 		/* a Transparency palette is defined */
 		int i;
@@ -901,20 +1428,25 @@ rl2_decode_png (const unsigned char *blob, int blob_size,
 	    }
       }
 /* creating the raster data */
-    data_size = width * height * nBands;
+    data_size = width * height * nBands * sampleSz;
     data = malloc (data_size);
     if (data == NULL)
 	goto error;
     p_data = data;
-    if (color_type == PNG_COLOR_TYPE_GRAY_ALPHA
-	|| color_type == PNG_COLOR_TYPE_RGB_ALPHA || has_alpha)
+    if (pixel_type == RL2_PIXEL_MULTIBAND || pixel_type == RL2_PIXEL_DATAGRID)
+	;
+    else
       {
-	  /* creating a transparency mask */
-	  mask_sz = width * height;
-	  mask = malloc (mask_sz);
-	  if (mask == NULL)
-	      goto error;
-	  p_mask = mask;
+	  if (color_type == PNG_COLOR_TYPE_GRAY_ALPHA
+	      || color_type == PNG_COLOR_TYPE_RGB_ALPHA || has_alpha)
+	    {
+		/* creating a transparency mask */
+		mask_sz = width * height;
+		mask = malloc (mask_sz);
+		if (mask == NULL)
+		    goto error;
+		p_mask = mask;
+	    }
       }
     png_read_update_info (png_ptr, info_ptr);
     rowbytes = png_get_rowbytes (png_ptr, info_ptr);
@@ -929,100 +1461,176 @@ rl2_decode_png (const unsigned char *blob, int blob_size,
     png_read_image (png_ptr, row_pointers);
     png_read_end (png_ptr, NULL);
     png_destroy_read_struct (&png_ptr, &info_ptr, NULL);
-    switch (color_type)
+    if (bit_depth == 16)
       {
-      case PNG_COLOR_TYPE_RGB:
-	  for (row = 0; row < height; row++)
+	  unsigned short *p_out = (unsigned short *) p_data;
+	  switch (color_type)
 	    {
-		png_bytep p_in = row_pointers[row];
-		for (col = 0; col < width; col++)
+	    case PNG_COLOR_TYPE_GRAY:
+		for (row = 0; row < height; row++)
 		  {
-		      *p_data++ = *p_in++;
-		      *p_data++ = *p_in++;
-		      *p_data++ = *p_in++;
-		  }
-	    }
-	  break;
-      case PNG_COLOR_TYPE_RGB_ALPHA:
-	  for (row = 0; row < height; row++)
-	    {
-		png_bytep p_in = row_pointers[row];
-		for (col = 0; col < width; col++)
-		  {
-		      *p_data++ = *p_in++;
-		      *p_data++ = *p_in++;
-		      *p_data++ = *p_in++;
-		      if (p_mask != NULL)
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
 			{
-			    if (*p_in++ < 128)
-				*p_mask++ = 0;
-			    else
-				*p_mask++ = 1;
+			    png_uint_16 value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
 			}
-		      else
-			  p_in++;
 		  }
-	    }
-	  break;
-      case PNG_COLOR_TYPE_GRAY:
-	  for (row = 0; row < height; row++)
-	    {
-		png_bytep p_in = row_pointers[row];
-		for (col = 0; col < width; col++)
+		break;
+	    case PNG_COLOR_TYPE_RGB:
+		for (row = 0; row < height; row++)
 		  {
-		      unsigned char val = *p_in++;
-		      switch (sample_type)
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
 			{
-			case RL2_SAMPLE_1_BIT:
-			case RL2_SAMPLE_2_BIT:
-			case RL2_SAMPLE_4_BIT:
-			case RL2_SAMPLE_UINT8:
-			    break;
-			default:
-			    val = 0;
-			};
-		      *p_data++ = val;
-		  }
-	    }
-	  break;
-      case PNG_COLOR_TYPE_GRAY_ALPHA:
-	  for (row = 0; row < height; row++)
-	    {
-		png_bytep p_in = row_pointers[row];
-		for (col = 0; col < width; col++)
-		  {
-		      *p_data++ = *p_in++;
-		      if (p_mask != NULL)
-			{
-			    if (*p_in++ < 128)
-				*p_mask++ = 0;
-			    else
-				*p_mask++ = 1;
+			    png_uint_16 value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
+			    value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
+			    value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
 			}
-		      else
-			  p_in++;
 		  }
-	    }
-	  break;
-      default:			/* palette */
-	  for (row = 0; row < height; row++)
-	    {
-		png_bytep p_in = row_pointers[row];
-		for (col = 0; col < width; col++)
+		break;
+	    case PNG_COLOR_TYPE_RGB_ALPHA:
+		for (row = 0; row < height; row++)
 		  {
-		      *p_data++ = *p_in;
-		      if (p_mask != NULL)
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
 			{
-			    if (alpha[*p_in] < 128)
-				*p_mask++ = 0;
-			    else
-				*p_mask++ = 1;
+			    png_uint_16 value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
+			    value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
+			    value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
+			    value = png_get_uint_16 (p_in);
+			    p_in += 2;
+			    *p_out++ = value;
 			}
-		      p_in++;
 		  }
-	    }
-	  break;
-      };
+		break;
+	    };
+      }
+    else
+      {
+	  switch (color_type)
+	    {
+	    case PNG_COLOR_TYPE_RGB:
+		for (row = 0; row < height; row++)
+		  {
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
+			{
+			    *p_data++ = *p_in++;
+			    *p_data++ = *p_in++;
+			    *p_data++ = *p_in++;
+			}
+		  }
+		break;
+	    case PNG_COLOR_TYPE_RGB_ALPHA:
+		for (row = 0; row < height; row++)
+		  {
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
+			{
+			    *p_data++ = *p_in++;
+			    *p_data++ = *p_in++;
+			    *p_data++ = *p_in++;
+			    if (pixel_type == RL2_PIXEL_MULTIBAND)
+				*p_data++ = *p_in++;
+			    else
+			      {
+				  if (p_mask != NULL)
+				    {
+					if (alpha_mask)
+					    *p_mask++ = *p_in++;
+					else
+					  {
+					      if (*p_in++ < 128)
+						  *p_mask++ = 0;
+					      else
+						  *p_mask++ = 1;
+					  }
+				    }
+				  else
+				      p_in++;
+			      }
+			}
+		  }
+		break;
+	    case PNG_COLOR_TYPE_GRAY:
+		for (row = 0; row < height; row++)
+		  {
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
+			{
+			    unsigned char val = *p_in++;
+			    switch (sample_type)
+			      {
+			      case RL2_SAMPLE_1_BIT:
+			      case RL2_SAMPLE_2_BIT:
+			      case RL2_SAMPLE_4_BIT:
+			      case RL2_SAMPLE_UINT8:
+				  break;
+			      default:
+				  val = 0;
+			      };
+			    *p_data++ = val;
+			}
+		  }
+		break;
+	    case PNG_COLOR_TYPE_GRAY_ALPHA:
+		for (row = 0; row < height; row++)
+		  {
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
+			{
+			    *p_data++ = *p_in++;
+			    if (p_mask != NULL)
+			      {
+				  if (alpha_mask)
+				      *p_mask++ = *p_in++;
+				  else
+				    {
+					if (*p_in++ < 128)
+					    *p_mask++ = 0;
+					else
+					    *p_mask++ = 1;
+				    }
+			      }
+			    else
+				p_in++;
+			}
+		  }
+		break;
+	    default:		/* palette */
+		for (row = 0; row < height; row++)
+		  {
+		      png_bytep p_in = row_pointers[row];
+		      for (col = 0; col < width; col++)
+			{
+			    *p_data++ = *p_in;
+			    if (p_mask != NULL)
+			      {
+				  if (alpha[*p_in] < 128)
+				      *p_mask++ = 0;
+				  else
+				      *p_mask++ = 1;
+			      }
+			    p_in++;
+			}
+		  }
+		break;
+	    };
+      }
 
     free (image_data);
     free (row_pointers);

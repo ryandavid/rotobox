@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -79,7 +79,8 @@ struct db_conn
     sqlite3 *db_handle;
     char *db_path;
     int read_only;
-    const void *cache;
+    void *cache;
+    void *priv_data;
 };
 
 static void
@@ -255,7 +256,8 @@ do_one_case (struct db_conn *conn, const struct test_data *data,
       {
 	  if (conn->cache != NULL)
 	      spatialite_init_ex (db_handle, conn->cache, 0);
-	  rl2_init (db_handle, 0);
+	  if (conn->priv_data != NULL)
+	      rl2_init (db_handle, conn->priv_data, 0);
       }
     save_connection (conn, data->database_name, db_handle, read_only, empty_db);
 
@@ -582,11 +584,13 @@ main (int argc, char *argv[])
 {
     int result = 0;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
     struct db_conn conn;
     conn.db_path = NULL;
     conn.db_handle = NULL;
     conn.cache = cache;
+    conn.priv_data = priv_data;
 
     old_SPATIALITE_SECURITY_ENV = getenv ("SPATIALITE_SECURITY");
 #ifdef _WIN32
@@ -615,6 +619,9 @@ main (int argc, char *argv[])
     close_connection (&conn);
     spatialite_cleanup_ex (conn.cache);
     conn.cache = NULL;
+    rl2_cleanup_private (conn.priv_data);
+    priv_data = rl2_alloc_private ();
+    conn.priv_data = priv_data;
 
     if (result == 0)
       {
@@ -648,6 +655,7 @@ main (int argc, char *argv[])
 	  close_connection (&conn);
       }
 
+    rl2_cleanup_private (conn.priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

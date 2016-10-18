@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -46,6 +46,8 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
+
 #include "sqlite3.h"
 #include "spatialite.h"
 #include "spatialite/gaiaaux.h"
@@ -54,6 +56,9 @@ the terms of any one of the MPL, the GPL or the LGPL.
 
 #define TILE_256	256
 #define TILE_1024	1024
+
+/* global variable used to alternatively enable/disable multithreading */
+int multithreading = 1;
 
 static int
 execute_check (sqlite3 * sqlite, const char *sql)
@@ -315,7 +320,7 @@ do_export_map_image (sqlite3 * sqlite, const char *coverage,
     path = sqlite3_mprintf ("./%s_map_%s.%s", coverage, style, suffix);
 
     sql =
-	"SELECT BlobToFile(RL2_GetMapImage(?, ST_Buffer(?, 0.65), ?, ?, ?, ?, ?, ?), ?)";
+	"SELECT BlobToFile(RL2_GetMapImageFromRaster(?, ST_Buffer(?, 0.65), ?, ?, ?, ?, ?, ?), ?)";
     ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
     if (ret != SQLITE_OK)
 	return 0;
@@ -388,14 +393,14 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 /* testing some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
-    const char *sample_name;
-    const char *pixel_name;
-    unsigned char num_bands;
-    const char *compression_name;
-    int qlty;
+    const char *coverage = NULL;
+    const char *sample_name = NULL;
+    const char *pixel_name = NULL;
+    unsigned char num_bands = 1;
+    const char *compression_name = NULL;
+    int qlty = 100;
     char *sql;
-    int tile_size;
+    int tile_size = 256;
     gaiaGeomCollPtr geom;
     int test_map_image = 0;
 
@@ -771,8 +776,21 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  break;
       };
 
+/* setting the MultiThreading mode alternatively on/off */
+    if (multithreading)
+      {
+	  sql = "SELECT RL2_SetMaxThreads(2)";
+	  multithreading = 0;
+      }
+    else
+      {
+	  sql = "SELECT RL2_SetMaxThreads(1)";
+	  multithreading = 1;
+      }
+    execute_check (sqlite, sql);
+
 /* creating the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.8f, %1.8f, "
 			   "RL2_SetPixelValue(RL2_CreatePixel(%Q, %Q, 1), 0, 0))",
 			   coverage, sample_name, pixel_name, num_bands,
@@ -783,7 +801,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -807,8 +825,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
       }
 
 /* deleting the first section */
-    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, %Q, 1)",
-			   coverage, "srtm1");
+    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, 1, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -906,9 +923,9 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
       }
 
 /* loading the RasterSymbolizers */
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "srtm_categ.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 1)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -916,12 +933,12 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  fprintf (stderr, "RegisterRasterStyledLayer #1 \"%s\" error: %s\n",
 		   coverage, err_msg);
 	  sqlite3_free (err_msg);
-	  *retcode += -19;
+	  *retcode += -18;
 	  return 0;
       }
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "srtm_interp.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 2)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -929,12 +946,12 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  fprintf (stderr, "RegisterRasterStyledLayer #2 \"%s\" error: %s\n",
 		   coverage, err_msg);
 	  sqlite3_free (err_msg);
-	  *retcode += -20;
+	  *retcode += -19;
 	  return 0;
       }
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "gray_gamma.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 3)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -942,12 +959,12 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  fprintf (stderr, "RegisterRasterStyledLayer #3 \"%s\" error: %s\n",
 		   coverage, err_msg);
 	  sqlite3_free (err_msg);
-	  *retcode += -21;
+	  *retcode += -20;
 	  return 0;
       }
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "gray_histogram.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 4)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -955,12 +972,12 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  fprintf (stderr, "RegisterRasterStyledLayer #4 \"%s\" error: %s\n",
 		   coverage, err_msg);
 	  sqlite3_free (err_msg);
-	  *retcode += -22;
+	  *retcode += -21;
 	  return 0;
       }
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "gray_normalize.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 5)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -968,12 +985,12 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  fprintf (stderr, "RegisterRasterStyledLayer #5 \"%s\" error: %s\n",
 		   coverage, err_msg);
 	  sqlite3_free (err_msg);
-	  *retcode += -23;
+	  *retcode += -22;
 	  return 0;
       }
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "srtm_relief_25.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 6)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -981,32 +998,44 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  fprintf (stderr, "RegisterRasterStyledLayer #6 \"%s\" error: %s\n",
 		   coverage, err_msg);
 	  sqlite3_free (err_msg);
-	  *retcode += -24;
+	  *retcode += -23;
 	  return 0;
       }
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "srtm_relief_75.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 7)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "RegisterRasterStyledLayer #7 \"%s\" error: %s\n",
+		   coverage, err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -24;
+	  return 0;
+      }
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 8)",
+			 coverage);
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyledLayer #8 \"%s\" error: %s\n",
 		   coverage, err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -25;
 	  return 0;
       }
-    sql = sqlite3_mprintf ("SELECT RegisterRasterStyledLayer(%Q, "
-			   "XB_Create(XB_LoadXML(%Q), 1, 1))", coverage,
-			   "srtm_brightness.xml");
+    sql =
+	sqlite3_mprintf ("SELECT SE_RegisterRasterStyledLayer(%Q, 9)",
+			 coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
-    if (ret != SQLITE_OK)
+    if (ret == SQLITE_OK)
       {
-	  fprintf (stderr, "RegisterRasterStyledLayer #7 \"%s\" error: %s\n",
-		   coverage, err_msg);
-	  sqlite3_free (err_msg);
+	  fprintf (stderr, "RegisterRasterStyledLayer #9 error: %s\n",
+		   "expected failure");
 	  *retcode += -26;
 	  return 0;
       }
@@ -1208,6 +1237,191 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
     if (!do_export_tile_image (sqlite, coverage, -1, 1))
       {
 	  *retcode += -62;
+	  return 0;
+      }
+
+    return 1;
+}
+
+static int
+register_raster_symbolizers (sqlite3 * sqlite, int no_web_connection,
+			     int *retcode)
+{
+
+/* loading the RasterSymbolizers */
+    int ret;
+    char *err_msg = NULL;
+    char *sql;
+
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "srtm_categ.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "srtm_categ.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #1 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -1;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "srtm_interp.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "srtm_interp.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #2 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -2;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "gray_gamma.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "gray_gamma.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #3 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -3;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "gray_histogram.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "gray_histogram.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #4 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -4;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "gray_normalize.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "gray_normalize.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #5 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -5;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "gray_histogram.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "gray_histogram.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret == SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #6 error: %s\n",
+		   "expected failure");
+	  *retcode += -6;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "srtm_relief_25.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "srtm_relief_25.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #7 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -7;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "srtm_relief_75.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "srtm_relief_75.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #8 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -8;
+	  return 0;
+      }
+    if (no_web_connection)
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1))",
+	     "srtm_brightness.xml");
+    else
+	sql =
+	    sqlite3_mprintf
+	    ("SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(%Q), 1, 1))",
+	     "srtm_brightness.xml");
+    ret = execute_check (sqlite, sql);
+    sqlite3_free (sql);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "RegisterRasterStyle #9 error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  *retcode += -9;
 	  return 0;
       }
 
@@ -1534,12 +1748,12 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
       };
 
 /* dropping the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_DropCoverage(%Q, 1)", coverage);
+    sql = sqlite3_mprintf ("SELECT RL2_DropRasterCoverage(%Q, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "DropCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "DropRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -1552,15 +1766,27 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 int
 main (int argc, char *argv[])
 {
+    int no_web_connection = 0;
     int result = 0;
     int ret;
     char *err_msg = NULL;
     sqlite3 *db_handle;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
 
     if (argc > 1 || argv[0] == NULL)
 	argc = 1;		/* silencing stupid compiler warnings */
+
+    if (getenv ("ENABLE_RL2_WEB_TESTS") == NULL)
+      {
+	  fprintf (stderr,
+		   "this testcase has been executed with several limitations\n"
+		   "because it was not enabled to access the Web.\n\n"
+		   "you can enable all testcases requiring an Internet connection\n"
+		   "by setting the environment variable \"ENABLE_RL2_WEB_TESTS=1\"\n\n");
+	  no_web_connection = 1;
+      }
 
     old_SPATIALITE_SECURITY_ENV = getenv ("SPATIALITE_SECURITY");
 #ifdef _WIN32
@@ -1579,7 +1805,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
     ret =
 	sqlite3_exec (db_handle, "SELECT InitSpatialMetadata(1)", NULL, NULL,
 		      &err_msg);
@@ -1598,14 +1824,25 @@ main (int argc, char *argv[])
 	  sqlite3_free (err_msg);
 	  return -3;
       }
-    ret =
-	sqlite3_exec (db_handle, "SELECT CreateStylingTables()", NULL,
-		      NULL, &err_msg);
+    if (no_web_connection)
+	ret =
+	    sqlite3_exec (db_handle, "SELECT CreateStylingTables(1)", NULL,
+			  NULL, &err_msg);
+    else
+	ret =
+	    sqlite3_exec (db_handle, "SELECT CreateStylingTables()", NULL,
+			  NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "CreateStylingTables() error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
-	  return 4;
+	  return -4;
+      }
+
+    if (!register_raster_symbolizers (db_handle, no_web_connection, &ret))
+      {
+	  fprintf (stderr, "Register Raster Symbolizers error\n");
+	  return -5;
       }
 
 /* SRTM (GRID) tests */
@@ -1625,6 +1862,8 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -300;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1633,6 +1872,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* UINT16 tests */
     ret = -150;
@@ -1652,6 +1892,8 @@ main (int argc, char *argv[])
 	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_DEFLATE, TILE_1024,
 	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -350;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1660,6 +1902,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* INT32 tests */
     ret = -400;
@@ -1678,6 +1921,8 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -600;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1686,6 +1931,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* UINT32 tests */
     ret = -450;
@@ -1705,6 +1951,8 @@ main (int argc, char *argv[])
 	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_DEFLATE, TILE_1024,
 	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -650;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1713,6 +1961,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* FLOAT tests */
     ret = -700;
@@ -1731,6 +1980,8 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -900;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1739,6 +1990,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* INT8 tests */
     ret = -750;
@@ -1757,6 +2009,8 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -950;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1765,6 +2019,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* DOUBLE tests */
     ret = -1000;
@@ -1784,6 +2039,8 @@ main (int argc, char *argv[])
 	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_DEFLATE, TILE_1024,
 	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -1200;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1792,6 +2049,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* UINT8 tests */
     ret = -1050;
@@ -1810,6 +2068,8 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -1250;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1818,6 +2078,7 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all SRTM INT16 Coverages */
     ret = -130;
@@ -1836,6 +2097,8 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -330;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1844,6 +2107,7 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all SRTM UINT16 Coverages */
     ret = -180;
@@ -1863,6 +2127,8 @@ main (int argc, char *argv[])
 	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_DEFLATE, TILE_1024,
 	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -380;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1871,6 +2137,7 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all INT32 Coverages */
     ret = -430;
@@ -1889,6 +2156,8 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -630;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1897,6 +2166,7 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all UINT32 Coverages */
     ret = -480;
@@ -1916,6 +2186,8 @@ main (int argc, char *argv[])
 	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_DEFLATE, TILE_1024,
 	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -680;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1924,6 +2196,7 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all FLOAT Coverages */
     ret = -740;
@@ -1942,6 +2215,8 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -940;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1950,6 +2225,7 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all INT8 Coverages */
     ret = -780;
@@ -1968,6 +2244,8 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -980;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -1976,6 +2254,7 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all DOUBLE Coverages */
     ret = -1030;
@@ -1995,6 +2274,8 @@ main (int argc, char *argv[])
 	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_DEFLATE, TILE_1024,
 	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -1230;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -2003,6 +2284,7 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all UINT8 Coverages */
     ret = -1030;
@@ -2021,6 +2303,8 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -1230;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_LZMA, TILE_256, &ret))
@@ -2029,9 +2313,12 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
 	return ret;
+#endif /* end LZMA conditional */
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

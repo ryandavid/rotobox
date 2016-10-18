@@ -1,22 +1,48 @@
 
-EXTRA_DIST = createcov_16_mband1.testcase \
+EXTRA_DIST = getmaxthreads1.testcase \
+	setmaxthreads1.testcase \
+	setmaxthreads2.testcase \
+	setmaxthreads3.testcase \
+	setmaxthreads4.testcase \
+	setmaxthreads5.testcase \
+	setmaxthreads6.testcase \
+	setmaxthreads7.testcase \
+	copyrastercov1.testcase \
+	copyrastercov2.testcase \
+	copyrastercov3.testcase \
+	copyrastercov4.testcase \
+	copyrastercov5.testcase \
+	copyrastercov6.testcase \
+	copyrastercov7.testcase \
+	copyrastercov8.testcase \
+	copyrastercov9.testcase \
+	copyrastercov10.testcase \
+	copyrastercov11.testcase \
+	copyrastercov12.testcase \
+	copyrastercov13.testcase \
+	copyrastercov14.testcase \
+    createcov_16_mband1.testcase \
 	createcov_16_mband_deflate.testcase \
+	createcov_16_mband_deflateno.testcase \
 	createcov_16_mband_fax3.testcase \
 	createcov_16_mband_fax4.testcase \
 	createcov_16_mband_gif.testcase \
 	createcov_16_mband_jpeg.testcase \
 	createcov_16_mband_lzma.testcase \
+	createcov_16_mband_lzmano.testcase \
 	createcov_16_mband_png.testcase \
 	createcov_16_mband.testcase \
 	createcov_16_mband_webp1.testcase \
 	createcov_16_mband_webp2.testcase \
 	createcov_1bit_mono1.testcase \
 	createcov_1bit_mono_deflate.testcase \
+	createcov_1bit_mono_deflateno.testcase \
 	createcov_1bit_mono_fax3.testcase \
 	createcov_1bit_mono_fax4.testcase \
 	createcov_1bit_mono_gif.testcase \
 	createcov_1bit_mono_jpeg.testcase \
 	createcov_1bit_mono_lzma.testcase \
+	createcov_1bit_mono_lzmano.testcase \
 	createcov_1bit_mono_png.testcase \
 	createcov_1bit_mono.testcase \
 	createcov_1bit_mono_webp1.testcase \
@@ -49,18 +75,22 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	createcov_4bit_palette.testcase \
 	createcov_8_mband1.testcase \
 	createcov_8_mband_deflate.testcase \
+	createcov_8_mband_deflateno.testcase \
 	createcov_8_mband_fax3.testcase \
 	createcov_8_mband_fax4.testcase \
 	createcov_8_mband_gif.testcase \
 	createcov_8_mband_jpeg.testcase \
 	createcov_8_mband_lzma.testcase \
+	createcov_8_mband_lzmano.testcase \
 	createcov_8_mband_png.testcase \
 	createcov_8_mband.testcase \
 	createcov_8_mband_webp1.testcase \
 	createcov_8_mband_webp2.testcase \
 	createcov_double_grid1.testcase \
 	createcov_double_grid_deflate.testcase \
+	createcov_double_grid_deflateno.testcase \
 	createcov_double_grid_lzma.testcase \
+	createcov_double_grid_lzmano.testcase \
 	createcov_double_grid.testcase \
 	createcov_err1.testcase \
 	createcov_err2.testcase \
@@ -74,66 +104,91 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	createcov_err10.testcase \
 	createcov_err11.testcase \
 	createcov_err12.testcase \
+	createcov_err13.testcase \
+	createcov_err14.testcase \
+	createcov_err15.testcase \
+	createcov_err16.testcase \
+	createcov_err17.testcase \
 	createcov_float_grid1.testcase \
 	createcov_float_grid_deflate.testcase \
+	createcov_float_grid_deflateno.testcase \
 	createcov_float_grid_lzma.testcase \
+	createcov_float_grid_lzmano.testcase \
 	createcov_float_grid.testcase \
 	createcov_int16_grid1.testcase \
 	createcov_int16_grid_deflate.testcase \
+	createcov_int16_grid_deflateno.testcase \
 	createcov_int16_grid_lzma.testcase \
+	createcov_int16_grid_lzmano.testcase \
 	createcov_int16_grid.testcase \
 	createcov_int32_grid1.testcase \
 	createcov_int32_grid_deflate.testcase \
+	createcov_int32_grid_deflateno.testcase \
 	createcov_int32_grid_gif.testcase \
 	createcov_int32_grid_jpeg.testcase \
 	createcov_int32_grid_lzma.testcase \
+	createcov_int32_grid_lzmano.testcase \
 	createcov_int32_grid_png.testcase \
 	createcov_int32_grid.testcase \
 	createcov_int32_grid_webp1.testcase \
 	createcov_int32_grid_webp2.testcase \
 	createcov_int8_grid1.testcase \
 	createcov_int8_grid_deflate.testcase \
+	createcov_int8_grid_deflateno.testcase \
 	createcov_int8_grid_lzma.testcase \
+	createcov_int8_grid_lzmano.testcase \
 	createcov_int8_grid.testcase \
 	createcov_uint16_grid1.testcase \
 	createcov_uint16_grid_deflate.testcase \
+	createcov_uint16_grid_deflateno.testcase \
 	createcov_uint16_grid_lzma.testcase \
+	createcov_uint16_grid_lzmano.testcase \
 	createcov_uint16_grid.testcase \
 	createcov_uint32_grid1.testcase \
 	createcov_uint32_grid_deflate.testcase \
+	createcov_uint32_grid_deflateno.testcase \
 	createcov_uint32_grid_lzma.testcase \
+	createcov_uint32_grid_lzmano.testcase \
 	createcov_uint32_grid.testcase \
 	createcov_uint8_gray_deflate.testcase \
+	createcov_uint8_gray_deflateno.testcase \
 	createcov_uint8_gray_fax3.testcase \
 	createcov_uint8_gray_fax4.testcase \
 	createcov_uint8_gray_gif.testcase \
 	createcov_uint8_gray_jpeg.testcase \
 	createcov_uint8_gray_lzma.testcase \
+	createcov_uint8_gray_lzmano.testcase \
 	createcov_uint8_gray_png.testcase \
 	createcov_uint8_gray.testcase \
 	createcov_uint8_gray_webp1.testcase \
 	createcov_uint8_gray_webp2.testcase \
 	createcov_uint8_grid1.testcase \
 	createcov_uint8_grid_deflate.testcase \
+	createcov_uint8_grid_deflateno.testcase \
 	createcov_uint8_grid_lzma.testcase \
+	createcov_uint8_grid_lzmano.testcase \
 	createcov_uint8_grid.testcase \
 	createcov_uint8_palette_deflate.testcase \
+	createcov_uint8_palette_deflateno.testcase \
 	createcov_uint8_palette_fax3.testcase \
 	createcov_uint8_palette_fax4.testcase \
 	createcov_uint8_palette_gif.testcase \
 	createcov_uint8_palette_jpeg.testcase \
 	createcov_uint8_palette_lzma.testcase \
+	createcov_uint8_palette_lzmano.testcase \
 	createcov_uint8_palette_png.testcase \
 	createcov_uint8_palette.testcase \
 	createcov_uint8_palette_webp1.testcase \
 	createcov_uint8_palette_webp2.testcase \
 	createcov_uint8_rgb1.testcase \
 	createcov_uint8_rgb_deflate.testcase \
+	createcov_uint8_rgb_deflateno.testcase \
 	createcov_uint8_rgb_fax3.testcase \
 	createcov_uint8_rgb_fax4.testcase \
 	createcov_uint8_rgb_gif.testcase \
 	createcov_uint8_rgb_jpeg.testcase \
 	createcov_uint8_rgb_lzma.testcase \
+	createcov_uint8_rgb_lzmano.testcase \
 	createcov_uint8_rgb_png.testcase \
 	createcov_uint8_rgb.testcase \
 	createcov_uint8_rgb_webp1.testcase \
@@ -170,6 +225,16 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	dropcoverage1.testcase \
 	dropcoverage2.testcase \
 	dropcoverage3.testcase \
+	getfontfacename1.testcase \
+	getfontfacename2.testcase \
+	getfontfacename3.testcase \
+	getfontfacename4.testcase \
+	getfontfacename5.testcase \
+	getfontfamily1.testcase \
+	getfontfamily2.testcase \
+	getfontfamily3.testcase \
+	getfontfamily4.testcase \
+	getfontfamily5.testcase \
 	getmapimage1.testcase \
 	getmapimage2.testcase \
 	getmapimage3.testcase \
@@ -180,7 +245,7 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	getmapimage8.testcase \
 	getmapimage9.testcase \
 	getmapimage10.testcase \
-	getmapimage1.testcase \
+	getmapimage11.testcase \
 	getmapimage12.testcase \
 	getmapimage13.testcase \
 	getmapimage14.testcase \
@@ -190,6 +255,26 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	getmapimage18.testcase \
 	getmapimage19.testcase \
 	getmapimage20.testcase \
+	getvectorimage1.testcase \
+	getvectorimage2.testcase \
+	getvectorimage3.testcase \
+	getvectorimage4.testcase \
+	getvectorimage5.testcase \
+	getvectorimage6.testcase \
+	getvectorimage7.testcase \
+	getvectorimage8.testcase \
+	getvectorimage9.testcase \
+	getvectorimage10.testcase \
+	getvectorimage11.testcase \
+	getvectorimage12.testcase \
+	getvectorimage13.testcase \
+	getvectorimage14.testcase \
+	getvectorimage15.testcase \
+	getvectorimage16.testcase \
+	getvectorimage17.testcase \
+	getvectorimage18.testcase \
+	getvectorimage19.testcase \
+	getvectorimage20.testcase \
 	gettileimage1.testcase \
 	gettileimage2.testcase \
 	gettileimage3.testcase \
@@ -294,6 +379,51 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	getrasterstats24.testcase \
 	getrasterstats25.testcase \
 	getrasterstats26.testcase \
+	enableautondvi1.testcase \
+	enableautondvi2.testcase \
+	enableautondvi3.testcase \
+	exportraw1.testcase \
+	exportraw2.testcase \
+	exportraw3.testcase \
+	exportraw4.testcase \
+	exportraw5.testcase \
+	exportraw6.testcase \
+	exportraw7.testcase \
+	exportraw8.testcase \
+	exportsectraw1.testcase \
+	exportsectraw2.testcase \
+	exportsectraw3.testcase \
+	exportsectraw4.testcase \
+	exportsectraw5.testcase \
+	exportsectraw6.testcase \
+	exportsectraw7.testcase \
+	exportsectraw8.testcase \
+	exportsectraw9.testcase \
+	importraw1.testcase \
+	importraw2.testcase \
+	importraw3.testcase \
+	importraw4.testcase \
+	importraw5.testcase \
+	importraw6.testcase \
+	importraw7.testcase \
+	importraw8.testcase \
+	importraw9.testcase \
+	importraw10.testcase \
+	isautondvienabled1.testcase \
+	isautondvienabled2.testcase \
+	isautondvienabled3.testcase \
+	isautondvienabled4.testcase \
+	isautondvienabled5.testcase \
+	isfontbold1.testcase \
+	isfontbold2.testcase \
+	isfontbold3.testcase \
+	isfontbold4.testcase \
+	isfontbold5.testcase \
+	isfontitalic1.testcase \
+	isfontitalic2.testcase \
+	isfontitalic3.testcase \
+	isfontitalic4.testcase \
+	isfontitalic5.testcase \
 	ispixelopaque1.testcase \
 	ispixelopaque2.testcase \
 	ispixelopaque3.testcase \
@@ -304,6 +434,11 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	ispixeltransparent3.testcase \
 	ispixeltransparent4.testcase \
 	ispixeltransparent5.testcase \
+	isvalidfont1.testcase \
+	isvalidfont2.testcase \
+	isvalidfont3.testcase \
+	isvalidfont4.testcase \
+	isvalidfont5.testcase \
 	isvalidpalette1.testcase \
 	isvalidpalette2.testcase \
 	isvalidpalette3.testcase \
@@ -387,10 +522,33 @@ EXTRA_DIST = createcov_16_mband1.testcase \
 	pyramidize14.testcase \
 	pyramidize15.testcase \
 	pyramidize16.testcase \
+	pyramidize17.testcase \
+	pyramidize18.testcase \
+	pyramidize19.testcase \
 	setcoverageinfos1.testcase \
 	setcoverageinfos2.testcase \
 	setcoverageinfos3.testcase \
 	setcoverageinfos4.testcase \
+	setdefaultbands1.testcase \
+	setdefaultbands2.testcase \
+	setdefaultbands3.testcase \
+	setdefaultbands4.testcase \
+	setdefaultbands5.testcase \
+	setdefaultbands6.testcase \
+	setdefaultbands7.testcase \
+	setdefaultbands8.testcase \
+	setdefaultbands9.testcase \
+	setdefaultbands10.testcase \
+	setdefaultbands11.testcase \
+	setdefaultbands12.testcase \
+	setdefaultbands13.testcase \
+	setdefaultbands14.testcase \
+	setdefaultbands15.testcase \
+	setdefaultbands16.testcase \
+	setdefaultbands17.testcase \
+	setdefaultbands18.testcase \
+	setdefaultbands19.testcase \
+	setdefaultbands20.testcase \
 	setpalettecolorentry1.testcase \
 	setpalettecolorentry2.testcase \
 	setpalettecolorentry3.testcase \

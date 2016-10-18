@@ -7,6 +7,7 @@ All libraries under the '3rd_party' are licensed as shown in the table below.  M
 |dump978 (fork)|https://github.com/mutability/dump978|GPLv2|Added 'MAKE_DUMP_978_LIB' flag to allow use as a lib|
 |giflib|http://giflib.sourceforge.net|MIT||
 |gpsd|http://catb.org/gpsd/|BSD|Comment out device reset on disconnect|
+|freetype|https://www.freetype.org|BSD-like||
 |libarchive|http://www.libarchive.org|BSD||
 |libcairo|https://www.cairographics.org|LGPL2.1, MPL1.1||
 |libgeos|https://trac.osgeo.org/geos|LGPL||

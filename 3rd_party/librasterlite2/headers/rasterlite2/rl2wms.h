@@ -1885,7 +1885,7 @@ extern "C"
  \param handle the pointer to a valid WMS-FeatureCollection returned by a previous call
  to do_wms_GetFeatureInfo_get() or do_wms_GetFeatureInfo_post()
  \param index the relative index identifying the required Attribute (the first 
- Attribute supported by a WMS-FeatureMember object has index ZERO). 
+ Attribute supported by a WMS-FeatureMember object has index ZERO).
 
  \return a pointer the Nth AttributeValue string of some WMS-FeatureMember object:
  NULL if any error occurs. (please note: an AttributeValue could eventually correspond
@@ -1902,17 +1902,18 @@ extern "C"
 					  int index);
 
 /**
- Return a pointer to a SpatiaLite's own Geometry object corresponding to the Nth AttributeValue 
- from within some WMS-FeatureMember object
+ Retrieves a SpatiaLite's BLOB binery geometry corresponding to the Nth
+ AttributeValue from within some WMS-FeatureMember object
 
  \param handle the pointer to a valid WMS-FeatureCollection returned by a previous call
  to do_wms_GetFeatureInfo_get() or do_wms_GetFeatureInfo_post()
  \param index the relative index identifying the required Attribute (the first 
  Attribute supported by a WMS-FeatureMember object has index ZERO). 
+ \param blob on completion will point to the BLOB binary Geometry.
+ \param blob_soze on completion the variable referenced by this
+ pointer will contain the size (in bytes) of BLOB. Geometry.
 
- \return a pointer the Nth AttributeValue of some WMS-FeatureMember object if it actually
- corresponds to some GML Geometry:
- NULL if any error occurs or if the AttributeValue isn't a GML Geometry. 
+ \return RL2_OK on success: RL2_ERROR on failure.
  
  \sa do_wms_GetFeatureInfo_get, do_wms_GetFeatureInfo_post,
  destroy_wms_feature_collection, wms_feature_collection_parse_geometries, 
@@ -1920,12 +1921,14 @@ extern "C"
  get_wms_feature_attributes_count, get_wms_feature_attribute_name, 
  get_wms_feature_attribute_value
 
- \note the returned Geometry object simply is a reference, and this must
- absolutely not be destroyed by directly calling gaiaFreeGeomColl().
+ \note the returned BLOB Geometry simply is a reference, and must
+ absolutely not be destroyed by directly calling free().
  */
-    RL2_DECLARE gaiaGeomCollPtr
-	get_wms_feature_attribute_geometry (rl2WmsFeatureMemberPtr handle,
-					    int index);
+    RL2_DECLARE int
+	get_wms_feature_attribute_blob_geometry (rl2WmsFeatureMemberPtr handle,
+						 int index,
+						 const unsigned char **blob,
+						 int *blob_size);
 
 #ifdef __cplusplus
 }

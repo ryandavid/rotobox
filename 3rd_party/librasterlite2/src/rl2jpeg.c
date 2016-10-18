@@ -20,7 +20,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -230,7 +230,8 @@ rl2_jpeg_src (j_decompress_ptr cinfo,
     if (cinfo->src == NULL)
       {				/* first time for this JPEG object? */
 	  cinfo->src = (struct jpeg_source_mgr *)
-	      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+	      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo,
+					  JPOOL_PERMANENT,
 					  sizeof (struct jpeg_source_mgr));
       }
 
@@ -265,7 +266,8 @@ rl2_jpeg_dest (j_compress_ptr cinfo,
     if (cinfo->dest == NULL)
       {				/* first time for this JPEG object? */
 	  cinfo->dest = (struct jpeg_destination_mgr *)
-	      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+	      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo,
+					  JPOOL_PERMANENT,
 					  sizeof (jpeg_mem_destination_mgr));
 	  dest = (jpeg_mem_dest_ptr) cinfo->dest;
 	  dest->newbuffer = NULL;
@@ -757,8 +759,8 @@ rl2_raster_to_jpeg (rl2RasterPtr raster, unsigned char **jpeg, int *jpeg_size,
 
     if (rst == NULL)
 	return RL2_ERROR;
-    if (check_jpeg_compatibility (rst->sampleType, rst->pixelType, rst->nBands)
-	!= RL2_OK)
+    if (check_jpeg_compatibility
+	(rst->sampleType, rst->pixelType, rst->nBands) != RL2_OK)
 	return RL2_ERROR;
     if (rl2_data_to_jpeg
 	(rst->rasterBuffer, rst->maskBuffer, (rl2PalettePtr) (rst->Palette),
@@ -782,8 +784,8 @@ rl2_rgb_to_jpeg (unsigned int width, unsigned int height,
 	return RL2_ERROR;
 
     if (rl2_data_to_jpeg
-	(rgb, NULL, NULL, width, height, RL2_SAMPLE_UINT8, RL2_PIXEL_RGB, &blob,
-	 &blob_size, quality) != RL2_OK)
+	(rgb, NULL, NULL, width, height, RL2_SAMPLE_UINT8, RL2_PIXEL_RGB,
+	 &blob, &blob_size, quality) != RL2_OK)
 	return RL2_ERROR;
     *jpeg = blob;
     *jpeg_size = blob_size;
@@ -792,8 +794,8 @@ rl2_rgb_to_jpeg (unsigned int width, unsigned int height,
 
 RL2_DECLARE int
 rl2_gray_to_jpeg (unsigned int width, unsigned int height,
-		  const unsigned char *gray, int quality, unsigned char **jpeg,
-		  int *jpeg_size)
+		  const unsigned char *gray, int quality,
+		  unsigned char **jpeg, int *jpeg_size)
 {
 /* creating a PNG image from a Grayscale buffer */
     unsigned char *blob;
@@ -802,8 +804,8 @@ rl2_gray_to_jpeg (unsigned int width, unsigned int height,
 	return RL2_ERROR;
 
     if (rl2_data_to_jpeg
-	(gray, NULL, NULL, width, height, RL2_SAMPLE_UINT8, RL2_PIXEL_GRAYSCALE,
-	 &blob, &blob_size, quality) != RL2_OK)
+	(gray, NULL, NULL, width, height, RL2_SAMPLE_UINT8,
+	 RL2_PIXEL_GRAYSCALE, &blob, &blob_size, quality) != RL2_OK)
 	return RL2_ERROR;
     *jpeg = blob;
     *jpeg_size = blob_size;
@@ -851,8 +853,9 @@ rl2_section_from_jpeg (const char *path)
 
 /* creating the raster section */
     scn =
-	rl2_create_section (path, RL2_COMPRESSION_JPEG, RL2_TILESIZE_UNDEFINED,
-			    RL2_TILESIZE_UNDEFINED, rst);
+	rl2_create_section (path, RL2_COMPRESSION_JPEG,
+			    RL2_TILESIZE_UNDEFINED, RL2_TILESIZE_UNDEFINED,
+			    rst);
     return scn;
 }
 
@@ -878,8 +881,8 @@ rl2_raster_from_jpeg (const unsigned char *jpeg, int jpeg_size)
 
 /* creating the raster */
     rst =
-	rl2_create_raster (width, height, RL2_SAMPLE_UINT8, pixel_type, nBands,
-			   data, data_size, NULL, NULL, 0, NULL);
+	rl2_create_raster (width, height, RL2_SAMPLE_UINT8, pixel_type,
+			   nBands, data, data_size, NULL, NULL, 0, NULL);
     if (rst == NULL)
 	goto error;
     return rst;
@@ -892,6 +895,69 @@ rl2_raster_from_jpeg (const unsigned char *jpeg, int jpeg_size)
     return NULL;
 }
 
+RL2_DECLARE int
+rl2_get_jpeg_infos (const char *path, unsigned int *width,
+		    unsigned int *height, unsigned char *pixel_type)
+{
+/* attempting to retrieve basic infos from a JPEG image */
+    int jpeg_size;
+    unsigned char *jpeg = NULL;
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+    int row_stride;
+    JSAMPARRAY buffer;
+
+/* attempting to create a raster */
+    if (rl2_blob_from_file (path, &jpeg, &jpeg_size) != RL2_OK)
+	return RL2_ERROR;
+
+    cinfo.err = jpeg_std_error (&jerr);
+    jpeg_create_decompress (&cinfo);
+    rl2_jpeg_src (&cinfo, (unsigned char *) jpeg, jpeg_size);
+    jpeg_read_header (&cinfo, TRUE);
+    cinfo.scale_num = 8;
+    cinfo.scale_denom = 8;
+    if ((cinfo.jpeg_color_space == JCS_CMYK)
+	|| (cinfo.jpeg_color_space == JCS_YCCK))
+	cinfo.out_color_space = JCS_CMYK;
+    if (!jpeg_start_decompress (&cinfo))
+	goto error;
+
+    if (cinfo.out_color_space == JCS_RGB && cinfo.output_components == 3)
+	*pixel_type = RL2_PIXEL_RGB;
+    else if (cinfo.out_color_space == JCS_GRAYSCALE
+	     && cinfo.output_components == 1)
+	*pixel_type = RL2_PIXEL_GRAYSCALE;
+    else if (cinfo.out_color_space == JCS_CMYK && cinfo.output_components == 4)
+	*pixel_type = RL2_PIXEL_RGB;
+    else
+	goto error;
+    *width = cinfo.output_width;
+    *height = cinfo.output_height;
+/* creating the scanline buffer */
+    row_stride = cinfo.output_width * cinfo.output_components;
+    buffer =
+	(*cinfo.mem->alloc_sarray) ((j_common_ptr) & cinfo, JPOOL_IMAGE,
+				    row_stride, 1);
+    if (buffer == NULL)
+	goto error;
+    while (cinfo.output_scanline < cinfo.output_height)
+      {
+	  /* reading all decompressed scanlines */
+	  jpeg_read_scanlines (&cinfo, buffer, 1);
+      }
+
+/* memory cleanup */
+    jpeg_finish_decompress (&cinfo);
+    jpeg_destroy_decompress (&cinfo);
+    free (jpeg);
+    return RL2_OK;
+
+  error:
+    free (jpeg);
+    jpeg_destroy_decompress (&cinfo);
+    return RL2_ERROR;
+}
 
 RL2_PRIVATE int
 rl2_decode_jpeg_scaled (int scale, const unsigned char *jpeg, int jpeg_size,
@@ -1001,8 +1067,8 @@ rl2_decode_jpeg_scaled (int scale, const unsigned char *jpeg, int jpeg_size,
 		JSAMPROW row = buffer[0];
 		for (i = 0; i < (int) (cinfo.output_width); i++)
 		  {
-		      CMYK2RGB (*(row + 0), *(row + 1), *(row + 2), *(row + 3),
-				inverted, p_data);
+		      CMYK2RGB (*(row + 0), *(row + 1), *(row + 2),
+				*(row + 3), inverted, p_data);
 		      row += 4;
 		      p_data += 3;
 		  }
@@ -1228,15 +1294,15 @@ read_from_jpeg (rl2PrivRasterPtr origin, unsigned short width,
 static int
 eval_jpeg_origin_compatibility (rl2PrivCoveragePtr coverage,
 				rl2PrivRasterPtr raster,
-				unsigned char forced_conversion)
+				unsigned char forced_conversion, int verbose)
 {
 /* checking for strict compatibility */
     if (coverage->sampleType == RL2_SAMPLE_UINT8
 	&& coverage->pixelType == RL2_PIXEL_GRAYSCALE && coverage->nBands == 1)
       {
 	  if (raster->sampleType == RL2_SAMPLE_UINT8
-	      && raster->pixelType == RL2_PIXEL_GRAYSCALE && raster->nBands == 1
-	      && forced_conversion == RL2_CONVERT_NO)
+	      && raster->pixelType == RL2_PIXEL_GRAYSCALE
+	      && raster->nBands == 1 && forced_conversion == RL2_CONVERT_NO)
 	      return 1;
 	  if (raster->sampleType == RL2_SAMPLE_UINT8
 	      && raster->pixelType == RL2_PIXEL_RGB && raster->nBands == 3
@@ -1251,17 +1317,20 @@ eval_jpeg_origin_compatibility (rl2PrivCoveragePtr coverage,
 	      && forced_conversion == RL2_CONVERT_NO)
 	      return 1;
 	  if (raster->sampleType == RL2_SAMPLE_UINT8
-	      && raster->pixelType == RL2_PIXEL_GRAYSCALE && raster->nBands == 1
+	      && raster->pixelType == RL2_PIXEL_GRAYSCALE
+	      && raster->nBands == 1
 	      && forced_conversion == RL2_CONVERT_GRAYSCALE_TO_RGB)
 	      return 1;
       }
+    if (verbose)
+	fprintf (stderr, "Mismatching JPEG colorspace !!!\n");
     return 0;
 }
 
 RL2_DECLARE rl2RasterPtr
 rl2_get_tile_from_jpeg_origin (rl2CoveragePtr cvg, rl2RasterPtr jpeg,
 			       unsigned int startRow, unsigned int startCol,
-			       unsigned char forced_conversion)
+			       unsigned char forced_conversion, int verbose)
 {
 /* attempting to create a Coverage-tile from a JPEG origin */
     unsigned int x;
@@ -1277,7 +1346,8 @@ rl2_get_tile_from_jpeg_origin (rl2CoveragePtr cvg, rl2RasterPtr jpeg,
 
     if (coverage == NULL || origin == NULL)
 	return NULL;
-    if (!eval_jpeg_origin_compatibility (coverage, origin, forced_conversion))
+    if (!eval_jpeg_origin_compatibility
+	(coverage, origin, forced_conversion, verbose))
 	return NULL;
 
 /* testing for tile's boundary validity */
@@ -1341,4 +1411,154 @@ rl2_get_tile_from_jpeg_origin (rl2CoveragePtr cvg, rl2RasterPtr jpeg,
     if (mask != NULL)
 	free (mask);
     return NULL;
+}
+
+RL2_DECLARE char *
+rl2_build_jpeg_xml_summary (unsigned int width, unsigned int height,
+			    unsigned char pixel_type, int is_georeferenced,
+			    double res_x, double res_y, double minx,
+			    double miny, double maxx, double maxy)
+{
+/* attempting to build an XML Summary from a JPEG */
+    char *xml;
+    char *prev;
+    int len;
+
+    xml = sqlite3_mprintf ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<ImportedRaster>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RasterFormat>JPEG</RasterFormat>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RasterWidth>%u</RasterWidth>", prev, width);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RasterHeight>%u</RasterHeight>", prev, height);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RowsPerStrip>1</RowsPerStrip>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<BitsPerSample>8</BitsPerSample>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    if (pixel_type == RL2_PIXEL_GRAYSCALE)
+	xml = sqlite3_mprintf ("%s<SamplesPerPixel>1</SamplesPerPixel>", prev);
+    else
+	xml = sqlite3_mprintf ("%s<SamplesPerPixel>3</SamplesPerPixel>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    if (pixel_type == RL2_PIXEL_GRAYSCALE)
+	xml =
+	    sqlite3_mprintf
+	    ("%s<PhotometricInterpretation>min-is-black</PhotometricInterpretation>",
+	     prev);
+    else
+	xml =
+	    sqlite3_mprintf
+	    ("%s<PhotometricInterpretation>RGB</PhotometricInterpretation>",
+	     prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<Compression>JPEG</Compression>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf ("%s<SampleFormat>unsigned integer</SampleFormat>",
+			 prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf
+	("%s<PlanarConfiguration>single Raster plane</PlanarConfiguration>",
+	 prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<NoDataPixel>unknown</NoDataPixel>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    if (is_georeferenced)
+      {
+	  xml = sqlite3_mprintf ("%s<GeoReferencing>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<SpatialReferenceSystem>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<SRID>unspecified</SRID>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<RefSysName>undeclared</RefSysName>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s</SpatialReferenceSystem>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<SpatialResolution>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml =
+	      sqlite3_mprintf
+	      ("%s<HorizontalResolution>%1.10f</HorizontalResolution>", prev,
+	       res_x);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml =
+	      sqlite3_mprintf
+	      ("%s<VerticalResolution>%1.10f</VerticalResolution>", prev,
+	       res_y);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s</SpatialResolution>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<BoundingBox>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<MinX>%1.10f</MinX>", prev, minx);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<MinY>%1.10f</MinY>", prev, miny);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<MaxX>%1.10f</MaxX>", prev, maxx);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<MaxY>%1.10f</MaxY>", prev, maxy);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s</BoundingBox>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s<Extent>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml =
+	      sqlite3_mprintf
+	      ("%s<HorizontalExtent>%1.10f</HorizontalExtent>", prev,
+	       maxx - minx);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml =
+	      sqlite3_mprintf ("%s<VerticalExtent>%1.10f</VerticalExtent>",
+			       prev, maxy - miny);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s</Extent>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+	  xml = sqlite3_mprintf ("%s</GeoReferencing>", prev);
+	  sqlite3_free (prev);
+	  prev = xml;
+      }
+    xml = sqlite3_mprintf ("%s</ImportedRaster>", prev);
+    sqlite3_free (prev);
+    len = strlen (xml);
+    prev = xml;
+    xml = malloc (len + 1);
+    strcpy (xml, prev);
+    sqlite3_free (prev);
+    return xml;
 }

@@ -18,12 +18,16 @@ check_PROGRAMS = test_coverage test_palette \
 	test_map_noref test_map_trento \
 	test_map_trieste test_map_infrared \
 	test_map_orbetello test_raster_symbolizer \
-	test_svg
+	test_svg test_raw test_openjpeg \
+	test_line_symbolizer test_polygon_symbolizer \
+	test_point_symbolizer test_text_symbolizer \
+	test_vectors test_font test_copy_rastercov
 
 AM_CPPFLAGS = -I@srcdir@/../headers @LIBXML2_CFLAGS@
 AM_LDFLAGS = -L../src -lrasterlite2 @LIBCAIRO_LIBS@ @LIBPNG_LIBS@ \
 	@LIBWEBP_LIBS@ @LIBLZMA_LIBS@ @LIBSPATIALITE_LIBS@ \
-	@LIBCURL_LIBS@ @LIBXML2_LIBS@ $(GCOV_FLAGS)
+	@LIBCURL_LIBS@ @LIBXML2_LIBS@  @LIBFREETYPE2_LIBS@ \
+	$(GCOV_FLAGS)
 
 TESTS = $(check_PROGRAMS)
 
@@ -87,10 +91,11 @@ EXTRA_DIST = jpeg1.jpg jpeg2.jpg png1.png mask1.png \
 	ir_false_color2.xml ir_false_color1_gamma.xml \
 	ir_false_color2_gamma.xml rgb_histogram.xml \
 	rgb_normalize.xml gray_gamma.xml gray_histogram.xml \
-	gray_normalize.xml rgb_normalize2.xml \
+	gray_normalize.xml rgb_normalize2.xml ndvi.xml \
 	rgb_histogram2.xml rgb_gamma.xml gray_normalize2.xml \
 	gray_histogram2.xml gray_gamma2.xml group_style_1.xml \
-	group_style_2.xml bicycle.svg car_repair.svg \
+	coverage_style.xml group_style_2.xml \
+	symbolizers.sqlite bicycle.svg car_repair.svg \
 	Car_Yellow.svg Circle_and_quadratic_bezier.svg \
 	Coat_of_arms_Holy_See.svg doctors.svg fastfood.svg \
 	Flag_of_the_United_Kingdom.svg Flag_of_the_United_States.svg \
@@ -100,7 +105,7 @@ EXTRA_DIST = jpeg1.jpg jpeg2.jpg png1.png mask1.png \
 	Roundel_of_the_Royal_Canadian_Air_Force_(1946-1965).svg \
 	Roundel_of_the_Syrian_Air_Force.svg \
 	Royal_Coat_of_Arms_of_the_United_Kingdom.svg \
-	supermarket.svg tobacco.svg
+	supermarket.svg tobacco.svg Cevennes2.jp2 Karla-BoldItalic.ttf
 
 SUBDIRS = sql_stmt_security_tests sql_stmt_tests 
 

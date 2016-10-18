@@ -20,7 +20,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -827,6 +827,10 @@ check_encode_self_consistency (unsigned char sample_type,
 	  switch (compression)
 	    {
 	    case RL2_COMPRESSION_NONE:
+	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
+	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 	    case RL2_COMPRESSION_PNG:
 	    case RL2_COMPRESSION_CCITTFAX4:
 		break;
@@ -850,6 +854,10 @@ check_encode_self_consistency (unsigned char sample_type,
 	  switch (compression)
 	    {
 	    case RL2_COMPRESSION_NONE:
+	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
+	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 	    case RL2_COMPRESSION_PNG:
 		break;
 	    default:
@@ -871,10 +879,17 @@ check_encode_self_consistency (unsigned char sample_type,
 	  switch (compression)
 	    {
 	    case RL2_COMPRESSION_NONE:
+	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
+	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 	    case RL2_COMPRESSION_PNG:
 	    case RL2_COMPRESSION_JPEG:
 	    case RL2_COMPRESSION_LOSSY_WEBP:
 	    case RL2_COMPRESSION_LOSSLESS_WEBP:
+	    case RL2_COMPRESSION_CHARLS:
+	    case RL2_COMPRESSION_LOSSY_JP2:
+	    case RL2_COMPRESSION_LOSSLESS_JP2:
 		break;
 	    default:
 		return 0;
@@ -897,7 +912,13 @@ check_encode_self_consistency (unsigned char sample_type,
 		  {
 		  case RL2_COMPRESSION_NONE:
 		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
 		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		  case RL2_COMPRESSION_PNG:
+		  case RL2_COMPRESSION_CHARLS:
+		  case RL2_COMPRESSION_LOSSY_JP2:
+		  case RL2_COMPRESSION_LOSSLESS_JP2:
 		      break;
 		  default:
 		      return 0;
@@ -908,10 +929,17 @@ check_encode_self_consistency (unsigned char sample_type,
 		switch (compression)
 		  {
 		  case RL2_COMPRESSION_NONE:
+		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
+		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
 		  case RL2_COMPRESSION_PNG:
 		  case RL2_COMPRESSION_JPEG:
 		  case RL2_COMPRESSION_LOSSY_WEBP:
 		  case RL2_COMPRESSION_LOSSLESS_WEBP:
+		  case RL2_COMPRESSION_CHARLS:
+		  case RL2_COMPRESSION_LOSSY_JP2:
+		  case RL2_COMPRESSION_LOSSLESS_JP2:
 		      break;
 		  default:
 		      return 0;
@@ -929,15 +957,61 @@ check_encode_self_consistency (unsigned char sample_type,
 	    };
 	  if (num_samples < 2)
 	      return 0;
-	  switch (compression)
+	  if (num_samples == 3 || num_samples == 4)
 	    {
-	    case RL2_COMPRESSION_NONE:
-	    case RL2_COMPRESSION_DEFLATE:
-	    case RL2_COMPRESSION_LZMA:
-		break;
-	    default:
-		return 0;
-	    };
+		if (sample_type == RL2_SAMPLE_UINT16)
+		  {
+		      switch (compression)
+			{
+			case RL2_COMPRESSION_NONE:
+			case RL2_COMPRESSION_DEFLATE:
+			case RL2_COMPRESSION_DEFLATE_NO:
+			case RL2_COMPRESSION_LZMA:
+			case RL2_COMPRESSION_LZMA_NO:
+			case RL2_COMPRESSION_PNG:
+			case RL2_COMPRESSION_CHARLS:
+			case RL2_COMPRESSION_LOSSY_JP2:
+			case RL2_COMPRESSION_LOSSLESS_JP2:
+			    break;
+			default:
+			    return 0;
+			};
+		  }
+		else
+		  {
+		      switch (compression)
+			{
+			case RL2_COMPRESSION_NONE:
+			case RL2_COMPRESSION_DEFLATE:
+			case RL2_COMPRESSION_DEFLATE_NO:
+			case RL2_COMPRESSION_LZMA:
+			case RL2_COMPRESSION_LZMA_NO:
+			case RL2_COMPRESSION_PNG:
+			case RL2_COMPRESSION_LOSSY_WEBP:
+			case RL2_COMPRESSION_LOSSLESS_WEBP:
+			case RL2_COMPRESSION_CHARLS:
+			case RL2_COMPRESSION_LOSSY_JP2:
+			case RL2_COMPRESSION_LOSSLESS_JP2:
+			    break;
+			default:
+			    return 0;
+			};
+		  }
+	    }
+	  else
+	    {
+		switch (compression)
+		  {
+		  case RL2_COMPRESSION_NONE:
+		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
+		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		      break;
+		  default:
+		      return 0;
+		  };
+	    }
 	  break;
       case RL2_PIXEL_DATAGRID:
 	  switch (sample_type)
@@ -956,15 +1030,39 @@ check_encode_self_consistency (unsigned char sample_type,
 	    };
 	  if (num_samples != 1)
 	      return 0;
-	  switch (compression)
+	  if (sample_type == RL2_SAMPLE_UINT8
+	      || sample_type == RL2_SAMPLE_UINT16)
 	    {
-	    case RL2_COMPRESSION_NONE:
-	    case RL2_COMPRESSION_DEFLATE:
-	    case RL2_COMPRESSION_LZMA:
-		break;
-	    default:
-		return 0;
-	    };
+		switch (compression)
+		  {
+		  case RL2_COMPRESSION_NONE:
+		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
+		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		  case RL2_COMPRESSION_PNG:
+		  case RL2_COMPRESSION_CHARLS:
+		  case RL2_COMPRESSION_LOSSY_JP2:
+		  case RL2_COMPRESSION_LOSSLESS_JP2:
+		      break;
+		  default:
+		      return 0;
+		  };
+	    }
+	  else
+	    {
+		switch (compression)
+		  {
+		  case RL2_COMPRESSION_NONE:
+		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
+		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		      break;
+		  default:
+		      return 0;
+		  };
+	    }
 	  break;
       };
     return 1;
@@ -1819,7 +1917,7 @@ odd_even_rows (rl2PrivRasterPtr raster, int *odd_rows, int *row_stride_odd,
     int o_size;
     int e_size;
     unsigned int row;
-    int pix_size;
+    int pix_size = 1;
     int swap = 0;
     if (little_endian != endianArch ())
 	swap = 1;
@@ -1924,9 +2022,10 @@ odd_even_rows (rl2PrivRasterPtr raster, int *odd_rows, int *row_stride_odd,
 }
 
 RL2_DECLARE int
-rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
-		   int *blob_odd_sz, unsigned char **blob_even,
-		   int *blob_even_sz, int quality, int little_endian)
+rl2_raster_encode (rl2RasterPtr rst, int compression,
+		   unsigned char **blob_odd, int *blob_odd_sz,
+		   unsigned char **blob_even, int *blob_even_sz, int quality,
+		   int little_endian)
 {
 /* encoding a Raster into the internal RL2 binary format */
     rl2PrivRasterPtr raster = (rl2PrivRasterPtr) rst;
@@ -1945,7 +2044,7 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
     unsigned char *block_even = NULL;
     int block_even_size = 0;
     unsigned char *ptr;
-    int uncompressed;
+    int uncompressed = 0;
     int compressed;
     int uncompressed_mask = 0;
     int compressed_mask = 0;
@@ -1956,7 +2055,7 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
     unsigned char *save_mask = NULL;
     uLong crc;
     int endian_arch = endianArch ();
-
+    int delta_dist;
     *blob_odd = NULL;
     *blob_odd_sz = 0;
     *blob_even = NULL;
@@ -1968,17 +2067,68 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	(raster->sampleType, raster->pixelType, raster->nBands, compression))
 	return RL2_ERROR;
 
+    switch (raster->pixelType)
+      {
+      case RL2_PIXEL_RGB:
+	  switch (raster->sampleType)
+	    {
+	    case RL2_SAMPLE_UINT16:
+		delta_dist = 6;
+		break;
+	    default:
+		delta_dist = 3;
+		break;
+	    };
+	  break;
+      case RL2_PIXEL_MULTIBAND:
+	  switch (raster->sampleType)
+	    {
+	    case RL2_SAMPLE_UINT16:
+		delta_dist = raster->nBands * 2;
+		break;
+	    default:
+		delta_dist = raster->nBands;
+		break;
+	    };
+	  break;
+      case RL2_PIXEL_DATAGRID:
+	  switch (raster->sampleType)
+	    {
+	    case RL2_SAMPLE_INT16:
+	    case RL2_SAMPLE_UINT16:
+		delta_dist = 2;
+		break;
+	    case RL2_SAMPLE_INT32:
+	    case RL2_SAMPLE_UINT32:
+	    case RL2_SAMPLE_FLOAT:
+		delta_dist = 4;
+		break;
+	    case RL2_SAMPLE_DOUBLE:
+		delta_dist = 8;
+		break;
+	    default:
+		delta_dist = 1;
+		break;
+	    };
+	  break;
+      default:
+	  delta_dist = 1;
+	  break;
+      };
+
     if (compression == RL2_COMPRESSION_NONE
 	|| compression == RL2_COMPRESSION_DEFLATE
-	|| compression == RL2_COMPRESSION_LZMA)
+	|| compression == RL2_COMPRESSION_DEFLATE_NO
+	|| compression == RL2_COMPRESSION_LZMA
+	|| compression == RL2_COMPRESSION_LZMA_NO)
       {
 	  /* preparing the pixels buffers */
 	  if (raster->sampleType == RL2_SAMPLE_1_BIT)
 	    {
 		/* packing 1-BIT data */
 		if (!pack_1bit_rows
-		    (raster, raster->rasterBuffer, &row_stride_odd, &pixels_odd,
-		     &size_odd))
+		    (raster, raster->rasterBuffer, &row_stride_odd,
+		     &pixels_odd, &size_odd))
 		    return RL2_ERROR;
 		odd_rows = raster->height;
 	    }
@@ -2002,9 +2152,9 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	    {
 		/* Odd/Even raster */
 		if (!odd_even_rows
-		    (raster, &odd_rows, &row_stride_odd, &pixels_odd, &size_odd,
-		     &even_rows, &row_stride_even, &pixels_even, &size_even,
-		     little_endian))
+		    (raster, &odd_rows, &row_stride_odd, &pixels_odd,
+		     &size_odd, &even_rows, &row_stride_even, &pixels_even,
+		     &size_even, little_endian))
 		    return RL2_ERROR;
 	    }
       }
@@ -2020,16 +2170,27 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	    {
 		/* Odd/Even raster */
 		if (!odd_even_rows
-		    (raster, &odd_rows, &row_stride_odd, &pixels_odd, &size_odd,
-		     &even_rows, &row_stride_even, &pixels_even, &size_even,
-		     little_endian))
+		    (raster, &odd_rows, &row_stride_odd, &pixels_odd,
+		     &size_odd, &even_rows, &row_stride_even, &pixels_even,
+		     &size_even, little_endian))
 		    return RL2_ERROR;
 	    }
+      }
+    else if (compression == RL2_COMPRESSION_CHARLS)
+      {
+	  /* Odd/Even raster */
+	  if (!odd_even_rows
+	      (raster, &odd_rows, &row_stride_odd, &pixels_odd, &size_odd,
+	       &even_rows, &row_stride_even, &pixels_even, &size_even,
+	       little_endian))
+	      return RL2_ERROR;
       }
     else if (compression == RL2_COMPRESSION_JPEG
 	     || compression == RL2_COMPRESSION_LOSSY_WEBP
 	     || compression == RL2_COMPRESSION_LOSSLESS_WEBP
-	     || compression == RL2_COMPRESSION_CCITTFAX4)
+	     || compression == RL2_COMPRESSION_CCITTFAX4
+	     || compression == RL2_COMPRESSION_LOSSY_JP2
+	     || compression == RL2_COMPRESSION_LOSSLESS_JP2)
       {
 	  /* no special action is required */
       }
@@ -2059,7 +2220,53 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
       }
     else if (compression == RL2_COMPRESSION_DEFLATE)
       {
-	  /* compressing as ZIP [Deflate] */
+	  /* compressing as ZIP DeltaFilter [Deflate] */
+	  int ret;
+	  uLong zLen = size_odd - 1;
+	  unsigned char *zip_buf = malloc (zLen);
+	  if (zip_buf == NULL)
+	      goto error;
+	  if (rl2_delta_encode (pixels_odd, size_odd, delta_dist) != RL2_OK)
+	      goto error;
+	  ret =
+	      compress (zip_buf, &zLen, (const Bytef *) pixels_odd,
+			(uLong) size_odd);
+	  if (ret == Z_OK)
+	    {
+		/* ok, ZIP compression was successful */
+		uncompressed = size_odd;
+		compressed = (int) zLen;
+		compr_data = zip_buf;
+		to_clean1 = zip_buf;
+	    }
+	  else if (ret == Z_BUF_ERROR)
+	    {
+		/* ZIP compression actually causes inflation: saving uncompressed data */
+		if (rl2_delta_decode (pixels_odd, size_odd, delta_dist) !=
+		    RL2_OK)
+		    goto error;
+		uncompressed = size_odd;
+		compressed = size_odd;
+		compr_data = pixels_odd;
+		free (zip_buf);
+		zip_buf = NULL;
+	    }
+	  else
+	    {
+		/* compression error */
+		free (zip_buf);
+		goto error;
+	    }
+	  if (mask_pix == NULL)
+	      uncompressed_mask = 0;
+	  else
+	      uncompressed_mask = raster->width * raster->height;
+	  compressed_mask = mask_pix_size;
+	  compr_mask = mask_pix;
+      }
+    else if (compression == RL2_COMPRESSION_DEFLATE_NO)
+      {
+	  /* compressing as ZIP noDelta [Deflate] */
 	  int ret;
 	  uLong zLen = size_odd - 1;
 	  unsigned char *zip_buf = malloc (zLen);
@@ -2100,7 +2307,69 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
       }
     else if (compression == RL2_COMPRESSION_LZMA)
       {
-	  /* compressing as LZMA */
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+	  /* compressing as LZMA DeltaFilter */
+	  lzma_options_lzma opt_lzma2;
+	  lzma_options_delta opt_delta;
+	  lzma_ret ret;
+	  lzma_filter filters[3];
+	  size_t out_pos = 0;
+	  size_t lzmaLen = size_odd - 1;
+	  unsigned char *lzma_buf = malloc (lzmaLen);
+	  if (lzma_buf == NULL)
+	      goto error;
+	  opt_delta.type = LZMA_DELTA_TYPE_BYTE;
+	  opt_delta.dist = delta_dist;
+	  lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
+	  filters[0].id = LZMA_FILTER_DELTA;
+	  filters[0].options = &opt_delta;
+	  filters[1].id = LZMA_FILTER_LZMA2;
+	  filters[1].options = &opt_lzma2;
+	  filters[2].id = LZMA_VLI_UNKNOWN;
+	  filters[2].options = NULL;
+	  ret =
+	      lzma_raw_buffer_encode (filters, NULL,
+				      (const uint8_t *) pixels_odd, size_odd,
+				      lzma_buf, &out_pos, lzmaLen);
+	  if (ret == LZMA_OK)
+	    {
+		/* ok, LZMA compression was successful */
+		uncompressed = size_odd;
+		compressed = (int) out_pos;
+		compr_data = lzma_buf;
+		to_clean1 = lzma_buf;
+	    }
+	  else if (ret == LZMA_BUF_ERROR)
+	    {
+		/* LZMA compression actually causes inflation: saving uncompressed data */
+		uncompressed = size_odd;
+		compressed = size_odd;
+		compr_data = pixels_odd;
+		free (lzma_buf);
+		lzma_buf = NULL;
+	    }
+	  else
+	    {
+		/* compression error */
+		free (lzma_buf);
+		goto error;
+	    }
+	  if (mask_pix == NULL)
+	      uncompressed_mask = 0;
+	  else
+	      uncompressed_mask = raster->width * raster->height;
+	  compressed_mask = mask_pix_size;
+	  compr_mask = mask_pix;
+#else /* LZMA is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling LZMA support\n");
+	  goto error;
+#endif /* end LZMA conditional */
+      }
+    else if (compression == RL2_COMPRESSION_LZMA_NO)
+      {
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+	  /* compressing as LZMA noDelta */
 	  lzma_options_lzma opt_lzma2;
 	  lzma_ret ret;
 	  lzma_filter filters[2];
@@ -2147,6 +2416,11 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	      uncompressed_mask = raster->width * raster->height;
 	  compressed_mask = mask_pix_size;
 	  compr_mask = mask_pix;
+#else /* LZMA is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling LZMA support\n");
+	  goto error;
+#endif /* end LZMA conditional */
       }
     else if (compression == RL2_COMPRESSION_JPEG)
       {
@@ -2170,6 +2444,7 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
       }
     else if (compression == RL2_COMPRESSION_LOSSLESS_WEBP)
       {
+#ifndef OMIT_WEBP		/* only if WebP is enabled */
 	  /* compressing as lossless WEBP */
 	  if (rl2_raster_to_lossless_webp (rst, &compr_data, &compressed) ==
 	      RL2_OK)
@@ -2187,12 +2462,18 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	      uncompressed_mask = raster->width * raster->height;
 	  compressed_mask = mask_pix_size;
 	  compr_mask = mask_pix;
+#else /* WebP is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling WebP support\n");
+	  goto error;
+#endif /* end WebP conditional */
       }
     else if (compression == RL2_COMPRESSION_LOSSY_WEBP)
       {
+#ifndef OMIT_WEBP		/* only if WebP is enabled */
 	  /* compressing as lossy WEBP */
-	  if (rl2_raster_to_lossy_webp (rst, &compr_data, &compressed, quality)
-	      == RL2_OK)
+	  if (rl2_raster_to_lossy_webp
+	      (rst, &compr_data, &compressed, quality) == RL2_OK)
 	    {
 		/* ok, lossy WEBP compression was successful */
 		uncompressed = raster->width * raster->height * raster->nBands;
@@ -2207,6 +2488,11 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	      uncompressed_mask = raster->width * raster->height;
 	  compressed_mask = mask_pix_size;
 	  compr_mask = mask_pix;
+#else /* WebP is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling WebP support\n");
+	  goto error;
+#endif /* end WebP conditional */
       }
     else if (compression == RL2_COMPRESSION_PNG)
       {
@@ -2239,7 +2525,7 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 		if (rl2_data_to_png
 		    (pixels_odd, NULL, 1.0, plt, raster->width,
 		     odd_rows, raster->sampleType, raster->pixelType,
-		     &compr_data, &compressed) == RL2_OK)
+		     raster->nBands, &compr_data, &compressed) == RL2_OK)
 		  {
 		      /* ok, PNG compression was successful */
 		      uncompressed = size_odd;
@@ -2254,6 +2540,33 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 		else
 		    goto error;
 	    }
+      }
+    else if (compression == RL2_COMPRESSION_CHARLS)
+      {
+#ifndef OMIT_CHARLS		/* only if CharLS is enabled */
+	  /* compressing as CHARLS */
+	  if (rl2_data_to_charls
+	      (pixels_odd, raster->width,
+	       odd_rows, raster->sampleType, raster->pixelType,
+	       raster->nBands, &compr_data, &compressed) == RL2_OK)
+	    {
+		/* ok, CHARLS compression was successful */
+		uncompressed = size_odd;
+		to_clean1 = compr_data;
+		if (mask_pix == NULL)
+		    uncompressed_mask = 0;
+		else
+		    uncompressed_mask = raster->width * raster->height;
+		compressed_mask = mask_pix_size;
+		compr_mask = mask_pix;
+	    }
+	  else
+	      goto error;
+#else /* CharLS is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling CharLS support\n");
+	  goto error;
+#endif /* end CharLS conditional */
       }
     else if (compression == RL2_COMPRESSION_CCITTFAX4)
       {
@@ -2274,6 +2587,58 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	    }
 	  else
 	      goto error;
+      }
+    else if (compression == RL2_COMPRESSION_LOSSLESS_JP2)
+      {
+#ifndef OMIT_OPENJPEG		/* only if OpenJpeg is enabled */
+	  /* compressing as lossless Jpeg2000 */
+	  if (rl2_raster_to_lossless_jpeg2000 (rst, &compr_data, &compressed)
+	      == RL2_OK)
+	    {
+		/* ok, lossless Jpeg2000 compression was successful */
+		uncompressed = raster->width * raster->height * raster->nBands;
+		to_clean1 = compr_data;
+	    }
+	  else
+	      goto error;
+	  odd_rows = raster->height;
+	  if (mask_pix == NULL)
+	      uncompressed_mask = 0;
+	  else
+	      uncompressed_mask = raster->width * raster->height;
+	  compressed_mask = mask_pix_size;
+	  compr_mask = mask_pix;
+#else /* OpenJpeg is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling OpenJpeg support\n");
+	  goto error;
+#endif /* end OpenJpeg conditional */
+      }
+    else if (compression == RL2_COMPRESSION_LOSSY_JP2)
+      {
+#ifndef OMIT_OPENJPEG		/* only if OpenJpeg is enabled */
+	  /* compressing as lossy Jpeg2000 */
+	  if (rl2_raster_to_lossy_jpeg2000
+	      (rst, &compr_data, &compressed, quality) == RL2_OK)
+	    {
+		/* ok, lossy Jpeg2000 compression was successful */
+		uncompressed = raster->width * raster->height * raster->nBands;
+		to_clean1 = compr_data;
+	    }
+	  else
+	      goto error;
+	  odd_rows = raster->height;
+	  if (mask_pix == NULL)
+	      uncompressed_mask = 0;
+	  else
+	      uncompressed_mask = raster->width * raster->height;
+	  compressed_mask = mask_pix_size;
+	  compr_mask = mask_pix;
+#else /* OpenJpeg is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling OpenJpeg support\n");
+	  goto error;
+#endif /* end OpenJpeg conditional */
       }
 
 /* preparing the OddBlock */
@@ -2336,7 +2701,48 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	    }
 	  else if (compression == RL2_COMPRESSION_DEFLATE)
 	    {
-		/* compressing as ZIP [Deflate] */
+		/* compressing as ZIP DeltaFilter [Deflate] */
+		int ret;
+		uLong zLen = compressBound (size_even);
+		unsigned char *zip_buf = malloc (zLen);
+		if (zip_buf == NULL)
+		    goto error;
+		if (rl2_delta_encode (pixels_even, size_even, delta_dist) !=
+		    RL2_OK)
+		    goto error;
+		ret =
+		    compress (zip_buf, &zLen, (const Bytef *) pixels_even,
+			      (uLong) size_even);
+		if (ret == Z_OK)
+		  {
+		      /* ok, ZIP compression was successful */
+		      uncompressed = size_even;
+		      compressed = (int) zLen;
+		      compr_data = zip_buf;
+		      to_clean2 = zip_buf;
+		  }
+		else if (ret == Z_BUF_ERROR)
+		  {
+		      /* ZIP compression actually causes inflation: saving uncompressed data */
+		      if (rl2_delta_decode
+			  (pixels_even, size_even, delta_dist) != RL2_OK)
+			  goto error;
+		      uncompressed = size_even;
+		      compressed = size_even;
+		      compr_data = pixels_even;
+		      free (zip_buf);
+		      zip_buf = NULL;
+		  }
+		else
+		  {
+		      /* compression error */
+		      free (zip_buf);
+		      goto error;
+		  }
+	    }
+	  else if (compression == RL2_COMPRESSION_DEFLATE_NO)
+	    {
+		/* compressing as ZIP noDelta [Deflate] */
 		int ret;
 		uLong zLen = compressBound (size_even);
 		unsigned char *zip_buf = malloc (zLen);
@@ -2371,7 +2777,65 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 	    }
 	  else if (compression == RL2_COMPRESSION_LZMA)
 	    {
-		/* compressing as LZMA */
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+		/* compressing as LZMA DeltaFilter */
+		lzma_options_lzma opt_lzma2;
+		lzma_options_delta opt_delta;
+		lzma_ret ret;
+		lzma_filter filters[3];
+		size_t out_pos = 0;
+		size_t lzmaLen = size_even - 1;
+		unsigned char *lzma_buf = malloc (lzmaLen);
+		if (lzma_buf == NULL)
+		    goto error;
+		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
+		opt_delta.type = LZMA_DELTA_TYPE_BYTE;
+		opt_delta.dist = delta_dist;
+		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
+		filters[0].id = LZMA_FILTER_DELTA;
+		filters[0].options = &opt_delta;
+		filters[1].id = LZMA_FILTER_LZMA2;
+		filters[1].options = &opt_lzma2;
+		filters[2].id = LZMA_VLI_UNKNOWN;
+		filters[2].options = NULL;
+		ret =
+		    lzma_raw_buffer_encode (filters, NULL,
+					    (const uint8_t *) pixels_even,
+					    size_even, lzma_buf, &out_pos,
+					    lzmaLen);
+		if (ret == LZMA_OK)
+		  {
+		      /* ok, LZMA compression was successful */
+		      uncompressed = size_even;
+		      compressed = (int) out_pos;
+		      compr_data = lzma_buf;
+		      to_clean2 = lzma_buf;
+		  }
+		else if (ret == LZMA_BUF_ERROR)
+		  {
+		      /* LZMA compression actually causes inflation: saving uncompressed data */
+		      uncompressed = size_even;
+		      compressed = size_even;
+		      compr_data = pixels_even;
+		      free (lzma_buf);
+		      lzma_buf = NULL;
+		  }
+		else
+		  {
+		      /* compression error */
+		      free (lzma_buf);
+		      goto error;
+		  }
+#else /* LZMA is disabled */
+		fprintf (stderr,
+			 "librasterlite2 was built by disabling LZMA support\n");
+		goto error;
+#endif /* end LZMA conditional */
+	    }
+	  else if (compression == RL2_COMPRESSION_LZMA_NO)
+	    {
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+		/* compressing as LZMA noDelta */
 		lzma_options_lzma opt_lzma2;
 		lzma_ret ret;
 		lzma_filter filters[2];
@@ -2380,6 +2844,7 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 		unsigned char *lzma_buf = malloc (lzmaLen);
 		if (lzma_buf == NULL)
 		    goto error;
+		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
 		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
 		filters[0].id = LZMA_FILTER_LZMA2;
 		filters[0].options = &opt_lzma2;
@@ -2413,6 +2878,11 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 		      free (lzma_buf);
 		      goto error;
 		  }
+#else /* LZMA is disabled */
+		fprintf (stderr,
+			 "librasterlite2 was built by disabling LZMA support\n");
+		goto error;
+#endif /* end LZMA conditional */
 	    }
 	  else if (compression == RL2_COMPRESSION_PNG)
 	    {
@@ -2428,7 +2898,7 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 		      if (rl2_data_to_png
 			  (pixels_even, NULL, 1.0, plt, raster->width,
 			   even_rows, raster->sampleType, raster->pixelType,
-			   &compr_data, &compressed) == RL2_OK)
+			   raster->nBands, &compr_data, &compressed) == RL2_OK)
 			{
 			    /* ok, PNG compression was successful */
 			    uncompressed = size_even;
@@ -2437,6 +2907,27 @@ rl2_raster_encode (rl2RasterPtr rst, int compression, unsigned char **blob_odd,
 		      else
 			  goto error;
 		  }
+	    }
+	  else if (compression == RL2_COMPRESSION_CHARLS)
+	    {
+#ifndef OMIT_CHARLS		/* only if CharLS is enabled */
+		/* compressing as CHARLS */
+		if (rl2_data_to_charls
+		    (pixels_even, raster->width,
+		     even_rows, raster->sampleType, raster->pixelType,
+		     raster->nBands, &compr_data, &compressed) == RL2_OK)
+		  {
+		      /* ok, CHARLS compression was successful */
+		      uncompressed = size_even;
+		      to_clean2 = compr_data;
+		  }
+		else
+		    goto error;
+#else /* CharLS is disabled */
+		fprintf (stderr,
+			 "librasterlite2 was built by disabling CharLS support\n");
+		goto error;
+#endif /* end CharLS conditional */
 	    }
 	  block_even_size = 32 + compressed;
 	  block_even = malloc (block_even_size);
@@ -2551,12 +3042,17 @@ check_blob_odd (const unsigned char *blob, int blob_sz, unsigned int *xwidth,
       {
       case RL2_COMPRESSION_NONE:
       case RL2_COMPRESSION_DEFLATE:
+      case RL2_COMPRESSION_DEFLATE_NO:
       case RL2_COMPRESSION_LZMA:
+      case RL2_COMPRESSION_LZMA_NO:
       case RL2_COMPRESSION_PNG:
       case RL2_COMPRESSION_JPEG:
       case RL2_COMPRESSION_LOSSY_WEBP:
       case RL2_COMPRESSION_LOSSLESS_WEBP:
       case RL2_COMPRESSION_CCITTFAX4:
+      case RL2_COMPRESSION_CHARLS:
+      case RL2_COMPRESSION_LOSSY_JP2:
+      case RL2_COMPRESSION_LOSSLESS_JP2:
 	  break;
       default:
 	  return 0;
@@ -2575,6 +3071,8 @@ check_blob_odd (const unsigned char *blob, int blob_sz, unsigned int *xwidth,
       case RL2_SAMPLE_UINT32:
       case RL2_SAMPLE_FLOAT:
       case RL2_SAMPLE_DOUBLE:
+      case RL2_COMPRESSION_LOSSY_JP2:
+      case RL2_COMPRESSION_LOSSLESS_JP2:
 	  break;
       default:
 	  return 0;
@@ -2636,10 +3134,11 @@ check_blob_odd (const unsigned char *blob, int blob_sz, unsigned int *xwidth,
 }
 
 static int
-check_blob_even (const unsigned char *blob, int blob_sz, unsigned short xwidth,
-		 unsigned short xheight, unsigned char xsample_type,
-		 unsigned char xpixel_type, unsigned char xnum_bands,
-		 unsigned char xcompression, uLong xcrc)
+check_blob_even (const unsigned char *blob, int blob_sz,
+		 unsigned short xwidth, unsigned short xheight,
+		 unsigned char xsample_type, unsigned char xpixel_type,
+		 unsigned char xnum_bands, unsigned char xcompression,
+		 uLong xcrc)
 {
 /* checking the EvenBlock for validity */
     const unsigned char *ptr;
@@ -2721,13 +3220,16 @@ check_scale (int scale, unsigned char sample_type, unsigned char compression,
     switch (scale)
       {
       case RL2_SCALE_1:
-	  if (sample_type == RL2_SAMPLE_1_BIT || sample_type == RL2_SAMPLE_2_BIT
+	  if (sample_type == RL2_SAMPLE_1_BIT
+	      || sample_type == RL2_SAMPLE_2_BIT
 	      || sample_type == RL2_SAMPLE_4_BIT)
 	      ;
 	  else if (compression == RL2_COMPRESSION_JPEG
 		   || compression == RL2_COMPRESSION_LOSSY_WEBP
 		   || compression == RL2_COMPRESSION_LOSSLESS_WEBP
-		   || compression == RL2_COMPRESSION_CCITTFAX4)
+		   || compression == RL2_COMPRESSION_CCITTFAX4
+		   || compression == RL2_COMPRESSION_LOSSY_JP2
+		   || compression == RL2_COMPRESSION_LOSSLESS_JP2)
 	    {
 		if (blob_even != NULL)
 		    return 0;
@@ -3695,9 +4197,10 @@ do_copy_int32 (int swap, const int *p_odd, const int *p_even, int *buf,
 }
 
 static void
-do_copy_uint32 (int swap, const unsigned int *p_odd, const unsigned int *p_even,
-		unsigned int *buf, unsigned short width,
-		unsigned short odd_rows, unsigned short even_rows)
+do_copy_uint32 (int swap, const unsigned int *p_odd,
+		const unsigned int *p_even, unsigned int *buf,
+		unsigned short width, unsigned short odd_rows,
+		unsigned short even_rows)
 {
 /* reassembling an UINT32 raster - scale 1:1 */
     int row;
@@ -4383,8 +4886,8 @@ RL2_DECLARE int
 rl2_is_valid_dbms_raster_tile (unsigned short level, unsigned int tile_width,
 			       unsigned int tile_height,
 			       const unsigned char *blob_odd, int blob_odd_sz,
-			       const unsigned char *blob_even, int blob_even_sz,
-			       unsigned char sample_type,
+			       const unsigned char *blob_even,
+			       int blob_even_sz, unsigned char sample_type,
 			       unsigned char pixel_type,
 			       unsigned char num_bands,
 			       unsigned char compression)
@@ -4420,46 +4923,10 @@ rl2_is_valid_dbms_raster_tile (unsigned short level, unsigned int tile_width,
     else
       {
 	  /* Pyramid-level tile */
-	  if (sample_type == RL2_SAMPLE_UINT8 && pixel_type == RL2_PIXEL_RGB
-	      && num_bands == 3)
+	  if ((sample_type == RL2_SAMPLE_1_BIT
+	       && pixel_type == RL2_PIXEL_MONOCHROME && num_bands == 1))
 	    {
-		/* expecting an RGB/JPEG Pyramid tile 8bit */
-		if (xsample_type == RL2_SAMPLE_UINT8
-		    && xpixel_type == RL2_PIXEL_RGB && xnum_bands == 3
-		    && xcompression == RL2_COMPRESSION_JPEG)
-		    return RL2_OK;
-	    }
-	  if (sample_type == RL2_SAMPLE_UINT8
-	      && pixel_type == RL2_PIXEL_GRAYSCALE && num_bands == 1)
-	    {
-		/* expecting a GRAYSCALE/JPEG Pyramid tile 8bit */
-		if (xsample_type == RL2_SAMPLE_UINT8
-		    && xpixel_type == RL2_PIXEL_GRAYSCALE && xnum_bands == 1
-		    && xcompression == RL2_COMPRESSION_JPEG)
-		    return RL2_OK;
-	    }
-	  if (sample_type == RL2_SAMPLE_UINT16 && pixel_type == RL2_PIXEL_RGB
-	      && num_bands == 3)
-	    {
-		/* expecting an RGB/JPEG Pyramid tile 16bit */
-		if (xsample_type == RL2_SAMPLE_UINT16
-		    && xpixel_type == RL2_PIXEL_RGB && xnum_bands == 3
-		    && xcompression == RL2_COMPRESSION_DEFLATE)
-		    return RL2_OK;
-	    }
-	  if (sample_type == RL2_SAMPLE_UINT16
-	      && pixel_type == RL2_PIXEL_GRAYSCALE && num_bands == 1)
-	    {
-		/* expecting a GRAYSCALE/JPEG Pyramid tile 16bit */
-		if (xsample_type == RL2_SAMPLE_UINT16
-		    && xpixel_type == RL2_PIXEL_GRAYSCALE && xnum_bands == 1
-		    && xcompression == RL2_COMPRESSION_DEFLATE)
-		    return RL2_OK;
-	    }
-	  if (sample_type == RL2_SAMPLE_1_BIT
-	      && pixel_type == RL2_PIXEL_MONOCHROME && num_bands == 1)
-	    {
-		/* expecting a GRAYSCALE/PNG Pyramid tile */
+		/* MONOCHROME: expecting a GRAYSCALE/PNG Pyramid tile */
 		if (xsample_type == RL2_SAMPLE_UINT8
 		    && xpixel_type == RL2_PIXEL_GRAYSCALE && xnum_bands == 1
 		    && xcompression == RL2_COMPRESSION_PNG)
@@ -4472,28 +4939,25 @@ rl2_is_valid_dbms_raster_tile (unsigned short level, unsigned int tile_width,
 	      (sample_type == RL2_SAMPLE_4_BIT
 	       && pixel_type == RL2_PIXEL_PALETTE && num_bands == 1))
 	    {
-		/* expecting an RGB/PNG Pyramid tile */
+		/* small-PALETTE: expecting an RGB/PNG Pyramid tile */
 		if (xsample_type == RL2_SAMPLE_UINT8
 		    && xpixel_type == RL2_PIXEL_RGB && xnum_bands == 3
 		    && xcompression == RL2_COMPRESSION_PNG)
 		    return RL2_OK;
 	    }
-	  if (sample_type == RL2_SAMPLE_UINT8 && pixel_type == RL2_PIXEL_PALETTE
-	      && num_bands == 1)
+	  if (sample_type == RL2_SAMPLE_UINT8
+	      && pixel_type == RL2_PIXEL_PALETTE && num_bands == 1)
 	    {
-		/* expecting an RGB/JPEG Pyramid tile */
+		/* PALETTE 8bits: expecting an RGB/PNG Pyramid tile */
 		if (xsample_type == RL2_SAMPLE_UINT8
 		    && xpixel_type == RL2_PIXEL_RGB && xnum_bands == 3
-		    && xcompression == RL2_COMPRESSION_JPEG)
+		    && xcompression == RL2_COMPRESSION_PNG)
 		    return RL2_OK;
 	    }
-	  if (sample_type == xsample_type && pixel_type == RL2_PIXEL_DATAGRID
-	      && num_bands == xnum_bands
-	      && xcompression == RL2_COMPRESSION_DEFLATE)
-	      return RL2_OK;
-	  if (sample_type == xsample_type && pixel_type == RL2_PIXEL_MULTIBAND
-	      && num_bands == xnum_bands
-	      && xcompression == RL2_COMPRESSION_DEFLATE)
+	  /* any other: expecting unchanged params */
+	  if (xsample_type == sample_type
+	      && xpixel_type == pixel_type && xnum_bands == num_bands
+	      && xcompression == compression)
 	      return RL2_OK;
       }
     return RL2_ERROR;
@@ -4510,8 +4974,8 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
     rl2PalettePtr palette2 = NULL;
     unsigned int width;
     unsigned int height;
-    unsigned short mask_width;
-    unsigned short mask_height;
+    unsigned short mask_width = 0;
+    unsigned short mask_height = 0;
     unsigned char sample_type;
     unsigned char pixel_type;
     unsigned char num_bands;
@@ -4543,6 +5007,8 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
     int swap;
     int endian;
     int endian_arch = endianArch ();
+    int delta_dist;
+
     if (blob_odd == NULL)
 	return NULL;
     if (!check_blob_odd
@@ -4552,12 +5018,61 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
     if (blob_even != NULL)
       {
 	  if (!check_blob_even
-	      (blob_even, blob_even_sz, width, height, sample_type, pixel_type,
-	       num_bands, compression, crc))
+	      (blob_even, blob_even_sz, width, height, sample_type,
+	       pixel_type, num_bands, compression, crc))
 	      return NULL;
       }
     if (!check_scale (scale, sample_type, compression, blob_even))
 	return NULL;
+
+    switch (pixel_type)
+      {
+      case RL2_PIXEL_RGB:
+	  switch (sample_type)
+	    {
+	    case RL2_SAMPLE_UINT16:
+		delta_dist = 6;
+		break;
+	    default:
+		delta_dist = 3;
+		break;
+	    };
+	  break;
+      case RL2_PIXEL_MULTIBAND:
+	  switch (sample_type)
+	    {
+	    case RL2_SAMPLE_UINT16:
+		delta_dist = num_bands * 2;
+		break;
+	    default:
+		delta_dist = num_bands;
+		break;
+	    };
+	  break;
+      case RL2_PIXEL_DATAGRID:
+	  switch (sample_type)
+	    {
+	    case RL2_SAMPLE_INT16:
+	    case RL2_SAMPLE_UINT16:
+		delta_dist = 2;
+		break;
+	    case RL2_SAMPLE_INT32:
+	    case RL2_SAMPLE_UINT32:
+	    case RL2_SAMPLE_FLOAT:
+		delta_dist = 4;
+		break;
+	    case RL2_SAMPLE_DOUBLE:
+		delta_dist = 8;
+		break;
+	    default:
+		delta_dist = 1;
+		break;
+	    };
+	  break;
+      default:
+	  delta_dist = 1;
+	  break;
+      };
 
     endian = *(blob_odd + 2);
     num_bands = *(blob_odd + 6);
@@ -4616,7 +5131,39 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
     if (compression == RL2_COMPRESSION_DEFLATE
 	&& uncompressed_odd != compressed_odd)
       {
-	  /* decompressing from ZIP [Deflate] - ODD Block */
+	  /* decompressing from ZIP DeltaFilter [Deflate] - ODD Block */
+	  uLong refLen = uncompressed_odd;
+	  const Bytef *in = pixels_odd;
+	  odd_data = malloc (uncompressed_odd);
+	  if (odd_data == NULL)
+	      goto error;
+	  if (uncompress (odd_data, &refLen, in, compressed_odd) != Z_OK)
+	      goto error;
+	  if (rl2_delta_decode (odd_data, uncompressed_odd, delta_dist) !=
+	      RL2_OK)
+	      goto error;
+	  pixels_odd = odd_data;
+	  if (pixels_even != NULL && uncompressed_even != compressed_even)
+	    {
+		/* decompressing from ZIP DeltaFilter [Deflate] - EVEN Block */
+		uLong refLen = uncompressed_even;
+		const Bytef *in = pixels_even;
+		even_data = malloc (uncompressed_even);
+		if (even_data == NULL)
+		    goto error;
+		if (uncompress (even_data, &refLen, in, compressed_even) !=
+		    Z_OK)
+		    goto error;
+		if (rl2_delta_decode
+		    (even_data, uncompressed_even, delta_dist) != RL2_OK)
+		    goto error;
+		pixels_even = even_data;
+	    }
+      }
+    if (compression == RL2_COMPRESSION_DEFLATE_NO
+	&& uncompressed_odd != compressed_odd)
+      {
+	  /* decompressing from ZIP noDelta [Deflate] - ODD Block */
 	  uLong refLen = uncompressed_odd;
 	  const Bytef *in = pixels_odd;
 	  odd_data = malloc (uncompressed_odd);
@@ -4627,7 +5174,7 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 	  pixels_odd = odd_data;
 	  if (pixels_even != NULL && uncompressed_even != compressed_even)
 	    {
-		/* decompressing from ZIP [Deflate] - EVEN Block */
+		/* decompressing from ZIP noDelta [Deflate] - EVEN Block */
 		uLong refLen = uncompressed_even;
 		const Bytef *in = pixels_even;
 		even_data = malloc (uncompressed_even);
@@ -4642,7 +5189,71 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
     if (compression == RL2_COMPRESSION_LZMA
 	&& uncompressed_odd != compressed_odd)
       {
-	  /* decompressing from LZMA - ODD Block */
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+	  /* decompressing from LZMA DeltaFilter - ODD Block */
+	  lzma_options_lzma opt_lzma2;
+	  lzma_options_delta opt_delta;
+	  lzma_filter filters[3];
+	  size_t in_pos = 0;
+	  size_t out_pos = 0;
+	  size_t refLen = compressed_odd;
+	  odd_data = malloc (uncompressed_odd);
+	  if (odd_data == NULL)
+	      goto error;
+	  lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
+	  opt_delta.type = LZMA_DELTA_TYPE_BYTE;
+	  opt_delta.dist = delta_dist;
+	  lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
+	  filters[0].id = LZMA_FILTER_DELTA;
+	  filters[0].options = &opt_delta;
+	  filters[1].id = LZMA_FILTER_LZMA2;
+	  filters[1].options = &opt_lzma2;
+	  filters[2].id = LZMA_VLI_UNKNOWN;
+	  filters[2].options = NULL;
+	  if (lzma_raw_buffer_decode
+	      (filters, NULL, pixels_odd, &in_pos, refLen, odd_data, &out_pos,
+	       uncompressed_odd) != LZMA_OK)
+	      goto error;
+	  pixels_odd = odd_data;
+	  if (pixels_even != NULL && uncompressed_even != compressed_even)
+	    {
+		/* decompressing from LZMA DeltaFilter - EVEN Block */
+		lzma_options_lzma opt_lzma2;
+		lzma_options_delta opt_delta;
+		lzma_filter filters[3];
+		size_t in_pos = 0;
+		size_t out_pos = 0;
+		size_t refLen = compressed_even;
+		even_data = malloc (uncompressed_even);
+		if (even_data == NULL)
+		    goto error;
+		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
+		opt_delta.type = LZMA_DELTA_TYPE_BYTE;
+		opt_delta.dist = delta_dist;
+		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
+		filters[0].id = LZMA_FILTER_DELTA;
+		filters[0].options = &opt_delta;
+		filters[1].id = LZMA_FILTER_LZMA2;
+		filters[1].options = &opt_lzma2;
+		filters[2].id = LZMA_VLI_UNKNOWN;
+		filters[2].options = NULL;
+		if (lzma_raw_buffer_decode
+		    (filters, NULL, pixels_even, &in_pos, refLen, even_data,
+		     &out_pos, uncompressed_even) != LZMA_OK)
+		    goto error;
+		pixels_even = even_data;
+	    }
+#else /* LZMA is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling LZMA support\n");
+	  goto error;
+#endif /* end LZMA conditional */
+      }
+    if (compression == RL2_COMPRESSION_LZMA_NO
+	&& uncompressed_odd != compressed_odd)
+      {
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+	  /* decompressing from LZMA noDelta - ODD Block */
 	  lzma_options_lzma opt_lzma2;
 	  lzma_filter filters[2];
 	  size_t in_pos = 0;
@@ -4651,6 +5262,7 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 	  odd_data = malloc (uncompressed_odd);
 	  if (odd_data == NULL)
 	      goto error;
+	  lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
 	  lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
 	  filters[0].id = LZMA_FILTER_LZMA2;
 	  filters[0].options = &opt_lzma2;
@@ -4663,15 +5275,16 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 	  pixels_odd = odd_data;
 	  if (pixels_even != NULL && uncompressed_even != compressed_even)
 	    {
-		/* decompressing from LZMA - EVEN Block */
+		/* decompressing from LZMA noDelta - EVEN Block */
 		lzma_options_lzma opt_lzma2;
-		lzma_filter filters[2];
+		lzma_filter filters[3];
 		size_t in_pos = 0;
 		size_t out_pos = 0;
 		size_t refLen = compressed_even;
 		even_data = malloc (uncompressed_even);
 		if (even_data == NULL)
 		    goto error;
+		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
 		lzma_lzma_preset (&opt_lzma2, LZMA_PRESET_DEFAULT);
 		filters[0].id = LZMA_FILTER_LZMA2;
 		filters[0].options = &opt_lzma2;
@@ -4683,6 +5296,11 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 		    goto error;
 		pixels_even = even_data;
 	    }
+#else /* LZMA is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling LZMA support\n");
+	  goto error;
+#endif /* end LZMA conditional */
       }
     if (compression == RL2_COMPRESSION_JPEG)
       {
@@ -4694,26 +5312,26 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 	    case RL2_SCALE_1:
 		ret =
 		    rl2_decode_jpeg_scaled (1, pixels_odd, compressed_odd,
-					    &width, &height, &pix_typ, &pixels,
-					    &pixels_sz);
+					    &width, &height, &pix_typ,
+					    &pixels, &pixels_sz);
 		break;
 	    case RL2_SCALE_2:
 		ret =
 		    rl2_decode_jpeg_scaled (2, pixels_odd, compressed_odd,
-					    &width, &height, &pix_typ, &pixels,
-					    &pixels_sz);
+					    &width, &height, &pix_typ,
+					    &pixels, &pixels_sz);
 		break;
 	    case RL2_SCALE_4:
 		ret =
 		    rl2_decode_jpeg_scaled (4, pixels_odd, compressed_odd,
-					    &width, &height, &pix_typ, &pixels,
-					    &pixels_sz);
+					    &width, &height, &pix_typ,
+					    &pixels, &pixels_sz);
 		break;
 	    case RL2_SCALE_8:
 		ret =
 		    rl2_decode_jpeg_scaled (8, pixels_odd, compressed_odd,
-					    &width, &height, &pix_typ, &pixels,
-					    &pixels_sz);
+					    &width, &height, &pix_typ,
+					    &pixels, &pixels_sz);
 		break;
 	    };
 	  if (ret != RL2_OK)
@@ -4723,6 +5341,7 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
     if (compression == RL2_COMPRESSION_LOSSY_WEBP
 	|| compression == RL2_COMPRESSION_LOSSLESS_WEBP)
       {
+#ifndef OMIT_WEBP		/* only if WebP is enabled */
 	  /* decompressing from WEBP - always on the ODD Block */
 	  int ret = RL2_ERROR;
 	  switch (scale)
@@ -4759,12 +5378,18 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 	  if (ret != RL2_OK)
 	      goto error;
 	  goto done;
+#else /* WebP is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling WebP support\n");
+	  goto error;
+#endif /* end WebP conditional */
       }
     if (compression == RL2_COMPRESSION_PNG)
       {
 	  /* decompressing from PNG */
 	  int ret;
-	  if (sample_type == RL2_SAMPLE_1_BIT || sample_type == RL2_SAMPLE_2_BIT
+	  if (sample_type == RL2_SAMPLE_1_BIT
+	      || sample_type == RL2_SAMPLE_2_BIT
 	      || sample_type == RL2_SAMPLE_4_BIT)
 	    {
 		/* Palette or Grayscale - 1,2 or 4 bit isn't scalable */
@@ -4772,9 +5397,9 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 		    goto error;
 		ret =
 		    rl2_decode_png (pixels_odd, compressed_odd,
-				    &width, &height, &sample_type, &pixel_type,
-				    &num_bands, &pixels, &pixels_sz, &mask,
-				    &mask_sz, &palette);
+				    &width, &height, &sample_type,
+				    &pixel_type, &num_bands, &pixels,
+				    &pixels_sz, &mask, &mask_sz, &palette, 0);
 		if (ret != RL2_OK)
 		    goto error;
 		goto done;
@@ -4785,7 +5410,7 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 				      &width, &odd_rows, &sample_type,
 				      &pixel_type, &num_bands, &odd_data,
 				      &pixels_sz, &odd_mask, &odd_mask_sz,
-				      &palette);
+				      &palette, 0);
 		if (ret != RL2_OK)
 		    goto error;
 		pixels_odd = odd_data;
@@ -4793,9 +5418,10 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 		  {
 		      ret = rl2_decode_png (pixels_even, compressed_even,
 					    &width, &even_rows, &sample_type,
-					    &pixel_type, &num_bands, &even_data,
-					    &pixels_sz, &even_mask,
-					    &even_mask_sz, &palette2);
+					    &pixel_type, &num_bands,
+					    &even_data, &pixels_sz,
+					    &even_mask, &even_mask_sz,
+					    &palette2, 0);
 		      if (ret != RL2_OK)
 			  goto error;
 		      rl2_destroy_palette (palette2);
@@ -4807,6 +5433,34 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 		    free (even_mask);
 		goto merge;
 	    }
+      }
+    if (compression == RL2_COMPRESSION_CHARLS)
+      {
+#ifndef OMIT_CHARLS		/* only if CharLS is enabled */
+	  /* decompressing from CHARLS */
+	  int ret = rl2_decode_charls (pixels_odd, compressed_odd,
+				       &width, &odd_rows, &sample_type,
+				       &pixel_type, &num_bands, &odd_data,
+				       &pixels_sz);
+	  if (ret != RL2_OK)
+	      goto error;
+	  pixels_odd = odd_data;
+	  if (scale == RL2_SCALE_1)
+	    {
+		ret = rl2_decode_charls (pixels_even, compressed_even,
+					 &width, &even_rows, &sample_type,
+					 &pixel_type, &num_bands, &even_data,
+					 &pixels_sz);
+		if (ret != RL2_OK)
+		    goto error;
+	    }
+	  pixels_even = even_data;
+	  goto merge;
+#else /* CharLS is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling CharLS support\n");
+	  goto error;
+#endif /* end CharLS conditional */
       }
     if (compression == RL2_COMPRESSION_CCITTFAX4)
       {
@@ -4825,6 +5479,52 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 	  pixel_type = RL2_PIXEL_MONOCHROME;
 	  num_bands = 1;
 	  goto done;
+      }
+    if (compression == RL2_COMPRESSION_LOSSY_JP2
+	|| compression == RL2_COMPRESSION_LOSSLESS_JP2)
+      {
+#ifndef OMIT_OPENJPEG		/* only if OpenJpeg is enabled */
+	  /* decompressing from Jpeg2000 - always on the ODD Block */
+	  int ret = RL2_ERROR;
+	  switch (scale)
+	    {
+	    case RL2_SCALE_1:
+		ret =
+		    rl2_decode_jpeg2000_scaled (1, pixels_odd, compressed_odd,
+						&width, &height, sample_type,
+						pixel_type, num_bands,
+						&pixels, &pixels_sz);
+		break;
+	    case RL2_SCALE_2:
+		ret =
+		    rl2_decode_jpeg2000_scaled (2, pixels_odd, compressed_odd,
+						&width, &height, sample_type,
+						pixel_type, num_bands,
+						&pixels, &pixels_sz);
+		break;
+	    case RL2_SCALE_4:
+		ret =
+		    rl2_decode_jpeg2000_scaled (4, pixels_odd, compressed_odd,
+						&width, &height, sample_type,
+						pixel_type, num_bands,
+						&pixels, &pixels_sz);
+		break;
+	    case RL2_SCALE_8:
+		ret =
+		    rl2_decode_jpeg2000_scaled (8, pixels_odd, compressed_odd,
+						&width, &height, sample_type,
+						pixel_type, num_bands,
+						&pixels, &pixels_sz);
+		break;
+	    };
+	  if (ret != RL2_OK)
+	      goto error;
+	  goto done;
+#else /* OpenJpeg is disabled */
+	  fprintf (stderr,
+		   "librasterlite2 was built by disabling OpenJpeg support\n");
+	  goto error;
+#endif /* end OpenJpeg conditional */
       }
 
     if (sample_type == RL2_SAMPLE_1_BIT)
@@ -4868,8 +5568,8 @@ rl2_raster_decode (int scale, const unsigned char *blob_odd,
 	  if (uncompressed_mask != (mask_width * mask_height))
 	      goto error;
 	  if (!unpack_rle
-	      (mask_width, mask_height, pixels_mask, compressed_mask, &mask_pix,
-	       &mask_pix_sz))
+	      (mask_width, mask_height, pixels_mask, compressed_mask,
+	       &mask_pix, &mask_pix_sz))
 	      goto error;
 	  if (!rescale_mask
 	      (scale, &mask_width, &mask_height, mask_pix, &mask, &mask_sz))
@@ -5193,7 +5893,8 @@ update_uint8_stats (unsigned short width, unsigned short height,
 	      ignore_no_data = 1;
 	  if (nbands != num_bands)
 	      ignore_no_data = 1;
-	  if (sample_type == RL2_SAMPLE_1_BIT || sample_type == RL2_SAMPLE_2_BIT
+	  if (sample_type == RL2_SAMPLE_1_BIT
+	      || sample_type == RL2_SAMPLE_2_BIT
 	      || sample_type == RL2_SAMPLE_4_BIT
 	      || sample_type == RL2_SAMPLE_UINT8)
 	      ;
@@ -5803,7 +6504,8 @@ update_int32_stats (unsigned short width, unsigned short height,
 
 static void
 compute_uint32_histogram (unsigned short width, unsigned short height,
-			  const unsigned int *pixels, const unsigned char *mask,
+			  const unsigned int *pixels,
+			  const unsigned char *mask,
 			  rl2PrivRasterStatisticsPtr st, rl2PixelPtr no_data)
 {
 /* computing INT16 tile histogram */
@@ -7134,4 +7836,342 @@ rl2_deserialize_dbms_pixel (const unsigned char *blob, int blob_size)
     if (pixel != NULL)
 	rl2_destroy_pixel (pixel);
     return NULL;
+}
+
+static void
+delta_encode_1 (unsigned char *buffer, int size)
+{
+/* Delta encoding - distance 1 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history = *p++;
+    for (i = 1; i < size; i++)
+      {
+	  /* computing Deltas */
+	  unsigned char tmp = *p - history;
+	  history = *p;
+	  *p++ = tmp;
+      }
+}
+
+static void
+delta_encode_2 (unsigned char *buffer, int size)
+{
+/* Delta encoding - distance 2 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[2];
+/* saving the first component */
+    memcpy (history, p, 2);
+    p += 2;
+    for (i = 2; i < size; i += 2)
+      {
+	  /* computing Deltas */
+	  unsigned char tmp[2];
+	  tmp[0] = *(p + 0) - history[0];
+	  tmp[1] = *(p + 1) - history[1];
+	  memcpy (history, p, 2);
+	  memcpy (p, tmp, 2);
+	  p += 2;
+      }
+}
+
+static void
+delta_encode_3 (unsigned char *buffer, int size)
+{
+/* Delta encoding - distance 3 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[3];
+/* saving the first component */
+    memcpy (history, p, 3);
+    p += 3;
+    for (i = 3; i < size; i += 3)
+      {
+	  /* computing Deltas */
+	  unsigned char tmp[3];
+	  tmp[0] = *(p + 0) - history[0];
+	  tmp[1] = *(p + 1) - history[1];
+	  tmp[2] = *(p + 2) - history[2];
+	  memcpy (history, p, 3);
+	  memcpy (p, tmp, 3);
+	  p += 3;
+      }
+}
+
+static void
+delta_encode_4 (unsigned char *buffer, int size)
+{
+/* Delta encoding - distance 4 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[4];
+/* saving the first component */
+    memcpy (history, p, 4);
+    p += 4;
+    for (i = 4; i < size; i += 4)
+      {
+	  /* computing Deltas */
+	  unsigned char tmp[4];
+	  tmp[0] = *(p + 0) - history[0];
+	  tmp[1] = *(p + 1) - history[1];
+	  tmp[2] = *(p + 2) - history[2];
+	  tmp[3] = *(p + 3) - history[3];
+	  memcpy (history, p, 4);
+	  memcpy (p, tmp, 4);
+	  p += 4;
+      }
+}
+
+static void
+delta_encode_6 (unsigned char *buffer, int size)
+{
+/* Delta encoding - distance 6 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[6];
+/* saving the first component */
+    memcpy (history, p, 6);
+    p += 6;
+    for (i = 6; i < size; i += 6)
+      {
+	  /* computing Deltas */
+	  unsigned char tmp[6];
+	  tmp[0] = *(p + 0) - history[0];
+	  tmp[1] = *(p + 1) - history[1];
+	  tmp[2] = *(p + 2) - history[2];
+	  tmp[3] = *(p + 3) - history[3];
+	  tmp[4] = *(p + 4) - history[4];
+	  tmp[5] = *(p + 5) - history[5];
+	  memcpy (history, p, 6);
+	  memcpy (p, tmp, 6);
+	  p += 6;
+      }
+}
+
+static void
+delta_encode_8 (unsigned char *buffer, int size)
+{
+/* Delta encoding - distance 8 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[8];
+/* saving the first component */
+    memcpy (history, p, 8);
+    p += 8;
+    for (i = 8; i < size; i += 8)
+      {
+	  /* computing Deltas */
+	  unsigned char tmp[8];
+	  tmp[0] = *(p + 0) - history[0];
+	  tmp[1] = *(p + 1) - history[1];
+	  tmp[2] = *(p + 2) - history[2];
+	  tmp[3] = *(p + 3) - history[3];
+	  tmp[4] = *(p + 4) - history[4];
+	  tmp[5] = *(p + 5) - history[5];
+	  tmp[6] = *(p + 6) - history[6];
+	  tmp[7] = *(p + 7) - history[7];
+	  memcpy (history, p, 8);
+	  memcpy (p, tmp, 8);
+	  p += 8;
+      }
+}
+
+RL2_PRIVATE int
+rl2_delta_encode (unsigned char *buffer, int size, int distance)
+{
+/* Delta encoding */
+    if ((size % distance) != 0)
+	return RL2_ERROR;
+    switch (distance)
+      {
+      case 1:
+	  delta_encode_1 (buffer, size);
+	  return RL2_OK;
+      case 2:
+	  delta_encode_2 (buffer, size);
+	  return RL2_OK;
+      case 3:
+	  delta_encode_3 (buffer, size);
+	  return RL2_OK;
+      case 4:
+	  delta_encode_4 (buffer, size);
+	  return RL2_OK;
+      case 6:
+	  delta_encode_6 (buffer, size);
+	  return RL2_OK;
+      case 8:
+	  delta_encode_8 (buffer, size);
+	  return RL2_OK;
+      };
+    return RL2_ERROR;
+}
+
+static void
+delta_decode_1 (unsigned char *buffer, int size)
+{
+/* Delta decoding - distance 1 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history = *p++;
+    for (i = 1; i < size; i++)
+      {
+	  /* restoring Deltas */
+	  unsigned char tmp = history + *p;
+	  *p = tmp;
+	  history = *p++;
+      }
+}
+
+static void
+delta_decode_2 (unsigned char *buffer, int size)
+{
+/* Delta decoding - distance 2 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[2];
+/* saving the first component */
+    memcpy (history, p, 2);
+    p += 2;
+    for (i = 2; i < size; i += 2)
+      {
+	  /* restoring Deltas */
+	  unsigned char tmp[2];
+	  tmp[0] = history[0] + *(p + 0);
+	  tmp[1] = history[1] + *(p + 1);
+	  memcpy (p, tmp, 2);
+	  memcpy (history, p, 2);
+	  p += 2;
+      }
+}
+
+static void
+delta_decode_3 (unsigned char *buffer, int size)
+{
+/* Delta decoding - distance 3 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[3];
+/* saving the first component */
+    memcpy (history, p, 3);
+    p += 3;
+    for (i = 3; i < size; i += 3)
+      {
+	  /* restoring Deltas */
+	  unsigned char tmp[3];
+	  tmp[0] = history[0] + *(p + 0);
+	  tmp[1] = history[1] + *(p + 1);
+	  tmp[2] = history[2] + *(p + 2);
+	  memcpy (p, tmp, 3);
+	  memcpy (history, p, 3);
+	  p += 3;
+      }
+}
+
+static void
+delta_decode_4 (unsigned char *buffer, int size)
+{
+/* Delta decoding - distance 4 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[4];
+/* saving the first component */
+    memcpy (history, p, 4);
+    p += 4;
+    for (i = 4; i < size; i += 4)
+      {
+	  /* restoring Deltas */
+	  unsigned char tmp[4];
+	  tmp[0] = history[0] + *(p + 0);
+	  tmp[1] = history[1] + *(p + 1);
+	  tmp[2] = history[2] + *(p + 2);
+	  tmp[3] = history[3] + *(p + 3);
+	  memcpy (p, tmp, 4);
+	  memcpy (history, p, 4);
+	  p += 4;
+      }
+}
+
+static void
+delta_decode_6 (unsigned char *buffer, int size)
+{
+/* Delta decoding - distance 6 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[6];
+/* saving the first component */
+    memcpy (history, p, 6);
+    p += 6;
+    for (i = 6; i < size; i += 6)
+      {
+	  /* restoring Deltas */
+	  unsigned char tmp[6];
+	  tmp[0] = history[0] + *(p + 0);
+	  tmp[1] = history[1] + *(p + 1);
+	  tmp[2] = history[2] + *(p + 2);
+	  tmp[3] = history[3] + *(p + 3);
+	  tmp[4] = history[4] + *(p + 4);
+	  tmp[5] = history[5] + *(p + 5);
+	  memcpy (p, tmp, 6);
+	  memcpy (history, p, 6);
+	  p += 6;
+      }
+}
+
+static void
+delta_decode_8 (unsigned char *buffer, int size)
+{
+/* Delta decoding - distance 8 */
+    int i;
+    unsigned char *p = buffer;
+    unsigned char history[8];
+/* saving the first component */
+    memcpy (history, p, 8);
+    p += 8;
+    for (i = 8; i < size; i += 8)
+      {
+	  /* restoring Deltas */
+	  unsigned char tmp[8];
+	  tmp[0] = history[0] + *(p + 0);
+	  tmp[1] = history[1] + *(p + 1);
+	  tmp[2] = history[2] + *(p + 2);
+	  tmp[3] = history[3] + *(p + 3);
+	  tmp[4] = history[4] + *(p + 4);
+	  tmp[5] = history[5] + *(p + 5);
+	  tmp[6] = history[6] + *(p + 6);
+	  tmp[7] = history[7] + *(p + 7);
+	  memcpy (p, tmp, 8);
+	  memcpy (history, p, 8);
+	  p += 8;
+      }
+}
+
+RL2_PRIVATE int
+rl2_delta_decode (unsigned char *buffer, int size, int distance)
+{
+/* Delta decoding */
+    if ((size % distance) != 0)
+	return RL2_ERROR;
+    switch (distance)
+      {
+      case 1:
+	  delta_decode_1 (buffer, size);
+	  return RL2_OK;
+      case 2:
+	  delta_decode_2 (buffer, size);
+	  return RL2_OK;
+      case 3:
+	  delta_decode_3 (buffer, size);
+	  return RL2_OK;
+      case 4:
+	  delta_decode_4 (buffer, size);
+	  return RL2_OK;
+      case 6:
+	  delta_decode_6 (buffer, size);
+	  return RL2_OK;
+      case 8:
+	  delta_decode_8 (buffer, size);
+	  return RL2_OK;
+      };
+    return RL2_ERROR;
 }

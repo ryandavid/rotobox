@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -45,6 +45,8 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "config.h"
 
 #include "sqlite3.h"
 #include "spatialite.h"
@@ -399,7 +401,7 @@ do_export_image (sqlite3 * sqlite, const char *coverage, gaiaGeomCollPtr geom,
     path = sqlite3_mprintf ("./%s_%1.0f%s", coverage, radius, suffix);
 
     sql =
-	"SELECT RL2_GetMapImage(?, ST_Buffer(?, ?), 512, 512, 'default', ?, '#ffffff', 1, 80)";
+	"SELECT RL2_GetMapImageFromRaster(?, ST_Buffer(?, ?), 512, 512, 'default', ?, '#ffffff', 1, 80)";
     ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
     if (ret != SQLITE_OK)
 	return 0;
@@ -452,15 +454,25 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 /* testing some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
-    const char *sample_name;
-    const char *pixel_name;
-    unsigned char num_bands;
-    const char *compression_name;
-    int qlty;
+    const char *coverage = NULL;
+    const char *sample_name = NULL;
+    const char *pixel_name = NULL;
+    unsigned char num_bands = 1;
+    const char *compression_name = NULL;
+    int qlty = 100;
     char *sql;
-    int tile_size;
+    int tile_size = 256;
     gaiaGeomCollPtr geom;
+    sqlite3_int64 section_id;
+    int duplicate;
+    double x_res;
+    double y_res;
+    double minx;
+    double miny;
+    double maxx;
+    double maxy;
+    unsigned int width;
+    unsigned int height;
 
 /* setting the coverage name */
     switch (pixel)
@@ -496,6 +508,34 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 		      break;
 		  };
 		break;
+	    case RL2_COMPRESSION_DEFLATE:
+		switch (tile_sz)
+		  {
+		  case TILE_256:
+		      coverage = "plt_deflate_256";
+		      break;
+		  case TILE_512:
+		      coverage = "plt_deflate_512";
+		      break;
+		  case TILE_1024:
+		      coverage = "plt_deflate_1024";
+		      break;
+		  };
+		break;
+	    case RL2_COMPRESSION_LZMA:
+		switch (tile_sz)
+		  {
+		  case TILE_256:
+		      coverage = "plt_lzma_256";
+		      break;
+		  case TILE_512:
+		      coverage = "plt_lzma_512";
+		      break;
+		  case TILE_1024:
+		      coverage = "plt_lzma_1024";
+		      break;
+		  };
+		break;
 	    };
 	  break;
       };
@@ -514,6 +554,14 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 	  compression_name = "PNG";
 	  qlty = 100;
 	  break;
+      case RL2_COMPRESSION_DEFLATE:
+	  compression_name = "DEFLATE";
+	  qlty = 100;
+	  break;
+      case RL2_COMPRESSION_LZMA:
+	  compression_name = "LZMA";
+	  qlty = 100;
+	  break;
       };
     switch (tile_sz)
       {
@@ -529,7 +577,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       };
 
 /* creating the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.4f, %1.4f, "
 			   "RL2_SetPixelValue(RL2_CreatePixel(%Q, %Q, 1), 0, 0))",
 			   coverage, sample_name, pixel_name, num_bands,
@@ -539,7 +587,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -562,33 +610,6 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 	  return 0;
       }
 
-/* deleting the first section */
-    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, %Q, 1)",
-			   coverage, "indiana1");
-    ret = execute_check (sqlite, sql);
-    sqlite3_free (sql);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "DeleteSection \"%s\" error: %s\n", coverage,
-		   err_msg);
-	  sqlite3_free (err_msg);
-	  *retcode += -3;
-	  return 0;
-      }
-
-/* re-loading yet again the first section */
-    sql = sqlite3_mprintf ("SELECT RL2_LoadRaster(%Q, %Q, 0, 26716, 0, 1)",
-			   coverage, "map_samples/usgs-indiana/indiana1.tif");
-    ret = execute_check (sqlite, sql);
-    sqlite3_free (sql);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "LoadRaster \"%s\" error: %s\n", coverage, err_msg);
-	  sqlite3_free (err_msg);
-	  *retcode += -4;
-	  return 0;
-      }
-
 /* building the Pyramid Levels */
     sql = sqlite3_mprintf ("SELECT RL2_Pyramidize(%Q, NULL, 0, 1)", coverage);
     ret = execute_check (sqlite, sql);
@@ -602,9 +623,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       }
 
 /* destroying Pyramid Levels on the second section */
-    sql =
-	sqlite3_mprintf ("SELECT RL2_DePyramidize(%Q, 'indiana2', 1)",
-			 coverage);
+    sql = sqlite3_mprintf ("SELECT RL2_DePyramidize(%Q, 2, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -728,6 +747,34 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 	  *retcode += -26;
 	  return 0;
       }
+    if (rl2_get_dbms_section_id
+	(sqlite, coverage, "indiana2", &section_id, &duplicate) != RL2_OK)
+      {
+	  fprintf (stderr, "Unexpected error: GetDbmsSectionID\n");
+	  *retcode += -27;
+	  return 0;
+      }
+    if (!get_base_resolution (sqlite, coverage, &x_res, &y_res))
+      {
+	  *retcode += -28;
+	  return 0;
+      }
+    if (rl2_resolve_full_section_from_dbms
+	(sqlite, coverage, section_id, x_res, y_res, &minx, &miny, &maxx, &maxy,
+	 &width, &height) != RL2_OK)
+      {
+	  fprintf (stderr, "Unexpected error: ResolveDbmsFullSection\n");
+	  *retcode += -29;
+	  return 0;
+      }
+    if (rl2_resolve_full_section_from_dbms
+	(sqlite, coverage, section_id, x_res * 4, y_res * 4, &minx, &miny,
+	 &maxx, &maxy, &width, &height) != RL2_OK)
+      {
+	  fprintf (stderr, "Unexpected error: ResolveDbmsFullSection\n");
+	  *retcode += -29;
+	  return 0;
+      }
 
     return 1;
 }
@@ -739,7 +786,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 /* dropping some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
+    const char *coverage = NULL;
     char *sql;
 
 /* setting the coverage name */
@@ -776,17 +823,45 @@ drop_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 		      break;
 		  };
 		break;
+	    case RL2_COMPRESSION_DEFLATE:
+		switch (tile_sz)
+		  {
+		  case TILE_256:
+		      coverage = "plt_deflate_256";
+		      break;
+		  case TILE_512:
+		      coverage = "plt_deflate_512";
+		      break;
+		  case TILE_1024:
+		      coverage = "plt_deflate_1024";
+		      break;
+		  };
+		break;
+	    case RL2_COMPRESSION_LZMA:
+		switch (tile_sz)
+		  {
+		  case TILE_256:
+		      coverage = "plt_lzma_256";
+		      break;
+		  case TILE_512:
+		      coverage = "plt_lzma_512";
+		      break;
+		  case TILE_1024:
+		      coverage = "plt_lzma_1024";
+		      break;
+		  };
+		break;
 	    };
 	  break;
       };
 
 /* dropping the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_DropCoverage(%Q, 1)", coverage);
+    sql = sqlite3_mprintf ("SELECT RL2_DropRasterCoverage(%Q, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "DropCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "DropRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -804,6 +879,7 @@ main (int argc, char *argv[])
     char *err_msg = NULL;
     sqlite3 *db_handle;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
 
     if (argc > 1 || argv[0] == NULL)
@@ -826,7 +902,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
     ret =
 	sqlite3_exec (db_handle, "SELECT InitSpatialMetadata(1)", NULL, NULL,
 		      &err_msg);
@@ -871,6 +947,34 @@ main (int argc, char *argv[])
     if (!test_coverage
 	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_PNG, TILE_1024, &ret))
 	return ret;
+    ret = -260;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	return ret;
+    ret = -280;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_DEFLATE, TILE_512, &ret))
+	return ret;
+    ret = -300;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_DEFLATE, TILE_1024,
+	 &ret))
+	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+    ret = -320;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_LZMA, TILE_256, &ret))
+	return ret;
+    ret = -340;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_LZMA, TILE_512, &ret))
+	return ret;
+    ret = -360;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
+	return ret;
+#endif /* end LZMA conditional */
 
 /* dropping all PALETTE Coverages */
     ret = -170;
@@ -897,9 +1001,39 @@ main (int argc, char *argv[])
     if (!drop_coverage
 	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_PNG, TILE_1024, &ret))
 	return ret;
+    ret = -300;
+    if (!drop_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	return ret;
+    ret = -310;
+    if (!drop_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_DEFLATE, TILE_512, &ret))
+	return ret;
+    ret = -320;
+    if (!drop_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_DEFLATE, TILE_1024,
+	 &ret))
+	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
+    ret = -330;
+    if (!drop_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_LZMA, TILE_256, &ret))
+	return ret;
+    ret = -340;
+    if (!drop_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_LZMA, TILE_512, &ret))
+	return ret;
+    ret = -350;
+    if (!drop_coverage
+	(db_handle, RL2_PIXEL_PALETTE, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
+	return ret;
+#endif /* end LZMA conditional */
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

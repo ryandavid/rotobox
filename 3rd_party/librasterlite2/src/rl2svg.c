@@ -20,7 +20,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -231,8 +231,10 @@ svg_set_pen (cairo_t * cairo, rl2PrivSvgStylePtr style)
 		stop = grad->first_stop;
 		while (stop)
 		  {
-		      cairo_pattern_add_color_stop_rgba (pattern, stop->offset,
-							 stop->red, stop->green,
+		      cairo_pattern_add_color_stop_rgba (pattern,
+							 stop->offset,
+							 stop->red,
+							 stop->green,
 							 stop->blue,
 							 stop->opacity *
 							 style->opacity);
@@ -261,8 +263,10 @@ svg_set_pen (cairo_t * cairo, rl2PrivSvgStylePtr style)
 		stop = grad->first_stop;
 		while (stop)
 		  {
-		      cairo_pattern_add_color_stop_rgba (pattern, stop->offset,
-							 stop->red, stop->green,
+		      cairo_pattern_add_color_stop_rgba (pattern,
+							 stop->offset,
+							 stop->red,
+							 stop->green,
 							 stop->blue,
 							 stop->opacity *
 							 style->opacity);
@@ -292,8 +296,8 @@ svg_set_pen (cairo_t * cairo, rl2PrivSvgStylePtr style)
     if (style->stroke_dashitems == 0 || style->stroke_dasharray == NULL)
 	cairo_set_dash (cairo, lengths, 0, 0.0);
     else
-	cairo_set_dash (cairo, style->stroke_dasharray, style->stroke_dashitems,
-			style->stroke_dashoffset);
+	cairo_set_dash (cairo, style->stroke_dasharray,
+			style->stroke_dashitems, style->stroke_dashoffset);
 }
 
 static void
@@ -314,8 +318,10 @@ svg_set_brush (cairo_t * cairo, rl2PrivSvgStylePtr style)
 		stop = grad->first_stop;
 		while (stop)
 		  {
-		      cairo_pattern_add_color_stop_rgba (pattern, stop->offset,
-							 stop->red, stop->green,
+		      cairo_pattern_add_color_stop_rgba (pattern,
+							 stop->offset,
+							 stop->red,
+							 stop->green,
 							 stop->blue,
 							 stop->opacity *
 							 style->opacity);
@@ -334,8 +340,10 @@ svg_set_brush (cairo_t * cairo, rl2PrivSvgStylePtr style)
 		stop = grad->first_stop;
 		while (stop)
 		  {
-		      cairo_pattern_add_color_stop_rgba (pattern, stop->offset,
-							 stop->red, stop->green,
+		      cairo_pattern_add_color_stop_rgba (pattern,
+							 stop->offset,
+							 stop->red,
+							 stop->green,
 							 stop->blue,
 							 stop->opacity *
 							 style->opacity);
@@ -850,11 +858,13 @@ svg_draw_path (cairo_t * cairo, rl2PrivSvgShapePtr shape,
 	    case RL2_SVG_CURVE_4:
 		bezier = item->data;
 		cairo_get_current_point (cairo, &x0, &y0);
-		cairo_curve_to (cairo, 2.0 / 3.0 * bezier->x1 + 1.0 / 3.0 * x0,
+		cairo_curve_to (cairo,
+				2.0 / 3.0 * bezier->x1 + 1.0 / 3.0 * x0,
 				2.0 / 3.0 * bezier->y1 + 1.0 / 3.0 * y0,
-				2.0 / 3.0 * bezier->x1 + 1.0 / 3.0 * bezier->x2,
-				2.0 / 3.0 * bezier->y1 + 1.0 / 3.0 * bezier->y2,
-				bezier->y1, bezier->y2);
+				2.0 / 3.0 * bezier->x1 +
+				1.0 / 3.0 * bezier->x2,
+				2.0 / 3.0 * bezier->y1 +
+				1.0 / 3.0 * bezier->y2, bezier->y1, bezier->y2);
 		break;
 	    case RL2_SVG_ELLIPT_ARC:
 		arc = item->data;
@@ -947,11 +957,13 @@ svg_clip_path (cairo_t * cairo, rl2PrivSvgShapePtr shape)
 	    case RL2_SVG_CURVE_4:
 		bezier = item->data;
 		cairo_get_current_point (cairo, &x0, &y0);
-		cairo_curve_to (cairo, 2.0 / 3.0 * bezier->x1 + 1.0 / 3.0 * x0,
+		cairo_curve_to (cairo,
+				2.0 / 3.0 * bezier->x1 + 1.0 / 3.0 * x0,
 				2.0 / 3.0 * bezier->y1 + 1.0 / 3.0 * y0,
-				2.0 / 3.0 * bezier->x1 + 1.0 / 3.0 * bezier->x2,
-				2.0 / 3.0 * bezier->y1 + 1.0 / 3.0 * bezier->y2,
-				bezier->y1, bezier->y2);
+				2.0 / 3.0 * bezier->x1 +
+				1.0 / 3.0 * bezier->x2,
+				2.0 / 3.0 * bezier->y1 +
+				1.0 / 3.0 * bezier->y2, bezier->y1, bezier->y2);
 		break;
 	    case RL2_SVG_ELLIPT_ARC:
 		arc = item->data;
@@ -1634,7 +1646,7 @@ svg_resolve_gradients_xlink_href (rl2PrivSvgDocumentPtr svg_doc)
 {
 /* resolving any indirect reference: Gradient xlink:href */
     rl2PrivSvgGradientPtr grad = svg_doc->first_grad;
-    rl2PrivSvgGradientPtr ret;
+    rl2PrivSvgGradientPtr ret = NULL;
 
     while (grad)
       {

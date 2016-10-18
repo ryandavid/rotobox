@@ -142,7 +142,7 @@ extern "C"
     RL2_DECLARE int
 	rl2_eval_tiff_origin_compatibility (rl2CoveragePtr cvg,
 					    rl2TiffOriginPtr tiff,
-					    int forced_srid);
+					    int forced_srid, int verbose);
 
     RL2_DECLARE int rl2_is_tiled_tiff_origin (rl2TiffOriginPtr tiff,
 					      int *is_tiled);
@@ -160,7 +160,8 @@ extern "C"
 	rl2_get_tile_from_tiff_origin (rl2CoveragePtr cvg,
 				       rl2TiffOriginPtr tiff,
 				       unsigned int startRow,
-				       unsigned int startCol, int force_srid);
+				       unsigned int startCol, int force_srid,
+				       int verbose);
 
     RL2_DECLARE rl2TiffDestinationPtr
 	rl2_create_tiff_destination (const char *path, unsigned int width,
@@ -282,6 +283,7 @@ extern "C"
 	rl2_raster_to_tiff_mono4 (rl2RasterPtr rst, unsigned char **tiff,
 				  int *tiff_size);
 
+    RL2_DECLARE char *rl2_build_tiff_xml_summary (rl2TiffOriginPtr tiff);
 
 #ifdef __cplusplus
 }

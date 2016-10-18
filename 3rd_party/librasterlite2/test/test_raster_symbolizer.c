@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -68,13 +68,15 @@ test_group_renderer (sqlite3 * sqlite, rl2GroupStylePtr style, int ind,
 }
 
 static int
-test_group_style (sqlite3 * db_handle, int *retcode)
+test_group_style (sqlite3 * db_handle, int no_web_connection, int *retcode)
 {
 /* loading and testing Group Styles */
     char *sql;
     int ret;
     int xret = 0;
-    sqlite3_stmt *stmt;
+    sqlite3_stmt *stmt1;
+    sqlite3_stmt *stmt2;
+    sqlite3_int64 last_id;
     const char *group = "my_group";
     const char *path1 = "group_style_1.xml";
     const char *path2 = "group_style_2.xml";
@@ -84,46 +86,97 @@ test_group_style (sqlite3 * db_handle, int *retcode)
     int count;
 
 /* loading the Group Stles */
-    sql = "SELECT RegisterGroupStyle(?, XB_Create(XB_LoadXML(?), 1, 1))";
-    ret = sqlite3_prepare_v2 (db_handle, sql, strlen (sql), &stmt, NULL);
+    if (no_web_connection)
+	sql = "SELECT SE_RegisterGroupStyle(XB_Create(XB_LoadXML(?), 1))";
+    else
+	sql = "SELECT SE_RegisterGroupStyle(XB_Create(XB_LoadXML(?), 1, 1))";
+    ret = sqlite3_prepare_v2 (db_handle, sql, strlen (sql), &stmt1, NULL);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "Unable to create the SQL statement\n");
+	  fprintf (stderr, "Unable to create the SQL statement (GroupStyle)\n");
 	  *retcode += 1;
 	  return 0;
       }
-    sqlite3_reset (stmt);
-    sqlite3_clear_bindings (stmt);
-    sqlite3_bind_text (stmt, 1, group, strlen (group), SQLITE_STATIC);
-    sqlite3_bind_text (stmt, 2, path1, strlen (path1), SQLITE_STATIC);
-    ret = sqlite3_step (stmt);
-    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+
+    sql = "SELECT SE_RegisterStyledGroupStyle(?, ?)";
+    ret = sqlite3_prepare_v2 (db_handle, sql, strlen (sql), &stmt2, NULL);
+    if (ret != SQLITE_OK)
       {
-	  if (sqlite3_column_int (stmt, 0) == 1)
-	      xret = 1;
-      }
-    if (xret != 1)
-      {
-	  fprintf (stderr, "Unable to load \"%s\"\n", path2);
-	  *retcode += 1;
-	  return 0;
-      }
-    sqlite3_reset (stmt);
-    sqlite3_clear_bindings (stmt);
-    sqlite3_bind_text (stmt, 1, group, strlen (group), SQLITE_STATIC);
-    sqlite3_bind_text (stmt, 2, path2, strlen (path2), SQLITE_STATIC);
-    ret = sqlite3_step (stmt);
-    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-      {
-	  if (sqlite3_column_int (stmt, 0) == 1)
-	      xret = 1;
-      }
-    if (xret != 1)
-      {
-	  fprintf (stderr, "Unable to load \"%s\"\n", path2);
+	  fprintf (stderr,
+		   "Unable to create the SQL statement (StyledGroupStyle)\n");
 	  *retcode += 2;
 	  return 0;
       }
+
+    sqlite3_reset (stmt1);
+    sqlite3_clear_bindings (stmt1);
+    sqlite3_bind_text (stmt1, 1, path1, strlen (path1), SQLITE_STATIC);
+    ret = sqlite3_step (stmt1);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt1, 0) == 1)
+	      xret = 1;
+      }
+    if (xret != 1)
+      {
+	  fprintf (stderr, "Unable to load \"%s\"\n", path2);
+	  *retcode += 3;
+	  return 0;
+      }
+    last_id = sqlite3_last_insert_rowid (db_handle);
+
+    sqlite3_reset (stmt2);
+    sqlite3_clear_bindings (stmt2);
+    sqlite3_bind_text (stmt2, 1, group, strlen (group), SQLITE_STATIC);
+    sqlite3_bind_int64 (stmt2, 2, last_id);
+    ret = sqlite3_step (stmt2);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt2, 0) == 1)
+	      xret = 1;
+      }
+    if (xret != 1)
+      {
+	  fprintf (stderr, "Unable to register \"%s\"\n", path2);
+	  *retcode += 4;
+	  return 0;
+      }
+
+    sqlite3_reset (stmt1);
+    sqlite3_clear_bindings (stmt1);
+    sqlite3_bind_text (stmt1, 1, path2, strlen (path2), SQLITE_STATIC);
+    ret = sqlite3_step (stmt1);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt1, 0) == 1)
+	      xret = 1;
+      }
+    if (xret != 1)
+      {
+	  fprintf (stderr, "Unable to load \"%s\"\n", path2);
+	  *retcode += 5;
+	  return 0;
+      }
+    last_id = sqlite3_last_insert_rowid (db_handle);
+
+    sqlite3_reset (stmt2);
+    sqlite3_clear_bindings (stmt2);
+    sqlite3_bind_text (stmt2, 1, group, strlen (group), SQLITE_STATIC);
+    sqlite3_bind_int64 (stmt2, 2, last_id);
+    ret = sqlite3_step (stmt2);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt2, 0) == 1)
+	      xret = 1;
+      }
+    if (xret != 1)
+      {
+	  fprintf (stderr, "Unable to register \"%s\"\n", path2);
+	  *retcode += 6;
+	  return 0;
+      }
+    sqlite3_finalize (stmt1);
+    sqlite3_finalize (stmt2);
 
 /* testing Group Style #1 */
     style =
@@ -132,45 +185,19 @@ test_group_style (sqlite3 * db_handle, int *retcode)
     if (style == NULL)
       {
 	  fprintf (stderr, "Unable to create Group Style #1\n");
-	  *retcode += 3;
+	  *retcode += 7;
 	  return 0;
       }
     str = rl2_get_group_style_name (style);
     if (str == NULL)
       {
 	  fprintf (stderr, "Unable to get Group Style Name #1\n");
-	  *retcode += 4;
+	  *retcode += 8;
 	  return 0;
       }
     if (strcmp (str, "group_style_1") != 0)
       {
 	  fprintf (stderr, "Unexpected Group Style Name #1: %s\n", str);
-	  *retcode += 5;
-	  return 0;
-      }
-    str = rl2_get_group_style_title (style);
-    if (str == NULL)
-      {
-	  fprintf (stderr, "Unable to get Group Style Title #1\n");
-	  *retcode += 6;
-	  return 0;
-      }
-    if (strcmp (str, "style-1 title") != 0)
-      {
-	  fprintf (stderr, "Unexpected Group Style Title #1: %s\n", str);
-	  *retcode += 7;
-	  return 0;
-      }
-    str = rl2_get_group_style_abstract (style);
-    if (str == NULL)
-      {
-	  fprintf (stderr, "Unable to get Group Style Abstract #1\n");
-	  *retcode += 8;
-	  return 0;
-      }
-    if (strcmp (str, "style-1 abstract") != 0)
-      {
-	  fprintf (stderr, "Unexpected Group Style Abstract #1: %s\n", str);
 	  *retcode += 9;
 	  return 0;
       }
@@ -277,100 +304,80 @@ test_group_style (sqlite3 * db_handle, int *retcode)
 	  *retcode += 24;
 	  return 0;
       }
-    str = rl2_get_group_style_title (style);
-    if (str == NULL)
-      {
-	  fprintf (stderr, "Unable to get Group Style Title #2\n");
-	  *retcode += 25;
-	  return 0;
-      }
-    if (strcmp (str, "style-2 title") != 0)
-      {
-	  fprintf (stderr, "Unexpected Group Style Title #2: %s\n", str);
-	  *retcode += 26;
-	  return 0;
-      }
-    str = rl2_get_group_style_abstract (style);
-    if (str != NULL)
-      {
-	  fprintf (stderr, "Unexpected Group Style Abstract #2: %s\n", str);
-	  *retcode += 27;
-	  return 0;
-      }
     if (rl2_is_valid_group_style (style, &valid) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get Group Style Validity #2\n");
-	  *retcode += 28;
+	  *retcode += 25;
 	  return 0;
       }
     if (valid != 0)
       {
 	  fprintf (stderr, "Unexpected Group Style Validity #2: %d\n", valid);
-	  *retcode += 29;
+	  *retcode += 26;
 	  return 0;
       }
     if (rl2_get_group_style_count (style, &count) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get Group Style Count #2\n");
-	  *retcode += 30;
+	  *retcode += 27;
 	  return 0;
       }
     if (count != 2)
       {
 	  fprintf (stderr, "Unexpected Group Style Count #2: %d\n", count);
-	  *retcode += 31;
+	  *retcode += 28;
 	  return 0;
       }
     str = rl2_get_group_named_layer (style, 1);
     if (str == NULL)
       {
 	  fprintf (stderr, "Unable to get Group Style NamedLayer #2\n");
-	  *retcode += 32;
+	  *retcode += 29;
 	  return 0;
       }
     if (strcmp (str, "dumb0") != 0)
       {
 	  fprintf (stderr, "Unexpected Group Style NamedLayer #2: %s\n", str);
-	  *retcode += 33;
+	  *retcode += 30;
 	  return 0;
       }
     str = rl2_get_group_named_style (style, 1);
     if (str == NULL)
       {
 	  fprintf (stderr, "Unable to get Group Style NamedLayer #2\n");
-	  *retcode += 34;
+	  *retcode += 31;
 	  return 0;
       }
     if (strcmp (str, "style1") != 0)
       {
 	  fprintf (stderr, "Unexpected Group Style NamedStyle #2: %s\n", str);
-	  *retcode += 35;
+	  *retcode += 32;
 	  return 0;
       }
     if (rl2_is_valid_group_named_layer (style, 0, &valid) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get Group NamedLayer Validity #2\n");
-	  *retcode += 36;
+	  *retcode += 33;
 	  return 0;
       }
     if (valid != 1)
       {
 	  fprintf (stderr, "Unexpected Group NamedLayer Validity #2: %d\n",
 		   valid);
-	  *retcode += 37;
+	  *retcode += 34;
 	  return 0;
       }
     if (rl2_is_valid_group_named_style (style, 1, &valid) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get Group NamedStyle Validity #2\n");
-	  *retcode += 38;
+	  *retcode += 35;
 	  return 0;
       }
     if (valid != 0)
       {
 	  fprintf (stderr, "Unexpected Group NamedStyle Validity #2: %d\n",
 		   valid);
-	  *retcode += 39;
+	  *retcode += 36;
 	  return 0;
       }
     if (!test_group_renderer (db_handle, style, 2, retcode))
@@ -382,12 +389,10 @@ test_group_style (sqlite3 * db_handle, int *retcode)
     if (style != NULL)
       {
 	  fprintf (stderr, "Unexpected success create Group Style\n");
-	  *retcode += 40;
+	  *retcode += 37;
 	  return 0;
       }
     rl2_get_group_style_name (NULL);
-    rl2_get_group_style_title (NULL);
-    rl2_get_group_style_abstract (NULL);
     rl2_is_valid_group_style (NULL, &valid);
     rl2_get_group_style_count (NULL, &count);
     rl2_get_group_named_layer (NULL, 1);
@@ -400,26 +405,58 @@ test_group_style (sqlite3 * db_handle, int *retcode)
 
 static int
 load_symbolizer (sqlite3 * db_handle, const char *coverage, const char *path,
-		 int *retcode)
+		 int no_web_connection, int *retcode)
 {
 /* loading a RasterSymbolizer as a RasterStyle */
     char *sql;
     int ret;
     int xret = 0;
     sqlite3_stmt *stmt;
+    sqlite3_int64 last_id;
 
-    sql = "SELECT RegisterRasterStyledLayer(?, XB_Create(XB_LoadXML(?), 1, 1))";
+    if (no_web_connection)
+	sql = "SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(?), 1))";
+    else
+	sql = "SELECT SE_RegisterRasterStyle(XB_Create(XB_LoadXML(?), 1, 1))";
     ret = sqlite3_prepare_v2 (db_handle, sql, strlen (sql), &stmt, NULL);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "Unable to create the SQL statement\n");
+	  fprintf (stderr, "Unable to create the SQL statement (Style)\n");
 	  *retcode += 1;
 	  return 0;
       }
     sqlite3_reset (stmt);
     sqlite3_clear_bindings (stmt);
+    sqlite3_bind_text (stmt, 1, path, strlen (path), SQLITE_STATIC);
+    ret = sqlite3_step (stmt);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt, 0) == 1)
+	      xret = 1;
+      }
+    last_id = sqlite3_last_insert_rowid (db_handle);
+    sqlite3_finalize (stmt);
+    if (xret != 1)
+      {
+	  fprintf (stderr, "unable to register a Raster Style \"%s\")\n", path);
+	  *retcode += 2;
+	  return 0;
+      }
+    xret = 0;
+
+    sql = "SELECT SE_RegisterRasterStyledLayer(?, ?)";
+    ret = sqlite3_prepare_v2 (db_handle, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "Unable to create the SQL statement (RasterStyledLayer)\n");
+	  *retcode += 3;
+	  return 0;
+      }
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
     sqlite3_bind_text (stmt, 1, coverage, strlen (coverage), SQLITE_STATIC);
-    sqlite3_bind_text (stmt, 2, path, strlen (path), SQLITE_STATIC);
+    sqlite3_bind_int64 (stmt, 2, last_id);
     ret = sqlite3_step (stmt);
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
       {
@@ -428,7 +465,7 @@ load_symbolizer (sqlite3 * db_handle, const char *coverage, const char *path,
       }
     if (xret == 1)
 	return 1;
-    *retcode += 1;
+    *retcode += 4;
     return 0;
 }
 
@@ -437,15 +474,18 @@ test_symbolizer_1 (sqlite3 * db_handle, const char *coverage,
 		   const char *style_name, int *retcode)
 {
 /* testing a RasterSymbolizer */
-    rl2RasterStylePtr style;
-    const char *string;
+    rl2CoverageStylePtr style;
+    rl2RasterSymbolizerPtr symbolizer;
     double value;
     int intval;
+    int categorize;
+    int interpolate;
     unsigned char enhancement;
     unsigned char red;
     unsigned char green;
     unsigned char blue;
-    style = rl2_create_raster_style_from_dbms (db_handle, coverage, style_name);
+    style =
+	rl2_create_coverage_style_from_dbms (db_handle, coverage, style_name);
     if (style == NULL)
       {
 	  fprintf (stderr, "Unable to retrieve style '%s'\n", style_name);
@@ -453,125 +493,89 @@ test_symbolizer_1 (sqlite3 * db_handle, const char *coverage,
 	  return 0;
       }
 
-    if (strcmp (coverage, "dumb1") == 0)
+    symbolizer = rl2_get_symbolizer_from_coverage_style (style, 1.0);
+    if (symbolizer == NULL)
       {
-	  string = rl2_get_raster_style_name (style);
-	  if (string == NULL)
-	    {
-		fprintf (stderr, "Unexpected NULL style name (%s)\n",
-			 style_name);
-		*retcode += 1;
-		return 0;
-	    }
-	  if (strcmp (string, "style1") != 0)
-	    {
-		fprintf (stderr, "Unexpected style name \"%s\"\n", string);
-		*retcode += 2;
-		return 0;
-	    }
-
-	  string = rl2_get_raster_style_title (style);
-	  if (string == NULL)
-	    {
-		fprintf (stderr, "Unexpected NULL style title (%s)\n",
-			 style_name);
-		*retcode += 3;
-		return 0;
-	    }
-	  if (strcmp (string, "title: first style") != 0)
-	    {
-		fprintf (stderr, "Unexpected style title \"%s\"\n", string);
-		*retcode += 4;
-		return 0;
-	    }
-
-	  string = rl2_get_raster_style_abstract (style);
-	  if (string == NULL)
-	    {
-		fprintf (stderr, "Unexpected NULL style abstract (%s)\n",
-			 style_name);
-		*retcode += 5;
-		return 0;
-	    }
-	  if (strcmp (string, "abstract: first style") != 0)
-	    {
-		fprintf (stderr, "Unexpected style abstract \"%s\"\n", string);
-		*retcode += 6;
-		return 0;
-	    }
+	  fprintf (stderr, "Unexpected NULL RasterSymbolizer (%s)\n",
+		   style_name);
+	  *retcode += 2;
+	  return 0;
       }
 
-    if (rl2_get_raster_style_opacity (style, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_opacity (symbolizer, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get Opacity\n");
-	  *retcode += 7;
+	  *retcode += 3;
 	  return 0;
       }
     if (value != 1.0)
       {
 	  fprintf (stderr, "Unexpected Opacity %1.2f\n", value);
-	  *retcode += 8;
+	  *retcode += 4;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_mono_band_selected (style, &intval) != RL2_OK)
+    if (rl2_is_raster_symbolizer_mono_band_selected
+	(symbolizer, &intval, &categorize, &interpolate) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get IsMonoBandSelected\n");
-	  *retcode += 9;
+	  *retcode += 5;
 	  return 0;
       }
     if (intval != 1)
       {
 	  fprintf (stderr, "Unexpected IsMonoBandSelected %d\n", intval);
-	  *retcode += 10;
+	  *retcode += 6;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_triple_band_selected (style, &intval) != RL2_OK)
+    if (rl2_is_raster_symbolizer_triple_band_selected (symbolizer, &intval) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get IsTripleBandSelected\n");
-	  *retcode += 11;
+	  *retcode += 7;
 	  return 0;
       }
     if (intval != 0)
       {
 	  fprintf (stderr, "Unexpected IsTripleBandSelected %d\n", intval);
-	  *retcode += 12;
+	  *retcode += 8;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_overall_contrast_enhancement
-	(style, &enhancement, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_overall_contrast_enhancement
+	(symbolizer, &enhancement, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get OverallContrastEnhancement\n");
-	  *retcode += 13;
+	  *retcode += 9;
 	  return 0;
       }
     if (enhancement != RL2_CONTRAST_ENHANCEMENT_NONE)
       {
 	  fprintf (stderr, "Unexpected OverallContrastEnhancement %02x\n",
 		   enhancement);
-	  *retcode += 14;
+	  *retcode += 10;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_shaded_relief (style, &intval) != RL2_OK)
+    if (rl2_has_raster_symbolizer_shaded_relief (symbolizer, &intval) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get HasShadedRelief\n");
-	  *retcode += 15;
+	  *retcode += 11;
 	  return 0;
       }
     if (intval != 1)
       {
 	  fprintf (stderr, "Unexpected HasShadedRelief %d\n", intval);
-	  *retcode += 16;
+	  *retcode += 12;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_shaded_relief (style, &intval, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_shaded_relief (symbolizer, &intval, &value) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ShadedRelief BrightnessOnly\n");
-	  *retcode += 17;
+	  *retcode += 13;
 	  return 0;
       }
     if (strcmp (coverage, "dumb1") == 0)
@@ -580,14 +584,14 @@ test_symbolizer_1 (sqlite3 * db_handle, const char *coverage,
 	    {
 		fprintf (stderr, "Unexpected ShadedRelief BrightnessOnly %d\n",
 			 intval);
-		*retcode += 18;
+		*retcode += 14;
 		return 0;
 	    }
 	  if (value != 55.0)
 	    {
 		fprintf (stderr, "Unexpected ShadedRelief ReliefFactor %1.2f\n",
 			 value);
-		*retcode += 18;
+		*retcode += 15;
 		return 0;
 	    }
       }
@@ -597,98 +601,101 @@ test_symbolizer_1 (sqlite3 * db_handle, const char *coverage,
 	    {
 		fprintf (stderr, "Unexpected ShadedRelief BrightnessOnly %d\n",
 			 intval);
-		*retcode += 18;
+		*retcode += 16;
 		return 0;
 	    }
 	  if (value != 33.5)
 	    {
 		fprintf (stderr, "Unexpected ShadedRelief ReliefFactor %1.2f\n",
 			 value);
-		*retcode += 18;
+		*retcode += 17;
 		return 0;
 	    }
       }
 
-    if (rl2_has_raster_style_color_map_interpolated (style, &intval) != RL2_OK)
+    if (rl2_has_raster_symbolizer_color_map_interpolated (symbolizer, &intval)
+	!= RL2_OK)
       {
 	  fprintf (stderr, "Unable to get HasColorMapInterpolated\n");
-	  *retcode += 19;
+	  *retcode += 18;
 	  return 0;
       }
     if (intval != 0)
       {
 	  fprintf (stderr, "Unexpected HasColorMapInterpolated %d\n", intval);
-	  *retcode += 20;
+	  *retcode += 19;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_color_map_categorized (style, &intval) != RL2_OK)
+    if (rl2_has_raster_symbolizer_color_map_categorized (symbolizer, &intval) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get HasColorMapCategorized\n");
-	  *retcode += 21;
+	  *retcode += 20;
 	  return 0;
       }
     if (intval != 1)
       {
 	  fprintf (stderr, "Unexpected HasColorMapCategorized %d\n", intval);
-	  *retcode += 22;
+	  *retcode += 21;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_default (style, &red, &green, &blue) !=
-	RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_default
+	(symbolizer, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapDefault\n");
-	  *retcode += 23;
+	  *retcode += 22;
 	  return 0;
       }
     if (red != 0x78 || green != 0xc8 || blue != 0x18)
       {
 	  fprintf (stderr, "Unexpected ColorMapDefault #%02x%02x%02x\n", red,
 		   green, blue);
-	  *retcode += 24;
+	  *retcode += 23;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_category_base
-	(style, &red, &green, &blue) != RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_category_base
+	(symbolizer, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapCategoryBase\n");
-	  *retcode += 25;
+	  *retcode += 24;
 	  return 0;
       }
     if (red != 0x00 || green != 0xff || blue != 0x00)
       {
 	  fprintf (stderr, "Unexpected ColorMapCategoryBase #%02x%02x%02x\n",
 		   red, green, blue);
-	  *retcode += 26;
+	  *retcode += 25;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_count (style, &intval) != RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_count (symbolizer, &intval) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapCount\n");
-	  *retcode += 27;
+	  *retcode += 26;
 	  return 0;
       }
     if (intval != 19)
       {
 	  fprintf (stderr, "Unexpected ColorMapCount %d\n", intval);
-	  *retcode += 28;
+	  *retcode += 27;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_entry
-	(style, 3, &value, &red, &green, &blue) != RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_entry
+	(symbolizer, 3, &value, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapEntry (3)\n");
-	  *retcode += 29;
+	  *retcode += 28;
 	  return 0;
       }
     if (value != -167)
       {
 	  fprintf (stderr, "Unexpected ColorMapEntry (3) %1.2f\n", value);
-	  *retcode += 30;
+	  *retcode += 29;
 	  return 0;
       }
     if (red != 0x3c || green != 0xf5 || blue != 0x05)
@@ -699,8 +706,8 @@ test_symbolizer_1 (sqlite3 * db_handle, const char *coverage,
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_entry
-	(style, 13, &value, &red, &green, &blue) != RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_entry
+	(symbolizer, 13, &value, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapEntry (13)\n");
 	  *retcode += 31;
@@ -720,23 +727,24 @@ test_symbolizer_1 (sqlite3 * db_handle, const char *coverage,
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_entry
-	(style, 30, &value, &red, &green, &blue) == RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_entry
+	(symbolizer, 30, &value, &red, &green, &blue) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected success: ColorMapEntry (30)\n");
 	  *retcode += 34;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_triple_band_selection (style, &red, &green, &blue)
-	== RL2_OK)
+    if (rl2_get_raster_symbolizer_triple_band_selection
+	(symbolizer, &red, &green, &blue) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected success: TripleBand selection\n");
 	  *retcode += 35;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_mono_band_selection (style, &red) != RL2_OK)
+    if (rl2_get_raster_symbolizer_mono_band_selection (symbolizer, &red) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get MonoBand selection\n");
 	  *retcode += 36;
@@ -745,58 +753,58 @@ test_symbolizer_1 (sqlite3 * db_handle, const char *coverage,
     if (red != 0)
       {
 	  fprintf (stderr, "Unexpected MonoBand selection: %d\n", intval);
-	  *retcode += 36;
+	  *retcode += 37;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_count (NULL, &intval) == RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_count (NULL, &intval) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected ColorMapCount\n");
 	  *retcode += 38;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_default (NULL, &red, &green, &blue) ==
-	RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_default (NULL, &red, &green, &blue)
+	== RL2_OK)
       {
 	  fprintf (stderr, "Unexpected ColorMapDefault\n");
 	  *retcode += 39;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_gray_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_gray_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected GrayBandContrastEnhancement\n");
 	  *retcode += 40;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_red_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_red_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected RedBandContrastEnhancement\n");
 	  *retcode += 41;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_green_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_green_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement\n");
 	  *retcode += 42;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_blue_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_blue_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected BlueBandContrastEnhancement\n");
 	  *retcode += 43;
 	  return 0;
       }
 
-    rl2_destroy_raster_style (style);
+    rl2_destroy_coverage_style (style);
     return 1;
 }
 
@@ -805,15 +813,18 @@ test_symbolizer_2 (sqlite3 * db_handle, const char *coverage,
 		   const char *style_name, int *retcode)
 {
 /* testing a RasterSymbolizer */
-    rl2RasterStylePtr style;
-    const char *string;
+    rl2CoverageStylePtr style;
+    rl2RasterSymbolizerPtr symbolizer;
     double value;
     int intval;
+    int categorize;
+    int interpolate;
     unsigned char enhancement;
     unsigned char red;
     unsigned char green;
     unsigned char blue;
-    style = rl2_create_raster_style_from_dbms (db_handle, coverage, style_name);
+    style =
+	rl2_create_coverage_style_from_dbms (db_handle, coverage, style_name);
     if (style == NULL)
       {
 	  fprintf (stderr, "Unable to retrieve style '%s'\n", style_name);
@@ -821,285 +832,257 @@ test_symbolizer_2 (sqlite3 * db_handle, const char *coverage,
 	  return 0;
       }
 
-    if (strcmp (coverage, "dumb1") == 0)
+    symbolizer = rl2_get_symbolizer_from_coverage_style (style, 1.0);
+    if (symbolizer == NULL)
       {
-	  string = rl2_get_raster_style_name (style);
-	  if (string == NULL)
-	    {
-		fprintf (stderr, "Unexpected NULL style name (%s)\n",
-			 style_name);
-		*retcode += 1;
-		return 0;
-	    }
-	  if (strcmp (string, "style2") != 0)
-	    {
-		fprintf (stderr, "Unexpected style name \"%s\"\n", string);
-		*retcode += 2;
-		return 0;
-	    }
-
-	  string = rl2_get_raster_style_title (style);
-	  if (string == NULL)
-	    {
-		fprintf (stderr, "Unexpected NULL style title (%s)\n",
-			 style_name);
-		*retcode += 3;
-		return 0;
-	    }
-	  if (strcmp (string, "title: second style") != 0)
-	    {
-		fprintf (stderr, "Unexpected style title \"%s\"\n", string);
-		*retcode += 4;
-		return 0;
-	    }
-
-	  string = rl2_get_raster_style_abstract (style);
-	  if (string != NULL)
-	    {
-		fprintf (stderr, "Unexpected NOT NULL style abstract (%s)\n",
-			 style_name);
-		*retcode += 5;
-		return 0;
-	    }
+	  fprintf (stderr, "Unexpected NULL RasterSymbolizer (%s)\n",
+		   style_name);
+	  *retcode += 2;
+	  return 0;
       }
 
-    if (rl2_get_raster_style_opacity (style, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_opacity (symbolizer, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get Opacity\n");
-	  *retcode += 6;
+	  *retcode += 3;
 	  return 0;
       }
     if (value != 0.8)
       {
 	  fprintf (stderr, "Unexpected Opacity %1.2f\n", value);
-	  *retcode += 7;
+	  *retcode += 4;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_triple_band_selected (style, &intval) != RL2_OK)
+    if (rl2_is_raster_symbolizer_triple_band_selected (symbolizer, &intval) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get IsTripleBandSelected\n");
-	  *retcode += 8;
+	  *retcode += 5;
 	  return 0;
       }
     if (intval != 1)
       {
 	  fprintf (stderr, "Unexpected IsTripleBandSelected %d\n", intval);
-	  *retcode += 9;
+	  *retcode += 6;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_red_band_contrast_enhancement
-	(style, &enhancement, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_red_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get RedBandContrastEnhancement\n");
-	  *retcode += 10;
+	  *retcode += 7;
 	  return 0;
       }
     if (enhancement != RL2_CONTRAST_ENHANCEMENT_HISTOGRAM)
       {
 	  fprintf (stderr, "Unexpected RedBandContrastEnhancement %02x\n",
 		   enhancement);
-	  *retcode += 11;
+	  *retcode += 8;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_green_band_contrast_enhancement
-	(style, &enhancement, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_green_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get GreenBandContrastEnhancement\n");
-	  *retcode += 12;
+	  *retcode += 9;
 	  return 0;
       }
     if (enhancement != RL2_CONTRAST_ENHANCEMENT_GAMMA)
       {
 	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement %02x\n",
 		   enhancement);
-	  *retcode += 13;
+	  *retcode += 10;
 	  return 0;
       }
     if (value != 2.5)
       {
 	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement %1.2f\n",
 		   value);
-	  *retcode += 14;
+	  *retcode += 11;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_blue_band_contrast_enhancement
-	(style, &enhancement, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_blue_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get BlueBandContrastEnhancement\n");
-	  *retcode += 15;
+	  *retcode += 12;
 	  return 0;
       }
     if (enhancement != RL2_CONTRAST_ENHANCEMENT_NORMALIZE)
       {
 	  fprintf (stderr, "Unexpected BlueBandContrastEnhancement %02x\n",
 		   enhancement);
-	  *retcode += 16;
+	  *retcode += 13;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_overall_contrast_enhancement
-	(style, &enhancement, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_overall_contrast_enhancement
+	(symbolizer, &enhancement, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get OverallContrastEnhancement\n");
-	  *retcode += 17;
+	  *retcode += 14;
 	  return 0;
       }
     if (enhancement != RL2_CONTRAST_ENHANCEMENT_GAMMA)
       {
 	  fprintf (stderr, "Unexpected OverallContrastEnhancement %02x\n",
 		   enhancement);
-	  *retcode += 18;
+	  *retcode += 15;
 	  return 0;
       }
     if (value != 1.2)
       {
 	  fprintf (stderr, "Unexpected OverallContrastEnhancement %1.2f\n",
 		   value);
-	  *retcode += 19;
+	  *retcode += 16;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_shaded_relief (style, &intval) != RL2_OK)
+    if (rl2_has_raster_symbolizer_shaded_relief (symbolizer, &intval) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get HasShadedRelief\n");
-	  *retcode += 20;
+	  *retcode += 17;
 	  return 0;
       }
     if (intval != 0)
       {
 	  fprintf (stderr, "Unexpected HasShadedRelief %d\n", intval);
-	  *retcode += 21;
+	  *retcode += 18;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_shaded_relief (style, &intval, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_shaded_relief (symbolizer, &intval, &value) ==
+	RL2_OK)
       {
 	  fprintf (stderr, "Unexpected success: ShadedRelief\n");
-	  *retcode += 22;
+	  *retcode += 19;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_color_map_interpolated (style, &intval) != RL2_OK)
+    if (rl2_has_raster_symbolizer_color_map_interpolated (symbolizer, &intval)
+	!= RL2_OK)
       {
 	  fprintf (stderr, "Unable to get HasColorMapInterpolated\n");
-	  *retcode += 23;
+	  *retcode += 20;
 	  return 0;
       }
     if (intval != 1)
       {
 	  fprintf (stderr, "Unexpected HasColorMapInterpolated %d\n", intval);
-	  *retcode += 24;
+	  *retcode += 21;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_color_map_categorized (style, &intval) != RL2_OK)
+    if (rl2_has_raster_symbolizer_color_map_categorized (symbolizer, &intval) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get HasColorMapCategorized\n");
-	  *retcode += 25;
+	  *retcode += 22;
 	  return 0;
       }
     if (intval != 0)
       {
 	  fprintf (stderr, "Unexpected HasColorMapCategorized %d\n", intval);
-	  *retcode += 26;
+	  *retcode += 23;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_default (style, &red, &green, &blue) !=
-	RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_default
+	(symbolizer, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapDefault\n");
-	  *retcode += 27;
+	  *retcode += 24;
 	  return 0;
       }
     if (red != 0xdd || green != 0xdd || blue != 0xdd)
       {
 	  fprintf (stderr, "Unexpected ColorMapDefault #%02x%02x%02x\n", red,
 		   green, blue);
-	  *retcode += 28;
+	  *retcode += 25;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_category_base
-	(style, &red, &green, &blue) == RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_category_base
+	(symbolizer, &red, &green, &blue) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected success: get ColorMapCategoryBase\n");
-	  *retcode += 29;
+	  *retcode += 26;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_count (style, &intval) != RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_count (symbolizer, &intval) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapCount\n");
-	  *retcode += 30;
+	  *retcode += 27;
 	  return 0;
       }
     if (intval != 2)
       {
 	  fprintf (stderr, "Unexpected ColorMapCount %d\n", intval);
-	  *retcode += 31;
+	  *retcode += 28;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_entry
-	(style, 0, &value, &red, &green, &blue) != RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_entry
+	(symbolizer, 0, &value, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapEntry (0)\n");
-	  *retcode += 32;
+	  *retcode += 29;
 	  return 0;
       }
     if (value != 0)
       {
 	  fprintf (stderr, "Unexpected ColorMapEntry (0) %1.2f\n", value);
-	  *retcode += 33;
+	  *retcode += 30;
 	  return 0;
       }
     if (red != 0x00 || green != 0x00 || blue != 0x00)
       {
 	  fprintf (stderr, "Unexpected ColorMapEntry (0) #%02x%02x%02x\n", red,
 		   green, blue);
-	  *retcode += 34;
+	  *retcode += 31;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_entry
-	(style, 1, &value, &red, &green, &blue) != RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_entry
+	(symbolizer, 1, &value, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get ColorMapEntry (1)\n");
-	  *retcode += 35;
+	  *retcode += 32;
 	  return 0;
       }
     if (value != 255)
       {
 	  fprintf (stderr, "Unexpected ColorMapEntry (1) %1.2f\n", value);
-	  *retcode += 36;
+	  *retcode += 33;
 	  return 0;
       }
     if (red != 0xff || green != 0xff || blue != 0xff)
       {
 	  fprintf (stderr, "Unexpected ColorMapEntry (1) #%02x%02x%02x\n", red,
 		   green, blue);
-	  *retcode += 37;
+	  *retcode += 34;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_entry
-	(style, 2, &value, &red, &green, &blue) == RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_entry
+	(symbolizer, 2, &value, &red, &green, &blue) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected success: ColorMapEntry (2)\n");
-	  *retcode += 38;
+	  *retcode += 35;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_triple_band_selection (style, &red, &green, &blue)
-	!= RL2_OK)
+    if (rl2_get_raster_symbolizer_triple_band_selection
+	(symbolizer, &red, &green, &blue) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get TripleBand selection\n");
-	  *retcode += 35;
+	  *retcode += 36;
 	  return 0;
       }
     if (red == 0 && green == 1 && blue == 2)
@@ -1108,39 +1091,41 @@ test_symbolizer_2 (sqlite3 * db_handle, const char *coverage,
       {
 	  fprintf (stderr, "Unexpected TripleBand %d,%d,%d\n", red, green,
 		   blue);
-	  *retcode += 36;
+	  *retcode += 37;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_mono_band_selection (style, &red) == RL2_OK)
+    if (rl2_get_raster_symbolizer_mono_band_selection (symbolizer, &red) ==
+	RL2_OK)
       {
 	  fprintf (stderr, "Unexpected success: MonoBand selection\n");
-	  *retcode += 36;
+	  *retcode += 38;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_mono_band_selected (style, &intval) != RL2_OK)
+    if (rl2_is_raster_symbolizer_mono_band_selected
+	(symbolizer, &intval, &categorize, &interpolate) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get IsMonoBandSelected\n");
-	  *retcode += 37;
+	  *retcode += 39;
 	  return 0;
       }
     if (intval != 0)
       {
 	  fprintf (stderr, "Unexpected IsMonoBandSelected %d\n", intval);
-	  *retcode += 38;
+	  *retcode += 40;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_gray_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_gray_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected GrayBandContrastEnhancement\n");
-	  *retcode += 39;
+	  *retcode += 41;
 	  return 0;
       }
 
-    rl2_destroy_raster_style (style);
+    rl2_destroy_coverage_style (style);
     return 1;
 }
 
@@ -1149,14 +1134,18 @@ test_symbolizer_3 (sqlite3 * db_handle, const char *coverage,
 		   const char *style_name, int *retcode)
 {
 /* testing a RasterSymbolizer */
-    rl2RasterStylePtr style;
+    rl2CoverageStylePtr style;
+    rl2RasterSymbolizerPtr symbolizer;
     unsigned char enhancement;
     unsigned char red;
     unsigned char green;
     unsigned char blue;
     int intval;
+    int categorize;
+    int interpolate;
     double value;
-    style = rl2_create_raster_style_from_dbms (db_handle, coverage, style_name);
+    style =
+	rl2_create_coverage_style_from_dbms (db_handle, coverage, style_name);
     if (style == NULL)
       {
 	  fprintf (stderr, "Unable to retrieve style '%s'\n", style_name);
@@ -1164,124 +1153,201 @@ test_symbolizer_3 (sqlite3 * db_handle, const char *coverage,
 	  return 0;
       }
 
-    if (rl2_get_raster_style_triple_band_selection (style, &red, &green, &blue)
-	== RL2_OK)
+    symbolizer = rl2_get_symbolizer_from_coverage_style (style, 1.0);
+    if (symbolizer == NULL)
       {
-	  fprintf (stderr, "Unexpected success: TripleBand selection\n");
+	  fprintf (stderr, "Unexpected NULL RasterSymbolizer (%s)\n",
+		   style_name);
 	  *retcode += 2;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_mono_band_selected (style, &intval) != RL2_OK)
+    if (rl2_get_raster_symbolizer_triple_band_selection
+	(symbolizer, &red, &green, &blue) == RL2_OK)
+      {
+	  fprintf (stderr, "Unexpected success: TripleBand selection\n");
+	  *retcode += 3;
+	  return 0;
+      }
+
+    if (rl2_is_raster_symbolizer_mono_band_selected
+	(symbolizer, &intval, &categorize, &interpolate) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get IsMonoBandSelected\n");
-	  *retcode += 3;
+	  *retcode += 4;
 	  return 0;
       }
     if (intval != 1)
       {
 	  fprintf (stderr, "Unexpected IsMonoBandSelected %d\n", intval);
-	  *retcode += 4;
+	  *retcode += 5;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_mono_band_selection (style, &red) != RL2_OK)
+    if (rl2_get_raster_symbolizer_mono_band_selection (symbolizer, &red) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get MonoBand selection\n");
-	  *retcode += 5;
+	  *retcode += 6;
 	  return 0;
       }
     if (red != 0)
       {
 	  fprintf (stderr, "Unexpected MonoBand %d\n", red);
-	  *retcode += 4;
+	  *retcode += 7;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_triple_band_selected (style, &intval) != RL2_OK)
+    if (rl2_is_raster_symbolizer_triple_band_selected (symbolizer, &intval) !=
+	RL2_OK)
       {
 	  fprintf (stderr, "Unable to get IsTripleBandSelected\n");
-	  *retcode += 5;
+	  *retcode += 8;
 	  return 0;
       }
     if (intval != 0)
       {
 	  fprintf (stderr, "Unexpected IsMonoBandSelected %d\n", intval);
-	  *retcode += 6;
+	  *retcode += 9;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_gray_band_contrast_enhancement
-	(style, &enhancement, &value) != RL2_OK)
+    if (rl2_get_raster_symbolizer_gray_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) != RL2_OK)
       {
 	  fprintf (stderr, "Unable to get GrayBandContrastEnhancement\n");
-	  *retcode += 7;
+	  *retcode += 10;
 	  return 0;
       }
     if (enhancement != RL2_CONTRAST_ENHANCEMENT_NONE)
       {
 	  fprintf (stderr, "Unexpected GrayBandContrastEnhancement %02x\n",
 		   enhancement);
-	  *retcode += 8;
-	  return 0;
-      }
-
-    if (rl2_get_raster_style_green_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
-      {
-	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement\n");
-	  *retcode += 9;
-	  return 0;
-      }
-
-    if (rl2_get_raster_style_blue_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
-      {
-	  fprintf (stderr, "Unexpected BlueBandContrastEnhancement\n");
-	  *retcode += 10;
-	  return 0;
-      }
-
-    if (rl2_get_raster_style_red_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
-      {
-	  fprintf (stderr, "Unexpected RedBandContrastEnhancement\n");
 	  *retcode += 11;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_green_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_green_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement\n");
 	  *retcode += 12;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_blue_band_contrast_enhancement
-	(style, &enhancement, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_blue_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
 	  fprintf (stderr, "Unexpected BlueBandContrastEnhancement\n");
 	  *retcode += 13;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_count (style, &intval) == RL2_OK)
+    if (rl2_get_raster_symbolizer_red_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected ColorMapCount\n");
+	  fprintf (stderr, "Unexpected RedBandContrastEnhancement\n");
 	  *retcode += 14;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_default (style, &red, &green, &blue) ==
-	RL2_OK)
+    if (rl2_get_raster_symbolizer_green_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected ColorMapDefault\n");
+	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement\n");
 	  *retcode += 15;
 	  return 0;
       }
 
-    rl2_destroy_raster_style (style);
+    if (rl2_get_raster_symbolizer_blue_band_contrast_enhancement
+	(symbolizer, &enhancement, &value) == RL2_OK)
+      {
+	  fprintf (stderr, "Unexpected BlueBandContrastEnhancement\n");
+	  *retcode += 16;
+	  return 0;
+      }
+
+    if (rl2_get_raster_symbolizer_color_map_count (symbolizer, &intval) ==
+	RL2_OK)
+      {
+	  fprintf (stderr, "Unexpected ColorMapCount\n");
+	  *retcode += 17;
+	  return 0;
+      }
+
+    if (rl2_get_raster_symbolizer_color_map_default
+	(symbolizer, &red, &green, &blue) == RL2_OK)
+      {
+	  fprintf (stderr, "Unexpected ColorMapDefault\n");
+	  *retcode += 18;
+	  return 0;
+      }
+
+    rl2_destroy_coverage_style (style);
+    return 1;
+}
+
+static int
+test_coverage_style (sqlite3 * db_handle, const char *coverage,
+		     const char *style_name, int *retcode)
+{
+/* testing a complex Coverage Style */
+    rl2CoverageStylePtr style;
+    rl2RasterSymbolizerPtr symbolizer;
+    const char *name;
+    style =
+	rl2_create_coverage_style_from_dbms (db_handle, coverage, style_name);
+    if (style == NULL)
+      {
+	  fprintf (stderr, "Unable to retrieve style '%s'\n", style_name);
+	  *retcode += 1;
+	  return 0;
+      }
+
+    name = rl2_get_coverage_style_name (style);
+    if (name == NULL)
+      {
+	  fprintf (stderr, "Unexpected NULL Coverage Style name (%s)\n",
+		   style_name);
+	  *retcode += 2;
+	  return 0;
+      }
+    if (strcmp (name, style_name) != 0)
+	if (name == NULL)
+	  {
+	      fprintf (stderr, "Unexpected Coverage Style name (%s): %s\n",
+		       style_name, name);
+	      *retcode += 3;
+	      return 0;
+	  }
+
+    symbolizer = rl2_get_symbolizer_from_coverage_style (style, 100000.0);
+    if (symbolizer == NULL)
+      {
+	  fprintf (stderr, "Unexpected NULL RasterSymbolizer (%s 100K)\n",
+		   style_name);
+	  *retcode += 4;
+	  return 0;
+      }
+
+    symbolizer = rl2_get_symbolizer_from_coverage_style (style, 5000000.0);
+    if (symbolizer == NULL)
+      {
+	  fprintf (stderr, "Unexpected NULL RasterSymbolizer (%s 5M)\n",
+		   style_name);
+	  *retcode += 5;
+	  return 0;
+      }
+
+    symbolizer = rl2_get_symbolizer_from_coverage_style (style, 15000000.0);
+    if (symbolizer == NULL)
+      {
+	  fprintf (stderr, "Unexpected NULL RasterSymbolizer (%s 15M)\n",
+		   style_name);
+	  *retcode += 6;
+	  return 0;
+      }
+
     return 1;
 }
 
@@ -1289,189 +1355,182 @@ static int
 test_symbolizer_null (int *retcode)
 {
 /* testing a NULL RasterSymbolizer */
-    const char *string;
     double value;
     int intval;
+    int categorize;
+    int interpolate;
     unsigned char enhancement;
     unsigned char red;
     unsigned char green;
     unsigned char blue;
 
-    string = rl2_get_raster_style_name (NULL);
-    if (string != NULL)
+    if (rl2_get_raster_symbolizer_opacity (NULL, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected style name\n");
+	  fprintf (stderr, "Unexpected Opacity\n");
 	  *retcode += 1;
 	  return 0;
       }
 
-    string = rl2_get_raster_style_title (NULL);
-    if (string != NULL)
+    if (rl2_is_raster_symbolizer_mono_band_selected
+	(NULL, &intval, &categorize, &interpolate) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected style title\n");
+	  fprintf (stderr, "Unexpected IsMonoBandSelected\n");
 	  *retcode += 2;
 	  return 0;
       }
 
-    string = rl2_get_raster_style_abstract (NULL);
-    if (string != NULL)
+    if (rl2_is_raster_symbolizer_triple_band_selected (NULL, &intval) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected style abstract\n");
+	  fprintf (stderr, "Unexpected IsTripleBandSelected\n");
 	  *retcode += 3;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_opacity (NULL, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_overall_contrast_enhancement
+	(NULL, &enhancement, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected Opacity\n");
+	  fprintf (stderr, "Unexpected OverallContrastEnhancement\n");
 	  *retcode += 4;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_mono_band_selected (NULL, &intval) == RL2_OK)
+    if (rl2_has_raster_symbolizer_shaded_relief (NULL, &intval) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected IsMonoBandSelected\n");
+	  fprintf (stderr, "Unexpected HasShadedRelief\n");
 	  *retcode += 5;
 	  return 0;
       }
 
-    if (rl2_is_raster_style_triple_band_selected (NULL, &intval) == RL2_OK)
+    if (rl2_get_raster_symbolizer_shaded_relief (NULL, &intval, &value) ==
+	RL2_OK)
       {
-	  fprintf (stderr, "Unexpected IsTripleBandSelected\n");
+	  fprintf (stderr, "Unexpected ShadedRelief BrightnessOnly\n");
 	  *retcode += 6;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_overall_contrast_enhancement
-	(NULL, &enhancement, &value) == RL2_OK)
+    if (rl2_has_raster_symbolizer_color_map_interpolated (NULL, &intval) ==
+	RL2_OK)
       {
-	  fprintf (stderr, "Unexpected OverallContrastEnhancement\n");
+	  fprintf (stderr, "Unexpected HasColorMapInterpolated\n");
 	  *retcode += 7;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_shaded_relief (NULL, &intval) == RL2_OK)
+    if (rl2_has_raster_symbolizer_color_map_categorized (NULL, &intval) ==
+	RL2_OK)
       {
-	  fprintf (stderr, "Unexpected HasShadedRelief\n");
+	  fprintf (stderr, "Unexpected HasColorMapCategorized\n");
 	  *retcode += 8;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_shaded_relief (NULL, &intval, &value) == RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_default (NULL, &red, &green, &blue)
+	== RL2_OK)
       {
-	  fprintf (stderr, "Unexpected ShadedRelief BrightnessOnly\n");
+	  fprintf (stderr, "Unexpected ColorMapDefault\n");
 	  *retcode += 9;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_color_map_interpolated (NULL, &intval) == RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_category_base
+	(NULL, &red, &green, &blue) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected HasColorMapInterpolated\n");
+	  fprintf (stderr, "Unexpected ColorMapCategoryBase\n");
 	  *retcode += 10;
 	  return 0;
       }
 
-    if (rl2_has_raster_style_color_map_categorized (NULL, &intval) == RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_count (NULL, &intval) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected HasColorMapCategorized\n");
+	  fprintf (stderr, "Unexpected ColorMapCount\n");
 	  *retcode += 11;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_default (NULL, &red, &green, &blue) ==
-	RL2_OK)
+    if (rl2_get_raster_symbolizer_color_map_entry
+	(NULL, 3, &value, &red, &green, &blue) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected ColorMapDefault\n");
+	  fprintf (stderr, "Unexpected ColorMapEntry\n");
 	  *retcode += 12;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_category_base
+    if (rl2_get_raster_symbolizer_triple_band_selection
 	(NULL, &red, &green, &blue) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected ColorMapCategoryBase\n");
+	  fprintf (stderr, "Unexpected success: TripleBand selection\n");
 	  *retcode += 13;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_count (NULL, &intval) == RL2_OK)
+    if (rl2_get_raster_symbolizer_mono_band_selection (NULL, &red) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected ColorMapCount\n");
+	  fprintf (stderr, "Unexpected success: MonoBand selection\n");
 	  *retcode += 14;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_color_map_entry
-	(NULL, 3, &value, &red, &green, &blue) == RL2_OK)
+    if (rl2_get_raster_symbolizer_red_band_contrast_enhancement
+	(NULL, &enhancement, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected ColorMapEntry\n");
+	  fprintf (stderr, "Unexpected RedBandContrastEnhancement\n");
 	  *retcode += 15;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_triple_band_selection (NULL, &red, &green, &blue)
-	== RL2_OK)
+    if (rl2_get_raster_symbolizer_green_band_contrast_enhancement
+	(NULL, &enhancement, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected success: TripleBand selection\n");
+	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement\n");
 	  *retcode += 16;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_mono_band_selection (NULL, &red) == RL2_OK)
+    if (rl2_get_raster_symbolizer_blue_band_contrast_enhancement
+	(NULL, &enhancement, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected success: MonoBand selection\n");
+	  fprintf (stderr, "Unexpected BlueBandContrastEnhancement\n");
 	  *retcode += 17;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_red_band_contrast_enhancement
+    if (rl2_get_raster_symbolizer_gray_band_contrast_enhancement
 	(NULL, &enhancement, &value) == RL2_OK)
       {
-	  fprintf (stderr, "Unexpected RedBandContrastEnhancement\n");
+	  fprintf (stderr, "Unexpected GrayBandContrastEnhancement\n");
 	  *retcode += 18;
 	  return 0;
       }
 
-    if (rl2_get_raster_style_green_band_contrast_enhancement
-	(NULL, &enhancement, &value) == RL2_OK)
-      {
-	  fprintf (stderr, "Unexpected GreenBandContrastEnhancement\n");
-	  *retcode += 19;
-	  return 0;
-      }
-
-    if (rl2_get_raster_style_blue_band_contrast_enhancement
-	(NULL, &enhancement, &value) == RL2_OK)
-      {
-	  fprintf (stderr, "Unexpected BlueBandContrastEnhancement\n");
-	  *retcode += 20;
-	  return 0;
-      }
-
-    if (rl2_get_raster_style_gray_band_contrast_enhancement
-	(NULL, &enhancement, &value) == RL2_OK)
-      {
-	  fprintf (stderr, "Unexpected GrayBandContrastEnhancement\n");
-	  *retcode += 21;
-	  return 0;
-      }
-
-    rl2_destroy_raster_style (NULL);
+    rl2_destroy_coverage_style (NULL);
     return 1;
 }
 
 int
 main (int argc, char *argv[])
 {
+    int no_web_connection = 0;
     int result = 0;
     int ret;
     char *err_msg = NULL;
     sqlite3 *db_handle;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
 
     if (argc > 1 || argv[0] == NULL)
 	argc = 1;		/* silencing stupid compiler warnings */
+
+    if (getenv ("ENABLE_RL2_WEB_TESTS") == NULL)
+      {
+	  fprintf (stderr,
+		   "this testcase has been executed with several limitations\n"
+		   "because it was not enabled to access the Web.\n\n"
+		   "you can enable all testcases requiring an Internet connection\n"
+		   "by setting the environment variable \"ENABLE_RL2_WEB_TESTS=1\"\n\n");
+	  no_web_connection = 1;
+      }
 
     old_SPATIALITE_SECURITY_ENV = getenv ("SPATIALITE_SECURITY");
 #ifdef _WIN32
@@ -1490,7 +1549,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
     ret =
 	sqlite3_exec (db_handle, "SELECT InitSpatialMetadata(1)", NULL, NULL,
 		      &err_msg);
@@ -1510,39 +1569,46 @@ main (int argc, char *argv[])
 	  return -3;
       }
     ret =
-	sqlite3_exec (db_handle, "SELECT RL2_CreateCoverage('dumb1', 'UINT8', "
+	sqlite3_exec (db_handle,
+		      "SELECT RL2_CreateRasterCoverage('dumb1', 'UINT8', "
 		      "'GRAYSCALE', 1, 'NONE', 100, 256, 256, 4326, 1.0)", NULL,
 		      NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage() error: %s\n", err_msg);
+	  fprintf (stderr, "CreateRasterCoverage() error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
 	  return -4;
       }
     ret =
-	sqlite3_exec (db_handle, "SELECT RL2_CreateCoverage('dumb2', 'UINT8', "
+	sqlite3_exec (db_handle,
+		      "SELECT RL2_CreateRasterCoverage('dumb2', 'UINT8', "
 		      "'GRAYSCALE', 1, 'NONE', 100, 256, 256, 4326, 1.0)", NULL,
 		      NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage() error: %s\n", err_msg);
+	  fprintf (stderr, "CreateRasterCoverage() error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
 	  return -5;
       }
     ret =
 	sqlite3_exec (db_handle,
-		      "SELECT RL2_CreateCoverage('dumb_dem', 'INT16', "
+		      "SELECT RL2_CreateRasterCoverage('dumb_dem', 'INT16', "
 		      "'DATAGRID', 1, 'NONE', 100, 256, 256, 4326, 1.0)", NULL,
 		      NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage() error: %s\n", err_msg);
+	  fprintf (stderr, "CreateRasterCoverage() error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
 	  return -6;
       }
-    ret =
-	sqlite3_exec (db_handle, "SELECT CreateStylingTables()", NULL,
-		      NULL, &err_msg);
+    if (no_web_connection)
+	ret =
+	    sqlite3_exec (db_handle, "SELECT CreateStylingTables(1)", NULL,
+			  NULL, &err_msg);
+    else
+	ret =
+	    sqlite3_exec (db_handle, "SELECT CreateStylingTables()", NULL,
+			  NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "CreateStylingTables() error: %s\n", err_msg);
@@ -1551,46 +1617,65 @@ main (int argc, char *argv[])
       }
     ret =
 	sqlite3_exec (db_handle,
-		      "SELECT RegisterStyledGroup('my_group', 'dumb1')", NULL,
-		      NULL, &err_msg);
+		      "SELECT SE_RegisterStyledGroupRaster('my_group', 'dumb1')",
+		      NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "RegisterStyledGroup() #1 error: %s\n", err_msg);
+	  fprintf (stderr, "RegisterStyledGroupRaster() #1 error: %s\n",
+		   err_msg);
 	  sqlite3_free (err_msg);
 	  return -8;
       }
     ret =
 	sqlite3_exec (db_handle,
-		      "SELECT RegisterStyledGroup('my_group', 'dumb_dem')",
+		      "SELECT SE_RegisterStyledGroupRaster('my_group', 'dumb_dem')",
 		      NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "RegisterStyledGroup() #2 error: %s\n", err_msg);
+	  fprintf (stderr, "RegisterStyledGroupRaster() #2 error: %s\n",
+		   err_msg);
 	  sqlite3_free (err_msg);
 	  return -9;
       }
 
 /* tests */
     ret = -100;
-    if (!load_symbolizer (db_handle, "dumb1", "raster_symbolizer_1.xml", &ret))
+    if (!load_symbolizer
+	(db_handle, "dumb1", "raster_symbolizer_1.xml", no_web_connection,
+	 &ret))
 	return ret;
     ret = -200;
-    if (!load_symbolizer (db_handle, "dumb1", "raster_symbolizer_2.xml", &ret))
+    if (!load_symbolizer
+	(db_handle, "dumb1", "raster_symbolizer_2.xml", no_web_connection,
+	 &ret))
 	return ret;
     ret = -300;
-    if (!load_symbolizer (db_handle, "dumb1", "raster_symbolizer_3.xml", &ret))
+    if (!load_symbolizer
+	(db_handle, "dumb1", "raster_symbolizer_3.xml", no_web_connection,
+	 &ret))
 	return ret;
     ret = -400;
-    if (!load_symbolizer (db_handle, "dumb2", "raster_symbolizer_4.xml", &ret))
+    if (!load_symbolizer
+	(db_handle, "dumb2", "raster_symbolizer_4.xml", no_web_connection,
+	 &ret))
 	return ret;
     ret = -500;
-    if (!load_symbolizer (db_handle, "dumb2", "raster_symbolizer_5.xml", &ret))
+    if (!load_symbolizer
+	(db_handle, "dumb2", "raster_symbolizer_5.xml", no_web_connection,
+	 &ret))
 	return ret;
     ret = -600;
-    if (!load_symbolizer (db_handle, "dumb2", "raster_symbolizer_6.xml", &ret))
+    if (!load_symbolizer
+	(db_handle, "dumb2", "raster_symbolizer_6.xml", no_web_connection,
+	 &ret))
 	return ret;
     ret = -800;
-    if (!load_symbolizer (db_handle, "dumb_dem", "srtm_brightness.xml", &ret))
+    if (!load_symbolizer
+	(db_handle, "dumb_dem", "srtm_brightness.xml", no_web_connection, &ret))
+	return ret;
+    ret = -900;
+    if (!load_symbolizer
+	(db_handle, "dumb2", "coverage_style.xml", no_web_connection, &ret))
 	return ret;
     ret = -110;
     if (!test_symbolizer_1 (db_handle, "dumb1", "style1", &ret))
@@ -1602,23 +1687,28 @@ main (int argc, char *argv[])
     if (!test_symbolizer_3 (db_handle, "dumb1", "style3", &ret))
 	return ret;
     ret = -410;
-    if (!test_symbolizer_1 (db_handle, "dumb2", "style1", &ret))
+    if (!test_symbolizer_1 (db_handle, "dumb2", "style4", &ret))
 	return ret;
     ret = -510;
-    if (!test_symbolizer_2 (db_handle, "dumb2", "style2", &ret))
+    if (!test_symbolizer_2 (db_handle, "dumb2", "style5", &ret))
 	return ret;
     ret = -610;
-    if (!test_symbolizer_3 (db_handle, "dumb2", "style3", &ret))
+    if (!test_symbolizer_3 (db_handle, "dumb2", "style6", &ret))
 	return ret;
-    ret = -710;
-    if (!test_symbolizer_null (&ret))
+    ret = -610;
+    if (!test_coverage_style (db_handle, "dumb2", "coverage_style", &ret))
 	return ret;
     ret = -810;
-    if (!test_group_style (db_handle, &ret))
+    if (!test_symbolizer_null (&ret))
+	return ret;
+    ret = -910;
+    if (!test_group_style (db_handle, no_web_connection, &ret))
 	return -ret;
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

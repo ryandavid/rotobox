@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 if you have the <CharLS/interface.h> header file. */
+#undef HAVE_CHARLS_INTERFACE_H
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
@@ -24,6 +27,9 @@
 /* Define to 1 if you have the <jpeglib.h> header file. */
 #undef HAVE_JPEGLIB_H
 
+/* Define to 1 if you have the `CharLS' library (-lCharLS). */
+#undef HAVE_LIBCHARLS
+
 /* Define to 1 if you have the `geotiff' library (-lgeotiff). */
 #undef HAVE_LIBGEOTIFF
 
@@ -36,6 +42,12 @@
 /* Define to 1 if you have the `jpeg' library (-ljpeg). */
 #undef HAVE_LIBJPEG
 
+/* Define to 1 if you have the `openjp2' library (-lopenjp2). */
+#undef HAVE_LIBOPENJP2
+
+/* Define to 1 if you have the `sqlite3' library (-lsqlite3). */
+#undef HAVE_LIBSQLITE3
+
 /* Define to 1 if you have the `tiff' library (-ltiff). */
 #undef HAVE_LIBTIFF
 
@@ -46,17 +58,26 @@
    zero-length file name argument. */
 #undef HAVE_LSTAT_EMPTY_STRING_BUG
 
-/* Define to 1 if you have the <lzma.h> header file. */
-#undef HAVE_LZMA_H
-
 /* Define to 1 if you have the <math.h> header file. */
 #undef HAVE_MATH_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
+/* Define to 1 if you have the <openjpeg-2.0/openjpeg.h> header file. */
+#undef HAVE_OPENJPEG_2_0_OPENJPEG_H
+
+/* Define to 1 if you have the <openjpeg-2.1/openjpeg.h> header file. */
+#undef HAVE_OPENJPEG_2_1_OPENJPEG_H
+
 /* Define to 1 if you have the <png.h> header file. */
 #undef HAVE_PNG_H
+
+/* Define to 1 if you have the <sqlite3ext.h> header file. */
+#undef HAVE_SQLITE3EXT_H
+
+/* Define to 1 if you have the <sqlite3.h> header file. */
+#undef HAVE_SQLITE3_H
 
 /* Define to 1 if you have the `sqrt' function. */
 #undef HAVE_SQRT
@@ -117,6 +138,21 @@
 
 /* Must be defined in order to disable debug mode. */
 #undef NDEBUG
+
+/* Should be defined in order to disable CharLS support. */
+#undef OMIT_CHARLS
+
+/* Should be defined in order to disable LZMA support. */
+#undef OMIT_LZMA
+
+/* Should be defined in order to disable OpenJpeg support. */
+#undef OMIT_OPENJPEG
+
+/* Should be defined in order to disable WebP support. */
+#undef OMIT_WEBP
+
+/* testing for OpenJpeg 2.1 */
+#undef OPENJPEG_2_1
 
 /* Name of package */
 #undef PACKAGE

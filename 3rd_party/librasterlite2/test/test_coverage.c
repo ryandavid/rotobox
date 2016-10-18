@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -200,12 +200,15 @@ main (int argc, char *argv[])
 	  return -18;
       }
 
-    if (rl2_create_coverage ("alpha", RL2_SAMPLE_UINT16, RL2_PIXEL_RGB, 3,
-			     RL2_COMPRESSION_NONE, 0, 1024, 1024, NULL) == NULL)
+    coverage =
+	rl2_create_coverage ("alpha", RL2_SAMPLE_UINT16, RL2_PIXEL_RGB, 3,
+			     RL2_COMPRESSION_NONE, 0, 1024, 1024, NULL);
+    if (coverage == NULL)
       {
 	  fprintf (stderr, "Invalid coverage - rgb 16\n");
 	  return -19;
       }
+    rl2_destroy_coverage (coverage);
 
     if (rl2_create_coverage ("alpha", RL2_SAMPLE_UINT8, RL2_PIXEL_RGB, 3,
 			     RL2_COMPRESSION_GIF, 0, 1024, 1024, NULL) != NULL)

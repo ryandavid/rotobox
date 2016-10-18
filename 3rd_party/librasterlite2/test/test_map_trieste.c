@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -45,6 +45,8 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "config.h"
 
 #include "sqlite3.h"
 #include "spatialite.h"
@@ -471,13 +473,13 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 /* testing some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
-    const char *sample_name;
-    const char *pixel_name;
-    unsigned char num_bands;
-    const char *compression_name;
-    int qlty;
-    int tile_size;
+    const char *coverage = NULL;
+    const char *sample_name = NULL;
+    const char *pixel_name = NULL;
+    unsigned char num_bands = 1;
+    const char *compression_name = NULL;
+    int qlty = 100;
+    int tile_size = 256;
     char *sql;
     gaiaGeomCollPtr geom;
 
@@ -487,31 +489,45 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       case RL2_PIXEL_GRAYSCALE:
 	  switch (compression)
 	    {
-	    case RL2_COMPRESSION_NONE:
+	    case RL2_COMPRESSION_CHARLS:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
-		      coverage = "gray_none_256";
+		      coverage = "gray_charls_256";
 		      break;
 		  case TILE_512:
-		      coverage = "gray_none_512";
+		      coverage = "gray_charls_512";
 		      break;
 		  case TILE_1024:
-		      coverage = "gray_none_1024";
+		      coverage = "gray_charls_1024";
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_PNG:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
-		      coverage = "gray_zip_256";
+		      coverage = "gray_png_256";
 		      break;
 		  case TILE_512:
-		      coverage = "gray_zip_512";
+		      coverage = "gray_png_512";
 		      break;
 		  case TILE_1024:
-		      coverage = "gray_zip_1024";
+		      coverage = "gray_png_1024";
+		      break;
+		  };
+		break;
+	    case RL2_COMPRESSION_LOSSLESS_JP2:
+		switch (tile_sz)
+		  {
+		  case TILE_256:
+		      coverage = "gray_jp2_256";
+		      break;
+		  case TILE_512:
+		      coverage = "gray_jp2_512";
+		      break;
+		  case TILE_1024:
+		      coverage = "gray_jp2_1024";
 		      break;
 		  };
 		break;
@@ -525,13 +541,17 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
     num_bands = 1;
     switch (compression)
       {
-      case RL2_COMPRESSION_NONE:
-	  compression_name = "NONE";
+      case RL2_COMPRESSION_CHARLS:
+	  compression_name = "CHARLS";
 	  qlty = 100;
 	  break;
-      case RL2_COMPRESSION_DEFLATE:
-	  compression_name = "DEFLATE";
+      case RL2_COMPRESSION_PNG:
+	  compression_name = "PNG";
 	  qlty = 100;
+	  break;
+      case RL2_COMPRESSION_LOSSLESS_JP2:
+	  compression_name = "LL_JP2";
+	  qlty = 10;
 	  break;
       };
     switch (tile_sz)
@@ -548,7 +568,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       };
 
 /* creating the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.2f, %1.2f)",
 			   coverage, sample_name, pixel_name, num_bands,
 			   compression_name, qlty, tile_size, tile_size, 32633,
@@ -557,7 +577,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -592,48 +612,6 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 	  return 0;
       }
 
-/* deleting the first section */
-    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, %Q, 1)",
-			   coverage, "trieste1");
-    ret = execute_check (sqlite, sql);
-    sqlite3_free (sql);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "DeleteSection \"%s\" error: %s\n", coverage,
-		   err_msg);
-	  sqlite3_free (err_msg);
-	  *retcode += -4;
-	  return 0;
-      }
-
-/* re-loading yet again the first section */
-    sql = sqlite3_mprintf ("SELECT RL2_LoadRaster(%Q, %Q, 0, 32633, 0, 1)",
-			   coverage,
-			   "map_samples/orbview3-trieste/trieste1.tif");
-    ret = execute_check (sqlite, sql);
-    sqlite3_free (sql);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "LoadRaster \"%s\" error: %s\n", coverage, err_msg);
-	  sqlite3_free (err_msg);
-	  *retcode += -5;
-	  return 0;
-      }
-
-/* building the Pyramid Levels */
-    sql =
-	sqlite3_mprintf ("SELECT RL2_Pyramidize(%Q, %Q, 1, 1)", coverage,
-			 "trieste2");
-    ret = execute_check (sqlite, sql);
-    sqlite3_free (sql);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "Pyramidize \"%s\" error: %s\n", coverage, err_msg);
-	  sqlite3_free (err_msg);
-	  *retcode += -6;
-	  return 0;
-      }
-
 /* destroying the Pyramid Levels */
     sql = sqlite3_mprintf ("SELECT RL2_DePyramidize(%Q, NULL, 1)", coverage);
     ret = execute_check (sqlite, sql);
@@ -648,9 +626,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       }
 
 /* building yet again the Pyramid Levels */
-    sql =
-	sqlite3_mprintf ("SELECT RL2_Pyramidize(%Q, %Q, 1, 1)", coverage,
-			 "trieste2");
+    sql = sqlite3_mprintf ("SELECT RL2_Pyramidize(%Q, 2, 1, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -721,49 +697,63 @@ drop_coverage (sqlite3 * sqlite, unsigned char compression, int tile_sz,
 /* dropping some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
+    const char *coverage = NULL;
     char *sql;
 
 /* setting the coverage name */
     switch (compression)
       {
-      case RL2_COMPRESSION_NONE:
+      case RL2_COMPRESSION_CHARLS:
 	  switch (tile_sz)
 	    {
 	    case TILE_256:
-		coverage = "gray_none_256";
+		coverage = "gray_charls_256";
 		break;
 	    case TILE_512:
-		coverage = "gray_none_512";
+		coverage = "gray_charls_512";
 		break;
 	    case TILE_1024:
-		coverage = "gray_none_1024";
+		coverage = "gray_charls_1024";
 		break;
 	    };
 	  break;
-      case RL2_COMPRESSION_DEFLATE:
+      case RL2_COMPRESSION_PNG:
 	  switch (tile_sz)
 	    {
 	    case TILE_256:
-		coverage = "gray_zip_256";
+		coverage = "gray_png_256";
 		break;
 	    case TILE_512:
-		coverage = "gray_zip_512";
+		coverage = "gray_png_512";
 		break;
 	    case TILE_1024:
-		coverage = "gray_zip_1024";
+		coverage = "gray_png_1024";
+		break;
+	    };
+	  break;
+      case RL2_COMPRESSION_LOSSLESS_JP2:
+	  switch (tile_sz)
+	    {
+	    case TILE_256:
+		coverage = "gray_jp2_256";
+		break;
+	    case TILE_512:
+		coverage = "gray_jp2_512";
+		break;
+	    case TILE_1024:
+		coverage = "gray_jp2_1024";
 		break;
 	    };
 	  break;
       };
 
 /* dropping the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_DropCoverage(%Q, 1)", coverage);
+    sql = sqlite3_mprintf ("SELECT RL2_DropRasterCoverage(%Q, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "DropCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "DropRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -781,6 +771,7 @@ main (int argc, char *argv[])
     char *err_msg = NULL;
     sqlite3 *db_handle;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
 
     if (argc > 1 || argv[0] == NULL)
@@ -803,7 +794,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
     ret =
 	sqlite3_exec (db_handle, "SELECT InitSpatialMetadata(1)", NULL, NULL,
 		      &err_msg);
@@ -824,56 +815,97 @@ main (int argc, char *argv[])
       }
 
 /* GRAYSCALE tests */
+#ifndef OMIT_CHARLS		/* only if CharLS is enabled */
     ret = -100;
     if (!test_coverage
-	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_NONE, TILE_256, &ret))
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_CHARLS, TILE_256,
+	 &ret))
 	return ret;
     ret = -120;
     if (!test_coverage
-	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_NONE, TILE_512, &ret))
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_CHARLS, TILE_512,
+	 &ret))
 	return ret;
     ret = -140;
     if (!test_coverage
-	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_NONE, TILE_1024, &ret))
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_CHARLS, TILE_1024,
+	 &ret))
 	return ret;
+#endif /* end CharLS conditional */
+
     ret = -200;
     if (!test_coverage
-	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_DEFLATE, TILE_256,
-	 &ret))
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_PNG, TILE_256, &ret))
 	return ret;
     ret = -220;
     if (!test_coverage
-	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_DEFLATE, TILE_512,
-	 &ret))
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_PNG, TILE_512, &ret))
 	return ret;
     ret = -240;
     if (!test_coverage
-	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_DEFLATE, TILE_1024,
-	 &ret))
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_PNG, TILE_1024, &ret))
 	return ret;
 
+#ifndef OMIT_OPENJPEG		/* only if OpenJpeg is enabled */
+    ret = -300;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_LOSSLESS_JP2, TILE_256,
+	 &ret))
+	return ret;
+    ret = -320;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_LOSSLESS_JP2, TILE_512,
+	 &ret))
+	return ret;
+    ret = -340;
+    if (!test_coverage
+	(db_handle, RL2_PIXEL_GRAYSCALE, RL2_COMPRESSION_LOSSLESS_JP2,
+	 TILE_1024, &ret))
+	return ret;
+#endif /* end OpenJpeg conditional */
+
 /* dropping all GRAYSCALE Coverages */
+#ifndef OMIT_CHARLS		/* only if CharLS is enabled */
     ret = -170;
-    if (!drop_coverage (db_handle, RL2_COMPRESSION_NONE, TILE_256, &ret))
+    if (!drop_coverage (db_handle, RL2_COMPRESSION_CHARLS, TILE_256, &ret))
 	return ret;
     ret = -180;
-    if (!drop_coverage (db_handle, RL2_COMPRESSION_NONE, TILE_512, &ret))
+    if (!drop_coverage (db_handle, RL2_COMPRESSION_CHARLS, TILE_512, &ret))
 	return ret;
     ret = -190;
-    if (!drop_coverage (db_handle, RL2_COMPRESSION_NONE, TILE_1024, &ret))
+    if (!drop_coverage (db_handle, RL2_COMPRESSION_CHARLS, TILE_1024, &ret))
 	return ret;
+#endif /* end CharLS conditional */
+
     ret = -270;
-    if (!drop_coverage (db_handle, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+    if (!drop_coverage (db_handle, RL2_COMPRESSION_PNG, TILE_256, &ret))
 	return ret;
     ret = -280;
-    if (!drop_coverage (db_handle, RL2_COMPRESSION_DEFLATE, TILE_512, &ret))
+    if (!drop_coverage (db_handle, RL2_COMPRESSION_PNG, TILE_512, &ret))
 	return ret;
     ret = -290;
-    if (!drop_coverage (db_handle, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
+    if (!drop_coverage (db_handle, RL2_COMPRESSION_PNG, TILE_1024, &ret))
 	return ret;
+
+#ifndef OMIT_OPENJPEG		/* only if OpenJpeg is enabled */
+    ret = -370;
+    if (!drop_coverage
+	(db_handle, RL2_COMPRESSION_LOSSLESS_JP2, TILE_256, &ret))
+	return ret;
+    ret = -380;
+    if (!drop_coverage
+	(db_handle, RL2_COMPRESSION_LOSSLESS_JP2, TILE_512, &ret))
+	return ret;
+    ret = -390;
+    if (!drop_coverage
+	(db_handle, RL2_COMPRESSION_LOSSLESS_JP2, TILE_1024, &ret))
+	return ret;
+#endif /* end OpenJpeg conditional */
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

@@ -20,7 +20,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -102,13 +102,17 @@ is_valid_compression (unsigned char compression)
       {
       case RL2_COMPRESSION_NONE:
       case RL2_COMPRESSION_DEFLATE:
+      case RL2_COMPRESSION_DEFLATE_NO:
       case RL2_COMPRESSION_LZMA:
-      case RL2_COMPRESSION_GIF:
+      case RL2_COMPRESSION_LZMA_NO:
       case RL2_COMPRESSION_PNG:
       case RL2_COMPRESSION_JPEG:
       case RL2_COMPRESSION_LOSSY_WEBP:
       case RL2_COMPRESSION_LOSSLESS_WEBP:
       case RL2_COMPRESSION_CCITTFAX4:
+      case RL2_COMPRESSION_CHARLS:
+      case RL2_COMPRESSION_LOSSY_JP2:
+      case RL2_COMPRESSION_LOSSLESS_JP2:
 	  return 1;
       };
     return 0;
@@ -129,6 +133,10 @@ check_coverage_self_consistency (unsigned char sample_type,
 	  switch (compression)
 	    {
 	    case RL2_COMPRESSION_NONE:
+	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
+	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 	    case RL2_COMPRESSION_PNG:
 	    case RL2_COMPRESSION_CCITTFAX4:
 		break;
@@ -153,6 +161,10 @@ check_coverage_self_consistency (unsigned char sample_type,
 	    {
 	    case RL2_COMPRESSION_NONE:
 	    case RL2_COMPRESSION_GIF:
+	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
+	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 	    case RL2_COMPRESSION_PNG:
 		break;
 	    default:
@@ -175,12 +187,16 @@ check_coverage_self_consistency (unsigned char sample_type,
 	    {
 	    case RL2_COMPRESSION_NONE:
 	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 	    case RL2_COMPRESSION_LZMA:
-	    case RL2_COMPRESSION_GIF:
+	    case RL2_COMPRESSION_LZMA_NO:
 	    case RL2_COMPRESSION_PNG:
 	    case RL2_COMPRESSION_JPEG:
 	    case RL2_COMPRESSION_LOSSY_WEBP:
 	    case RL2_COMPRESSION_LOSSLESS_WEBP:
+	    case RL2_COMPRESSION_CHARLS:
+	    case RL2_COMPRESSION_LOSSY_JP2:
+	    case RL2_COMPRESSION_LOSSLESS_JP2:
 		break;
 	    default:
 		return 0;
@@ -203,7 +219,13 @@ check_coverage_self_consistency (unsigned char sample_type,
 		  {
 		  case RL2_COMPRESSION_NONE:
 		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
 		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		  case RL2_COMPRESSION_PNG:
+		  case RL2_COMPRESSION_CHARLS:
+		  case RL2_COMPRESSION_LOSSY_JP2:
+		  case RL2_COMPRESSION_LOSSLESS_JP2:
 		      break;
 		  default:
 		      return 0;
@@ -215,11 +237,16 @@ check_coverage_self_consistency (unsigned char sample_type,
 		  {
 		  case RL2_COMPRESSION_NONE:
 		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
 		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
 		  case RL2_COMPRESSION_PNG:
 		  case RL2_COMPRESSION_JPEG:
 		  case RL2_COMPRESSION_LOSSY_WEBP:
 		  case RL2_COMPRESSION_LOSSLESS_WEBP:
+		  case RL2_COMPRESSION_CHARLS:
+		  case RL2_COMPRESSION_LOSSY_JP2:
+		  case RL2_COMPRESSION_LOSSLESS_JP2:
 		      break;
 		  default:
 		      return 0;
@@ -237,15 +264,61 @@ check_coverage_self_consistency (unsigned char sample_type,
 	    };
 	  if (num_samples < 2)
 	      return 0;
-	  switch (compression)
+	  if (num_samples == 3 || num_samples == 4)
 	    {
-	    case RL2_COMPRESSION_NONE:
-	    case RL2_COMPRESSION_DEFLATE:
-	    case RL2_COMPRESSION_LZMA:
-		break;
-	    default:
-		return 0;
-	    };
+		if (sample_type == RL2_SAMPLE_UINT16)
+		  {
+		      switch (compression)
+			{
+			case RL2_COMPRESSION_NONE:
+			case RL2_COMPRESSION_DEFLATE:
+			case RL2_COMPRESSION_DEFLATE_NO:
+			case RL2_COMPRESSION_LZMA:
+			case RL2_COMPRESSION_LZMA_NO:
+			case RL2_COMPRESSION_PNG:
+			case RL2_COMPRESSION_CHARLS:
+			case RL2_COMPRESSION_LOSSY_JP2:
+			case RL2_COMPRESSION_LOSSLESS_JP2:
+			    break;
+			default:
+			    return 0;
+			};
+		  }
+		else
+		  {
+		      switch (compression)
+			{
+			case RL2_COMPRESSION_NONE:
+			case RL2_COMPRESSION_DEFLATE:
+			case RL2_COMPRESSION_DEFLATE_NO:
+			case RL2_COMPRESSION_LZMA:
+			case RL2_COMPRESSION_LZMA_NO:
+			case RL2_COMPRESSION_PNG:
+			case RL2_COMPRESSION_LOSSY_WEBP:
+			case RL2_COMPRESSION_LOSSLESS_WEBP:
+			case RL2_COMPRESSION_CHARLS:
+			case RL2_COMPRESSION_LOSSY_JP2:
+			case RL2_COMPRESSION_LOSSLESS_JP2:
+			    break;
+			default:
+			    return 0;
+			};
+		  }
+	    }
+	  else
+	    {
+		switch (compression)
+		  {
+		  case RL2_COMPRESSION_NONE:
+		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
+		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		      break;
+		  default:
+		      return 0;
+		  };
+	    }
 	  break;
       case RL2_PIXEL_DATAGRID:
 	  switch (sample_type)
@@ -264,15 +337,39 @@ check_coverage_self_consistency (unsigned char sample_type,
 	    };
 	  if (num_samples != 1)
 	      return 0;
-	  switch (compression)
+	  if (sample_type == RL2_SAMPLE_UINT8
+	      || sample_type == RL2_SAMPLE_UINT16)
 	    {
-	    case RL2_COMPRESSION_NONE:
-	    case RL2_COMPRESSION_DEFLATE:
-	    case RL2_COMPRESSION_LZMA:
-		break;
-	    default:
-		return 0;
-	    };
+		switch (compression)
+		  {
+		  case RL2_COMPRESSION_NONE:
+		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
+		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		  case RL2_COMPRESSION_PNG:
+		  case RL2_COMPRESSION_CHARLS:
+		  case RL2_COMPRESSION_LOSSY_JP2:
+		  case RL2_COMPRESSION_LOSSLESS_JP2:
+		      break;
+		  default:
+		      return 0;
+		  };
+	    }
+	  else
+	    {
+		switch (compression)
+		  {
+		  case RL2_COMPRESSION_NONE:
+		  case RL2_COMPRESSION_DEFLATE:
+		  case RL2_COMPRESSION_DEFLATE_NO:
+		  case RL2_COMPRESSION_LZMA:
+		  case RL2_COMPRESSION_LZMA_NO:
+		      break;
+		  default:
+		      return 0;
+		  };
+	    }
 	  break;
       };
     return 1;
@@ -372,9 +469,54 @@ rl2_free (void *ptr)
 	free (ptr);
 }
 
+RL2_DECLARE int
+rl2_is_supported_codec (unsigned char compression)
+{
+/* Testing if a given codec/compressor is actually supported by the library */
+    switch (compression)
+      {
+      case RL2_COMPRESSION_NONE:
+      case RL2_COMPRESSION_DEFLATE:
+      case RL2_COMPRESSION_DEFLATE_NO:
+      case RL2_COMPRESSION_PNG:
+      case RL2_COMPRESSION_JPEG:
+      case RL2_COMPRESSION_CCITTFAX4:
+	  return RL2_TRUE;
+      case RL2_COMPRESSION_LZMA:
+      case RL2_COMPRESSION_LZMA_NO:
+#ifndef OMIT_LZMA
+	  return RL2_TRUE;
+#else
+	  return RL2_FALSE;
+#endif
+      case RL2_COMPRESSION_LOSSY_WEBP:
+      case RL2_COMPRESSION_LOSSLESS_WEBP:
+#ifndef OMIT_WEBP
+	  return RL2_TRUE;
+#else
+	  return RL2_FALSE;
+#endif
+      case RL2_COMPRESSION_CHARLS:
+#ifndef OMIT_CHARLS
+	  return RL2_TRUE;
+#else
+	  return RL2_FALSE;
+#endif
+      case RL2_COMPRESSION_LOSSY_JP2:
+      case RL2_COMPRESSION_LOSSLESS_JP2:
+#ifndef OMIT_OPENJPEG
+	  return RL2_TRUE;
+#else
+	  return RL2_FALSE;
+#endif
+      };
+    return RL2_ERROR;
+}
+
 static int
-check_coverage_no_data (rl2PrivPixelPtr pxl_no_data, unsigned char sample_type,
-			unsigned char pixel_type, unsigned char num_samples)
+check_coverage_no_data (rl2PrivPixelPtr pxl_no_data,
+			unsigned char sample_type, unsigned char pixel_type,
+			unsigned char num_samples)
 {
 /* checking if the NoData pixel is consistent with the Coverage */
     if (pxl_no_data == NULL)
@@ -444,6 +586,12 @@ rl2_create_coverage (const char *name, unsigned char sample_type,
     cvg->hResolution = 1.0;
     cvg->vResolution = 1.0;
     cvg->noData = pxl_no_data;
+/* applying the default policies */
+    cvg->strictResolution = 0;
+    cvg->mixedResolutions = 0;
+    cvg->sectionPaths = 0;
+    cvg->sectionMD5 = 0;
+    cvg->sectionSummary = 0;
     return (rl2CoveragePtr) cvg;
 }
 
@@ -459,6 +607,50 @@ rl2_destroy_coverage (rl2CoveragePtr ptr)
     if (cvg->noData != NULL)
 	rl2_destroy_pixel ((rl2PixelPtr) (cvg->noData));
     free (cvg);
+}
+
+RL2_DECLARE int
+rl2_set_coverage_policies (rl2CoveragePtr ptr, int strict_resolution,
+			   int mixed_resolutions, int section_paths,
+			   int section_md5, int section_summary)
+{
+/* setting the Coverage's Policies */
+    rl2PrivCoveragePtr cvg = (rl2PrivCoveragePtr) ptr;
+    if (cvg == NULL)
+	return RL2_ERROR;
+    if (strict_resolution)
+	strict_resolution = 1;
+    cvg->strictResolution = strict_resolution;
+    if (mixed_resolutions)
+	mixed_resolutions = 1;
+    cvg->mixedResolutions = mixed_resolutions;
+    if (section_paths)
+	section_paths = 1;
+    cvg->sectionPaths = section_paths;
+    if (section_md5)
+	section_md5 = 1;
+    cvg->sectionMD5 = section_md5;
+    if (section_summary)
+	section_summary = 1;
+    cvg->sectionSummary = section_summary;
+    return RL2_OK;
+}
+
+RL2_DECLARE int
+rl2_get_coverage_policies (rl2CoveragePtr ptr, int *strict_resolution,
+			   int *mixed_resolutions, int *section_paths,
+			   int *section_md5, int *section_summary)
+{
+/* retrieving the Coverage's Policies */
+    rl2PrivCoveragePtr cvg = (rl2PrivCoveragePtr) ptr;
+    if (cvg == NULL)
+	return RL2_ERROR;
+    *strict_resolution = cvg->strictResolution;
+    *mixed_resolutions = cvg->mixedResolutions;
+    *section_paths = cvg->sectionPaths;
+    *section_md5 = cvg->sectionMD5;
+    *section_summary = cvg->sectionSummary;
+    return RL2_OK;
 }
 
 RL2_DECLARE int
@@ -536,9 +728,13 @@ rl2_is_coverage_compression_lossless (rl2CoveragePtr ptr, int *is_lossless)
     switch (cvg->Compression)
       {
       case RL2_COMPRESSION_DEFLATE:
+      case RL2_COMPRESSION_DEFLATE_NO:
       case RL2_COMPRESSION_LZMA:
-      case RL2_COMPRESSION_GIF:
+      case RL2_COMPRESSION_LZMA_NO:
       case RL2_COMPRESSION_PNG:
+      case RL2_COMPRESSION_LOSSLESS_WEBP:
+      case RL2_COMPRESSION_CHARLS:
+      case RL2_COMPRESSION_LOSSLESS_JP2:
 	  *is_lossless = RL2_TRUE;
 	  break;
       default:
@@ -559,6 +755,7 @@ rl2_is_coverage_compression_lossy (rl2CoveragePtr ptr, int *is_lossy)
       {
       case RL2_COMPRESSION_JPEG:
       case RL2_COMPRESSION_LOSSY_WEBP:
+      case RL2_COMPRESSION_LOSSY_JP2:
 	  *is_lossy = RL2_TRUE;
 	  break;
       default:
@@ -622,6 +819,102 @@ rl2_get_coverage_resolution (rl2CoveragePtr ptr, double *hResolution,
 	return RL2_ERROR;
     *hResolution = cvg->hResolution;
     *vResolution = cvg->vResolution;
+    return RL2_OK;
+}
+
+RL2_DECLARE rl2VectorLayerPtr
+rl2_create_vector_layer (const char *f_table_name,
+			 const char *f_geometry_column,
+			 unsigned short geometry_type, int srid,
+			 unsigned char spatial_index)
+{
+/* allocating and initializing a Coverage object */
+    int len;
+    rl2PrivVectorLayerPtr vector = NULL;
+    if (f_table_name == NULL || f_geometry_column == NULL)
+	return NULL;
+
+    vector = malloc (sizeof (rl2PrivVectorLayer));
+    if (vector == NULL)
+	return NULL;
+    len = strlen (f_table_name);
+    vector->f_table_name = malloc (len + 1);
+    strcpy (vector->f_table_name, f_table_name);
+    len = strlen (f_geometry_column);
+    vector->f_geometry_column = malloc (len + 1);
+    strcpy (vector->f_geometry_column, f_geometry_column);
+    vector->geometry_type = geometry_type;
+    vector->srid = srid;
+    vector->spatial_index = spatial_index;
+    return (rl2VectorLayerPtr) vector;
+}
+
+RL2_DECLARE void
+rl2_destroy_vector_layer (rl2VectorLayerPtr ptr)
+{
+/* memory cleanup - destroying a Vector Layer object */
+    rl2PrivVectorLayerPtr vector = (rl2PrivVectorLayerPtr) ptr;
+    if (vector == NULL)
+	return;
+    if (vector->f_table_name != NULL)
+	free (vector->f_table_name);
+    if (vector->f_geometry_column != NULL)
+	free (vector->f_geometry_column);
+    free (vector);
+}
+
+RL2_DECLARE const char *
+rl2_get_vector_table_name (rl2VectorLayerPtr ptr)
+{
+/* return the Vector Layer Table name */
+    rl2PrivVectorLayerPtr vector = (rl2PrivVectorLayerPtr) ptr;
+    if (vector == NULL)
+	return NULL;
+    return vector->f_table_name;
+}
+
+RL2_DECLARE const char *
+rl2_get_vector_geometry_name (rl2VectorLayerPtr ptr)
+{
+/* return the Vector Layer Geometry name */
+    rl2PrivVectorLayerPtr vector = (rl2PrivVectorLayerPtr) ptr;
+    if (vector == NULL)
+	return NULL;
+    return vector->f_geometry_column;
+}
+
+RL2_DECLARE int
+rl2_get_vector_geometry_type (rl2VectorLayerPtr ptr,
+			      unsigned short *geometry_type)
+{
+/* return the Vector Layer Geometry type */
+    rl2PrivVectorLayerPtr vector = (rl2PrivVectorLayerPtr) ptr;
+    if (vector == NULL)
+	return RL2_ERROR;
+    *geometry_type = vector->geometry_type;
+    return RL2_OK;
+}
+
+RL2_DECLARE int
+rl2_get_vector_srid (rl2VectorLayerPtr ptr, int *srid)
+{
+/* return the Vector Layer SRID */
+    rl2PrivVectorLayerPtr vector = (rl2PrivVectorLayerPtr) ptr;
+    if (vector == NULL)
+	return RL2_ERROR;
+    *srid = vector->srid;
+    return RL2_OK;
+}
+
+RL2_DECLARE int
+rl2_get_vector_spatial_index (rl2VectorLayerPtr ptr,
+			      unsigned char *spatial_index)
+{
+/* return the Vector Layer Spatial Index type */
+    rl2PrivVectorLayerPtr vector = (rl2PrivVectorLayerPtr) ptr;
+    if (vector == NULL)
+	return RL2_ERROR;
+    *spatial_index = vector->spatial_index;
     return RL2_OK;
 }
 
@@ -728,8 +1021,9 @@ rl2_is_section_compression_lossless (rl2SectionPtr ptr, int *is_lossless)
     switch (scn->Compression)
       {
       case RL2_COMPRESSION_DEFLATE:
+      case RL2_COMPRESSION_DEFLATE_NO:
       case RL2_COMPRESSION_LZMA:
-      case RL2_COMPRESSION_GIF:
+      case RL2_COMPRESSION_LZMA_NO:
       case RL2_COMPRESSION_PNG:
       case RL2_COMPRESSION_LOSSLESS_WEBP:
 	  *is_lossless = RL2_TRUE;
@@ -752,6 +1046,7 @@ rl2_is_section_compression_lossy (rl2SectionPtr ptr, int *is_lossy)
       {
       case RL2_COMPRESSION_JPEG:
       case RL2_COMPRESSION_LOSSY_WEBP:
+      case RL2_COMPRESSION_LOSSY_JP2:
 	  *is_lossy = RL2_TRUE;
 	  break;
       default:
@@ -825,12 +1120,13 @@ check_raster_no_data (rl2PrivPixelPtr pxl_no_data, unsigned char sample_type,
     return 1;
 }
 
-RL2_DECLARE rl2RasterPtr
-rl2_create_raster (unsigned int width, unsigned int height,
-		   unsigned char sample_type, unsigned char pixel_type,
-		   unsigned char num_samples, unsigned char *bufpix,
-		   int bufpix_size, rl2PalettePtr palette, unsigned char *mask,
-		   int mask_size, rl2PixelPtr no_data)
+static rl2RasterPtr
+create_raster_common (unsigned int width, unsigned int height,
+		      unsigned char sample_type, unsigned char pixel_type,
+		      unsigned char num_samples, unsigned char *bufpix,
+		      int bufpix_size, rl2PalettePtr palette,
+		      unsigned char *mask, int mask_size, rl2PixelPtr no_data,
+		      int alpha_mask)
 {
 /* allocating and initializing a Raster object */
     rl2PrivPixelPtr pxl_no_data = (rl2PrivPixelPtr) no_data;
@@ -866,14 +1162,17 @@ rl2_create_raster (unsigned int width, unsigned int height,
 	  /* checking the mask size */
 	  if (width * height != (unsigned int) mask_size)
 	      return NULL;
-	  p = mask;
-	  for (row = 0; row < height; row++)
+	  if (!alpha_mask)
 	    {
-		/* checking if sample doesn't exceed the max value */
-		for (col = 0; col < width; col++)
+		p = mask;
+		for (row = 0; row < height; row++)
 		  {
-		      if (*p++ > 1)
-			  return NULL;
+		      /* checking if sample doesn't exceed the max value */
+		      for (col = 0; col < width; col++)
+			{
+			    if (*p++ > 1)
+				return NULL;
+			}
 		  }
 	    }
       }
@@ -945,9 +1244,39 @@ rl2_create_raster (unsigned int width, unsigned int height,
     rst->maxY = height;
     rst->rasterBuffer = bufpix;
     rst->maskBuffer = mask;
+    rst->alpha_mask = 0;
+    if (alpha_mask)
+	rst->alpha_mask = 1;
     rst->Palette = (rl2PrivPalettePtr) palette;
     rst->noData = pxl_no_data;
     return (rl2RasterPtr) rst;
+}
+
+RL2_DECLARE rl2RasterPtr
+rl2_create_raster (unsigned int width, unsigned int height,
+		   unsigned char sample_type, unsigned char pixel_type,
+		   unsigned char num_samples, unsigned char *bufpix,
+		   int bufpix_size, rl2PalettePtr palette,
+		   unsigned char *mask, int mask_size, rl2PixelPtr no_data)
+{
+/* allocating and initializing a Raster object with an optional Transparency Mask */
+    return create_raster_common (width, height, sample_type, pixel_type,
+				 num_samples, bufpix, bufpix_size, palette,
+				 mask, mask_size, no_data, 0);
+}
+
+RL2_DECLARE rl2RasterPtr
+rl2_create_raster_alpha (unsigned int width, unsigned int height,
+			 unsigned char sample_type, unsigned char pixel_type,
+			 unsigned char num_samples, unsigned char *bufpix,
+			 int bufpix_size, rl2PalettePtr palette,
+			 unsigned char *alpha, int alpha_size,
+			 rl2PixelPtr no_data)
+{
+/* allocating and initializing a Raster object with an optional Alpha Mask */
+    return create_raster_common (width, height, sample_type, pixel_type,
+				 num_samples, bufpix, bufpix_size, palette,
+				 alpha, alpha_size, no_data, 1);
 }
 
 RL2_DECLARE void
@@ -1056,30 +1385,6 @@ rl2_get_raster_extent (rl2RasterPtr ptr, double *minX, double *minY,
     return RL2_OK;
 }
 
-RL2_DECLARE gaiaGeomCollPtr
-rl2_get_raster_bbox (rl2RasterPtr ptr)
-{
-/* return the Raster BBox [envelope] */
-    gaiaGeomCollPtr geom;
-    gaiaPolygonPtr pg;
-    gaiaRingPtr rng;
-    rl2PrivRasterPtr rst = (rl2PrivRasterPtr) ptr;
-    if (rst == NULL)
-	return NULL;
-    if (rst->Srid == RL2_GEOREFERENCING_NONE)
-	return NULL;
-    geom = gaiaAllocGeomColl ();
-    geom->Srid = rst->Srid;
-    pg = gaiaAddPolygonToGeomColl (geom, 5, 0);
-    rng = pg->Exterior;
-    gaiaSetPoint (rng->Coords, 0, rst->minX, rst->minY);
-    gaiaSetPoint (rng->Coords, 1, rst->maxX, rst->minY);
-    gaiaSetPoint (rng->Coords, 2, rst->maxX, rst->maxY);
-    gaiaSetPoint (rng->Coords, 3, rst->minX, rst->maxY);
-    gaiaSetPoint (rng->Coords, 4, rst->minX, rst->minY);
-    return geom;
-}
-
 RL2_DECLARE int
 rl2_get_raster_resolution (rl2RasterPtr ptr, double *hResolution,
 			   double *vResolution)
@@ -1128,8 +1433,9 @@ rl2_raster_georeference_center (rl2RasterPtr ptr, int srid, double horz_res,
 }
 
 RL2_DECLARE int
-rl2_raster_georeference_upper_left (rl2RasterPtr ptr, int srid, double horz_res,
-				    double vert_res, double x, double y)
+rl2_raster_georeference_upper_left (rl2RasterPtr ptr, int srid,
+				    double horz_res, double vert_res,
+				    double x, double y)
 {
 /* setting the Raster's georeferencing infos - UpperLeft corner */
     rl2PrivRasterPtr rst = (rl2PrivRasterPtr) ptr;
@@ -1151,8 +1457,8 @@ rl2_raster_georeference_upper_left (rl2RasterPtr ptr, int srid, double horz_res,
 
 RL2_DECLARE int
 rl2_raster_georeference_upper_right (rl2RasterPtr ptr, int srid,
-				     double horz_res, double vert_res, double x,
-				     double y)
+				     double horz_res, double vert_res,
+				     double x, double y)
 {
 /* setting the Raster's georeferencing infos - UpperRight corner */
     rl2PrivRasterPtr rst = (rl2PrivRasterPtr) ptr;
@@ -1173,8 +1479,9 @@ rl2_raster_georeference_upper_right (rl2RasterPtr ptr, int srid,
 }
 
 RL2_DECLARE int
-rl2_raster_georeference_lower_left (rl2RasterPtr ptr, int srid, double horz_res,
-				    double vert_res, double x, double y)
+rl2_raster_georeference_lower_left (rl2RasterPtr ptr, int srid,
+				    double horz_res, double vert_res,
+				    double x, double y)
 {
 /* setting the Raster's georeferencing infos - LowerLeft corner */
     rl2PrivRasterPtr rst = (rl2PrivRasterPtr) ptr;
@@ -1196,8 +1503,8 @@ rl2_raster_georeference_lower_left (rl2RasterPtr ptr, int srid, double horz_res,
 
 RL2_DECLARE int
 rl2_raster_georeference_lower_right (rl2RasterPtr ptr, int srid,
-				     double horz_res, double vert_res, double x,
-				     double y)
+				     double horz_res, double vert_res,
+				     double x, double y)
 {
 /* setting the Raster's georeferencing infos - LowerRight corner */
     rl2PrivRasterPtr rst = (rl2PrivRasterPtr) ptr;
@@ -1503,8 +1810,8 @@ rl2_set_palette_color (rl2PalettePtr ptr, int index, unsigned char r,
 }
 
 RL2_DECLARE int
-rl2_get_palette_index (rl2PalettePtr ptr, unsigned char *index, unsigned char r,
-		       unsigned char g, unsigned char b)
+rl2_get_palette_index (rl2PalettePtr ptr, unsigned char *index,
+		       unsigned char r, unsigned char g, unsigned char b)
 {
 /* finding the index corresponding to the given color (if any) */
     int i;

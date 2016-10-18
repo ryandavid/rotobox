@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(librasterlite2, 1.0.0-rc0, a.furieri@lqt.it)
+AC_INIT(librasterlite2, 1.0.0-devel, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
@@ -28,7 +28,18 @@ AH_TEMPLATE([NDEBUG],
 AC_DEFINE(NDEBUG)
 AH_TEMPLATE([TARGET_CPU],
             [Should contain a text-string describing the intended target CPU])
-
+AH_TEMPLATE([OPENJPEG_2_1],
+            [testing for OpenJpeg 2.1])
+            
+# config depending options
+AH_TEMPLATE([OMIT_LZMA],
+            [Should be defined in order to disable LZMA support.])
+AH_TEMPLATE([OMIT_WEBP],
+            [Should be defined in order to disable WebP support.])
+AH_TEMPLATE([OMIT_OPENJPEG],
+            [Should be defined in order to disable OpenJpeg support.])
+AH_TEMPLATE([OMIT_CHARLS],
+            [Should be defined in order to disable CharLS support.])
 
 # Checks for header files.
 AC_CHECK_HEADERS(stdlib.h,, [AC_MSG_ERROR([cannot find stdlib.h, bailing out])])
@@ -40,9 +51,11 @@ AC_CHECK_HEADERS(float.h,,[AC_MSG_ERROR([cannot find float.h, bailing out])])
 AC_CHECK_HEADERS(jpeglib.h,, [AC_MSG_ERROR([cannot find jpeglib.h, bailing out])])
 AC_CHECK_HEADERS(jerror.h,, [AC_MSG_ERROR([cannot find jerror.h, bailing out])])
 AC_CHECK_HEADERS(png.h,, [AC_MSG_ERROR([cannot find png.h, bailing out])])
+AC_CHECK_HEADERS(sqlite3.h,, [AC_MSG_ERROR([cannot find sqlite3.h, bailing out])])
+AC_CHECK_HEADERS(sqlite3ext.h,, [AC_MSG_ERROR([cannot find sqlite3ext.h, bailing out])])
 AC_CHECK_HEADERS(zlib.h,, [AC_MSG_ERROR([cannot find zlib.h, bailing out])])
 AC_CHECK_HEADERS(gif_lib.h,, [AC_MSG_ERROR([cannot find gif_lib.h, bailing out])])
-AC_CHECK_HEADERS(lzma.h,, [AC_MSG_ERROR([cannot find lzma.h, bailing out])])
+
 
 #
 # testing GeoTiff headers
@@ -105,7 +118,6 @@ AC_CONFIG_FILES([Makefile \
 		test/sql_stmt_tests/Makefile \
 		test/sql_stmt_security_tests/Makefile \
 		tools/Makefile \
-		examples/Makefile \
 		Doxyfile \
 		rasterlite2.pc])
 
@@ -114,9 +126,10 @@ rl2_cpu=`$CC -dumpmachine`
 AC_DEFINE_UNQUOTED([TARGET_CPU], ["$rl2_cpu"])
 
 # Checks for installed libraries
+AC_CHECK_LIB(sqlite3,sqlite3_prepare_v2,,AC_MSG_ERROR(['libsqlite3' is required but it doesn't seem to be installed on this system.]),-lm)
 AC_CHECK_LIB(z,inflateInit_,,AC_MSG_ERROR(['libz' is required but it doesn't seems to be installed on this system.]),-lm)
 AC_CHECK_LIB(jpeg,jpeg_start_compress,,AC_MSG_ERROR(['libjpeg' is required but it doesn't seems to be installed on this system.]),-lm)
-AC_CHECK_LIB(gif,DGifSlurp,,AC_MSG_ERROR(['libpng' is required but it doesn't seems to be installed on this system.]),-lm)
+AC_CHECK_LIB(gif,DGifSlurp,,AC_MSG_ERROR(['libgif' is required but it doesn't seems to be installed on this system.]),-lm)
 AC_CHECK_LIB(tiff,TIFFClientOpen,,AC_MSG_ERROR(['libtiff' is required but it doesn't seems to be installed on this system.]),-lm)
 AC_CHECK_LIB(geotiff,GTIFSetFromProj4,,AC_MSG_ERROR(['libgeotiff' [>= v.1.2.5] is required but it doesn't seems to be installed on this system.]),-lm)
 
@@ -124,13 +137,88 @@ PKG_CHECK_MODULES([LIBPNG], [libpng], , AC_MSG_ERROR(['libpng' is required but i
 AC_SUBST(LIBPNG_CFLAGS)
 AC_SUBST(LIBPNG_LIBS)
 
-PKG_CHECK_MODULES([LIBWEBP], [libwebp], , AC_MSG_ERROR(['libwebp' is required but it doesn't seems to be installed on this system.]))
-AC_SUBST(LIBWEBP_CFLAGS)
-AC_SUBST(LIBWEBP_LIBS)
 
-PKG_CHECK_MODULES([LIBLZMA], [liblzma], , AC_MSG_ERROR(['liblzma' is required but it doesn't seems to be installed on this system.]))
-AC_SUBST(LIBLZMA_CFLAGS)
-AC_SUBST(LIBLZMA_LIBS)
+#-----------------------------------------------------------------------
+#   --enable-openjpeg
+#
+AC_ARG_ENABLE(openjpeg, [AS_HELP_STRING(
+  [--enable-openjpeg], [enables OpenJpeg inclusion [default=yes]])],
+  [], [enable_openjpeg=yes])
+    if test x"$enable_openjpeg" != "xno"; then
+    #
+    # testing OpenJpeg-2 headers
+    # they could be either on -/include/openjpeg-2.0
+    #                   or on -/include/openjpeg-2.1
+    #
+    AC_CHECK_HEADERS(openjpeg-2.0/openjpeg.h)
+    AC_CHECK_HEADERS(openjpeg-2.1/openjpeg.h)
+    if test x"$ac_cv_header_openjpeg_2_0_openjpeg_h" != x"yes" &&
+        test x"$ac_cv_header_openjpeg_2_1_openjpeg_h" != x"yes";
+    then
+        AC_MSG_ERROR(['OpenJpeg-2' is required but the header (openjpeg.h) doesn't seem to be installed on this system])
+    fi 
+    AC_CHECK_LIB(openjp2,opj_create_decompress,,AC_MSG_ERROR(['libopenjp2' is required but it doesn't seems to be installed on this system.]),-lm)
+    # testing for OpenJpeg 2.0 or 2.1
+    AC_COMPILE_IFELSE(  [AC_LANG_PROGRAM([[#ifdef HAVE_OPENJPEG_2_1_OPENJPEG_H
+                                       #include <openjpeg-2.1/openjpeg.h>
+                                       #else
+                                       #include <openjpeg-2.0/openjpeg.h>
+                                       #endif]],
+                                     [[void *d; opj_stream_t *s; opj_stream_set_user_data (s, &d, NULL);]])],
+                    [
+                      AC_MSG_RESULT([yes])
+                      AC_DEFINE(OPENJPEG_2_1)
+                    ],
+                    [AC_MSG_RESULT([no])]
+                 )
+else
+  AC_DEFINE(OMIT_OPENJPEG)
+fi
+#-----------------------------------------------------------------------
+
+#-----------------------------------------------------------------------
+#   --enable-webp
+#
+AC_ARG_ENABLE(webp, [AS_HELP_STRING(
+  [--enable-webp], [enables WebP inclusion [default=yes]])],
+  [], [enable_webp=yes])
+if test x"$enable_webp" != "xno"; then
+    PKG_CHECK_MODULES([LIBWEBP], [libwebp], , AC_MSG_ERROR(['libwebp' is required but it doesn't seems to be installed on this system.]))
+    AC_SUBST(LIBWEBP_CFLAGS)
+    AC_SUBST(LIBWEBP_LIBS)
+else
+  AC_DEFINE(OMIT_WEBP)
+fi
+#-----------------------------------------------------------------------
+
+#-----------------------------------------------------------------------
+#   --enable-lzma
+#
+AC_ARG_ENABLE(lzma, [AS_HELP_STRING(
+  [--enable-lzma], [enables LZMA inclusion [default=yes]])],
+  [], [enable_lzma=yes])
+if test x"$enable_lzma" != "xno"; then
+    PKG_CHECK_MODULES([LIBLZMA], [liblzma], , AC_MSG_ERROR(['liblzma' is required but it doesn't seems to be installed on this system.]))
+    AC_SUBST(LIBLZMA_CFLAGS)
+    AC_SUBST(LIBLZMA_LIBS)
+else
+  AC_DEFINE(OMIT_LZMA)
+fi
+#-----------------------------------------------------------------------
+
+#-----------------------------------------------------------------------
+#   --enable-charls
+#
+AC_ARG_ENABLE(charls, [AS_HELP_STRING(
+  [--enable-charls], [enables CharLS inclusion [default=yes]])],
+  [], [enable_charls=yes])
+if test x"$enable_charls" != "xno"; then
+    AC_CHECK_HEADERS(CharLS/interface.h,, [AC_MSG_ERROR([cannot find CharLS/interface.h, bailing out])])
+    AC_CHECK_LIB(CharLS,JpegLsEncode,,AC_MSG_ERROR(['libCharLS' is required but it doesn't seems to be installed on this system.]),-lm)
+else
+  AC_DEFINE(OMIT_CHARLS)
+fi
+#-----------------------------------------------------------------------
 
 PKG_CHECK_MODULES([LIBSPATIALITE], [spatialite], , AC_MSG_ERROR(['libspatialite' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBSPATIALITE_CFLAGS)
@@ -147,6 +235,10 @@ AC_SUBST(LIBCURL_LIBS)
 PKG_CHECK_MODULES([LIBXML2], [libxml-2.0], , AC_MSG_ERROR(['libxml2' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBXML2_CFLAGS)
 AC_SUBST(LIBXML2_LIBS)
+
+PKG_CHECK_MODULES([FREETYPE2], [freetype2], , AC_MSG_ERROR(['freetype2' is required but it doesn't seem to be installed on this system.]))
+AC_SUBST(LIBFREETYPE2_CFLAGS)
+AC_SUBST(LIBFREETYPE2_LIBS)
 
 # Checking for MinGW
 AM_CONDITIONAL([MINGW], [test "$target_alias" = "mingw32"])

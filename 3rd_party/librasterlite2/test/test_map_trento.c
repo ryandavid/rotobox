@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -55,6 +55,10 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #define TILE_256	256
 #define TILE_512	512
 #define TILE_1024	1024
+
+/* global variable used to alternatively enable/disable multithreading */
+int multithreading = 1;
+
 
 static int
 execute_check (sqlite3 * sqlite, const char *sql)
@@ -342,6 +346,117 @@ do_export_jpeg_jgw (sqlite3 * sqlite, const char *coverage,
     return retcode;
 }
 
+static int
+do_export_section_jpeg (sqlite3 * sqlite, const char *coverage,
+			gaiaGeomCollPtr geom, int scale)
+{
+/* exporting a JPEG [no Worldfile] - Section */
+    char *sql;
+    char *path;
+    sqlite3_stmt *stmt;
+    int ret;
+    double x_res;
+    double y_res;
+    double xx_res;
+    double yy_res;
+    unsigned char *blob;
+    int blob_size;
+    int retcode = 0;
+
+    path = sqlite3_mprintf ("./%s_sect1_%d.jpg", coverage, scale);
+
+    if (!get_base_resolution (sqlite, coverage, &x_res, &y_res))
+	return 0;
+    xx_res = x_res * (double) scale;
+    yy_res = y_res * (double) scale;
+
+    sql = "SELECT RL2_WriteSectionJpeg(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+	return 0;
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
+    sqlite3_bind_text (stmt, 1, coverage, strlen (coverage), SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 2, 1);
+    sqlite3_bind_text (stmt, 3, path, strlen (path), SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 4, 1024);
+    sqlite3_bind_int (stmt, 5, 1024);
+    gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
+    sqlite3_bind_blob (stmt, 6, blob, blob_size, free);
+    sqlite3_bind_double (stmt, 7, xx_res);
+    sqlite3_bind_double (stmt, 8, yy_res);
+    sqlite3_bind_int (stmt, 9, 90);
+    ret = sqlite3_step (stmt);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt, 0) == 1)
+	      retcode = 1;
+      }
+    sqlite3_finalize (stmt);
+    unlink (path);
+    if (!retcode)
+	fprintf (stderr, "ERROR: unable to export \"%s\"\n", path);
+    sqlite3_free (path);
+    return retcode;
+}
+
+static int
+do_export_section_jpeg_jgw (sqlite3 * sqlite, const char *coverage,
+			    gaiaGeomCollPtr geom, int scale)
+{
+/* exporting a JPEG + Worldfile - Section */
+    char *sql;
+    char *path;
+    sqlite3_stmt *stmt;
+    int ret;
+    double x_res;
+    double y_res;
+    double xx_res;
+    double yy_res;
+    unsigned char *blob;
+    int blob_size;
+    int retcode = 0;
+
+    path = sqlite3_mprintf ("./%s_sect1_jgw_%d.jpg", coverage, scale);
+
+    if (!get_base_resolution (sqlite, coverage, &x_res, &y_res))
+	return 0;
+    xx_res = x_res * (double) scale;
+    yy_res = y_res * (double) scale;
+
+    sql = "SELECT RL2_WriteSectionJpegJgw(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+	return 0;
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
+    sqlite3_bind_text (stmt, 1, coverage, strlen (coverage), SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 2, 1);
+    sqlite3_bind_text (stmt, 3, path, strlen (path), SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 4, 1024);
+    sqlite3_bind_int (stmt, 5, 1024);
+    gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
+    sqlite3_bind_blob (stmt, 6, blob, blob_size, free);
+    sqlite3_bind_double (stmt, 7, xx_res);
+    sqlite3_bind_double (stmt, 8, yy_res);
+    sqlite3_bind_int (stmt, 9, 40);
+    ret = sqlite3_step (stmt);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt, 0) == 1)
+	      retcode = 1;
+      }
+    sqlite3_finalize (stmt);
+    unlink (path);
+    if (!retcode)
+	fprintf (stderr, "ERROR: unable to export \"%s\"\n", path);
+    sqlite3_free (path);
+    path = sqlite3_mprintf ("./%s_sect1_jgw_%d.jgw", coverage, scale);
+    unlink (path);
+    sqlite3_free (path);
+    return retcode;
+}
+
 static gaiaGeomCollPtr
 get_center_point (sqlite3 * sqlite, const char *coverage)
 {
@@ -395,7 +510,7 @@ do_export_image (sqlite3 * sqlite, const char *coverage, gaiaGeomCollPtr geom,
     path = sqlite3_mprintf ("./%s_%1.0f%s", coverage, radius, suffix);
 
     sql =
-	"SELECT RL2_GetMapImage(?, ST_Buffer(?, ?), 512, 512, 'default', ?, '#ffffff', 1, 80)";
+	"SELECT RL2_GetMapImageFromRaster(?, ST_Buffer(?, ?), 512, 512, 'default', ?, '#ffffff', 1, 80)";
     ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
     if (ret != SQLITE_OK)
 	return 0;
@@ -448,29 +563,30 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 /* testing some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
-    const char *sample_name;
-    const char *pixel_name;
-    unsigned char num_bands;
-    const char *compression_name;
+    const char *coverage = NULL;
+    const char *sample_name = NULL;
+    const char *pixel_name = NULL;
+    unsigned char num_bands = 1;
+    const char *compression_name = NULL;
     const char *indir;
-    const char *delsect;
     const char *reload;
-    int qlty;
+    int qlty = 100;
     char *sql;
-    int tile_size;
+    int tile_size = 256;
     gaiaGeomCollPtr geom;
+    unsigned int width;
+    unsigned int height;
+    unsigned char pixel_type;
+    char *md5;
 
     if (!type)
       {
 	  indir = "map_samples/trento-gray";
-	  delsect = "trento-gray1";
 	  reload = "map_samples/trento-gray/trento-gray1.jpg";
       }
     else
       {
 	  indir = "map_samples/trento-rgb";
-	  delsect = "trento-rgb1";
 	  reload = "map_samples/trento-rgb/trento-rgb1.jpg";
       }
 
@@ -575,8 +691,21 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       };
     tile_size = 512;
 
+/* setting the MultiThreading mode alternatively on/off */
+    if (multithreading)
+      {
+	  sql = "SELECT RL2_SetMaxThreads(2)";
+	  multithreading = 0;
+      }
+    else
+      {
+	  sql = "SELECT RL2_SetMaxThreads(1)";
+	  multithreading = 1;
+      }
+    execute_check (sqlite, sql);
+
 /* creating the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.16f, %1.16f)",
 			   coverage, sample_name, pixel_name, num_bands,
 			   compression_name, qlty, tile_size, tile_size, 32632,
@@ -585,7 +714,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -609,8 +738,7 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       }
 
 /* deleting the first section */
-    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, %Q, 1)",
-			   coverage, delsect);
+    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, 1, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -744,24 +872,160 @@ test_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 	  *retcode += -24;
 	  return 0;
       }
+    if (!do_export_section_jpeg (sqlite, coverage, geom, 1))
+      {
+	  *retcode += -25;
+	  return 0;
+      }
+    if (!do_export_section_jpeg (sqlite, coverage, geom, 2))
+      {
+	  *retcode += -26;
+	  return 0;
+      }
+    if (!do_export_section_jpeg (sqlite, coverage, geom, 4))
+      {
+	  *retcode += -27;
+	  return 0;
+      }
+    if (!do_export_section_jpeg (sqlite, coverage, geom, 8))
+      {
+	  *retcode += -28;
+	  return 0;
+      }
+    if (!do_export_section_jpeg_jgw (sqlite, coverage, geom, 1))
+      {
+	  *retcode += -29;
+	  return 0;
+      }
+    if (!do_export_section_jpeg_jgw (sqlite, coverage, geom, 2))
+      {
+	  *retcode += -30;
+	  return 0;
+      }
+    if (!do_export_section_jpeg_jgw (sqlite, coverage, geom, 4))
+      {
+	  *retcode += -31;
+	  return 0;
+      }
+    if (!do_export_section_jpeg_jgw (sqlite, coverage, geom, 8))
+      {
+	  *retcode += -32;
+	  return 0;
+      }
     gaiaFreeGeomColl (geom);
 
 /* testing GetTileImage() */
     if (!do_export_tile_image (sqlite, coverage, 1))
       {
-	  *retcode += -23;
+	  *retcode += -33;
 	  return 0;
       }
     if (!do_export_tile_image (sqlite, coverage, 2))
       {
-	  *retcode += -24;
+	  *retcode += -34;
 	  return 0;
       }
     if (!do_export_tile_image (sqlite, coverage, -1))
       {
-	  *retcode += -25;
+	  *retcode += -35;
 	  return 0;
       }
+
+/* testing GetJpegInfos */
+    if (rl2_get_jpeg_infos
+	("./map_samples/trento-gray/trento-gray1.jpg", &width, &height,
+	 &pixel_type) != RL2_OK)
+      {
+	  fprintf (stderr,
+		   "Unable to GetJpegInfos from \"trento-gray1.jpg\"\n");
+	  *retcode += -36;
+	  return 0;
+      }
+    if (width != 600)
+      {
+	  fprintf (stderr, "Unexpected Width from \"trento-gray1.jpg\" %u\n",
+		   width);
+	  *retcode += -37;
+	  return 0;
+      }
+    if (height != 600)
+      {
+	  fprintf (stderr, "Unexpected Height from \"trento-gray1.jpg\" %u\n",
+		   height);
+	  *retcode += -38;
+	  return 0;
+      }
+    if (pixel_type != RL2_PIXEL_GRAYSCALE)
+      {
+	  fprintf (stderr,
+		   "Unexpected PixelType from \"trento-gray1.jpg\" %02x\n",
+		   pixel_type);
+	  *retcode += -39;
+	  return 0;
+      }
+    if (rl2_get_jpeg_infos
+	("./map_samples/trento-rgb/trento-rgb1.jpg", &width, &height,
+	 &pixel_type) != RL2_OK)
+      {
+	  fprintf (stderr, "Unable to GetJpegInfos from \"trento-rgb1.jpg\"\n");
+	  *retcode += -40;
+	  return 0;
+      }
+    if (width != 600)
+      {
+	  fprintf (stderr, "Unexpected Width from \"trento-rgb1.jpg\" %u\n",
+		   width);
+	  *retcode += -41;
+	  return 0;
+      }
+    if (height != 600)
+      {
+	  fprintf (stderr, "Unexpected Height from \"trento-rgb1.jpg\" %u\n",
+		   height);
+	  *retcode += -42;
+	  return 0;
+      }
+    if (pixel_type != RL2_PIXEL_RGB)
+      {
+	  fprintf (stderr,
+		   "Unexpected PixelType from \"trento-rgb1.jpg\" %02x\n",
+		   pixel_type);
+	  *retcode += -43;
+	  return 0;
+      }
+/* testing MD5 Checksum */
+    md5 =
+	rl2_compute_file_md5_checksum
+	("./map_samples/trento-gray/trento-gray1.jpg");
+    if (md5 == NULL)
+      {
+	  fprintf (stderr, "Unable to GetMD5 from \"trento-gray1.jpg\"\n");
+	  *retcode += -44;
+	  return 0;
+      }
+    if (strcmp (md5, "6750bf6f168200dab2c741017af82f1d") != 0)
+      {
+	  fprintf (stderr, "Unexpected MD5 for \"trento-gray1.jpg\" %s\n", md5);
+	  *retcode += -45;
+	  return 0;
+      }
+    free (md5);
+    md5 =
+	rl2_compute_file_md5_checksum
+	("./map_samples/trento-rgb/trento-rgb1.jpg");
+    if (md5 == NULL)
+      {
+	  fprintf (stderr, "Unable to GetMD5 from \"trento-rgb1.jpg\"\n");
+	  *retcode += -46;
+	  return 0;
+      }
+    if (strcmp (md5, "8f0903be04e7ff3a2cb6188d52034502") != 0)
+      {
+	  fprintf (stderr, "Unexpected MD5 for \"trento-rgb1.jpg\" %s\n", md5);
+	  *retcode += -47;
+	  return 0;
+      }
+    free (md5);
 
     return 1;
 }
@@ -773,7 +1037,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
 /* dropping some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
+    const char *coverage = NULL;
     char *sql;
 
 /* setting the coverage name */
@@ -848,12 +1112,12 @@ drop_coverage (sqlite3 * sqlite, unsigned char pixel, unsigned char compression,
       }
 
 /* dropping the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_DropCoverage(%Q, 1)", coverage);
+    sql = sqlite3_mprintf ("SELECT RL2_DropRasterCoverage(%Q, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "DropCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "DropRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -871,6 +1135,7 @@ main (int argc, char *argv[])
     char *err_msg = NULL;
     sqlite3 *db_handle;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
 
     if (argc > 1 || argv[0] == NULL)
@@ -893,7 +1158,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
     ret =
 	sqlite3_exec (db_handle, "SELECT InitSpatialMetadata(1)", NULL, NULL,
 		      &err_msg);
@@ -1015,6 +1280,8 @@ main (int argc, char *argv[])
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

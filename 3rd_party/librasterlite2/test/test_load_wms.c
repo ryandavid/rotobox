@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -212,10 +212,19 @@ main (int argc, char *argv[])
     char *sql;
     gaiaGeomCollPtr geom;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
 
     if (argc > 1 || argv[0] == NULL)
 	argc = 1;		/* silencing stupid compiler warnings */
+
+    if (getenv ("ENABLE_RL2_WEB_TESTS") == NULL)
+      {
+	  fprintf (stderr, "this testcase has been skipped !!!\n\n"
+		   "you can enable all testcases requiring an Internet connection\n"
+		   "by setting the environment variable \"ENABLE_RL2_WEB_TESTS=1\"\n");
+	  return 0;
+      }
 
     old_SPATIALITE_SECURITY_ENV = getenv ("SPATIALITE_SECURITY");
 #ifdef _WIN32
@@ -234,7 +243,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
     ret =
 	sqlite3_exec (db_handle, "SELECT InitSpatialMetadata(1)", NULL, NULL,
 		      &err_msg);
@@ -255,7 +264,7 @@ main (int argc, char *argv[])
       }
 
 /* creating an RGB DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.2f)",
 			   "rgb10k", "UINT8", "RGB", 3, "JPEG", 80,
 			   512, 512, 3003, 0.5);
@@ -263,14 +272,14 @@ main (int argc, char *argv[])
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", "rgb10k",
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", "rgb10k",
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  return -4;
       }
 
 /* creating a Grayscale DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.2f)",
 			   "gray10k", "UINT8", "GRAYSCALE", 1, "JPEG", 80,
 			   512, 512, 3003, 1.0);
@@ -278,14 +287,14 @@ main (int argc, char *argv[])
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", "gray10k",
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", "gray10k",
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  return -5;
       }
 
 /* creating a Monochrome DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.2f, %1.2f, "
 			   "RL2_SetPixelValue(RL2_CreatePixel(%Q, %Q, 1), 0, 0))",
 			   "ctrt10k", "1-BIT", "MONOCHROME", 1, "FAX4", 100,
@@ -294,7 +303,7 @@ main (int argc, char *argv[])
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", "ctrt10k",
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", "ctrt10k",
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  return -6;
@@ -353,9 +362,7 @@ main (int argc, char *argv[])
 	  sqlite3_free (err_msg);
 	  return -9;
       }
-    sql =
-	sqlite3_mprintf
-	("SELECT RL2_Pyramidize(%Q, %Q, 1, 1)", "ctrt10k", "firenze");
+    sql = sqlite3_mprintf ("SELECT RL2_Pyramidize(%Q, 1, 1, 1)", "ctrt10k");
     ret = execute_check (db_handle, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -405,6 +412,8 @@ main (int argc, char *argv[])
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -171,8 +171,9 @@ test_sql_palette (unsigned char *blob, int blob_size, unsigned char *blob2,
     const char *sql;
     sqlite3_stmt *stmt;
     unsigned char *blob3 = NULL;
-    int blob_size3;
+    int blob_size3 = 0;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
 
 /* opening and initializing the "memory" test DB */
     ret = sqlite3_open_v2 (":memory:", &db_handle,
@@ -184,7 +185,7 @@ test_sql_palette (unsigned char *blob, int blob_size, unsigned char *blob2,
 	  return 0;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
 
     sql = "SELECT RL2_GetPaletteNumEntries(?), RL2_GetPaletteNumEntries(?), "
 	"RL2_GetPaletteColorEntry(?, 0), RL2_GetPaletteColorEntry(?, 0), "
@@ -373,6 +374,8 @@ test_sql_palette (unsigned char *blob, int blob_size, unsigned char *blob2,
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     free (blob);
     free (blob2);
@@ -383,6 +386,10 @@ test_sql_palette (unsigned char *blob, int blob_size, unsigned char *blob2,
   error:
     sqlite3_finalize (stmt);
     sqlite3_close (db_handle);
+    if (cache != NULL)
+	spatialite_cleanup_ex (cache);
+    if (priv_data != NULL)
+	rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     free (blob);
     free (blob2);
@@ -759,6 +766,7 @@ main (int argc, char *argv[])
 	  fprintf (stderr, "ERROR: unable to clone a palette\n");
 	  return 51;
       }
+    rl2_destroy_palette (plt2);
     if (rl2_serialize_dbms_palette (NULL, &blob, &blob_size) == RL2_OK)
       {
 	  fprintf (stderr, "ERROR: unexpected NULL palette serialization\n");

@@ -70,13 +70,7 @@ extern "C"
 {
 #endif
 
-#ifdef SPATIALITE_AMALGAMATION
-#include <spatialite/sqlite3.h>
-#else
-#include <sqlite3.h>
-#endif
-
-#include <spatialite/gaiageo.h>
+#include "rasterlite2/sqlite.h"
 
 /** RasterLite2 flag: FALSE */
 #define RL2_FALSE			0
@@ -140,10 +134,14 @@ extern "C"
 #define RL2_COMPRESSION_UNKNOWN		0x20
 /** RasterLite2 constant: Compression None */
 #define RL2_COMPRESSION_NONE		0x21
-/** RasterLite2 constant: Compression Deflate (zip) */
+/** RasterLite2 constant: Compression Deflate Delta (zip) */
 #define RL2_COMPRESSION_DEFLATE		0x22
-/** RasterLite2 constant: Compression LZMA */
+/** RasterLite2 constant: Compression Deflate noDelta (zip) */
+#define RL2_COMPRESSION_DEFLATE_NO	0xd2
+/** RasterLite2 constant: Compression LZMA Delta */
 #define RL2_COMPRESSION_LZMA		0x23
+/** RasterLite2 constant: Compression LZMA noDelta */
+#define RL2_COMPRESSION_LZMA_NO		0xd3
 /** RasterLite2 constant: Compression GIF */
 #define RL2_COMPRESSION_GIF		0x24
 /** RasterLite2 constant: Compression PNG */
@@ -160,6 +158,12 @@ extern "C"
 #define RL2_COMPRESSION_CCITTFAX4	0x30
 /** RasterLite2 constant: Compression LZW */
 #define RL2_COMPRESSION_LZW		0x31
+/** RasterLite2 constant: Compression CHARLS */
+#define RL2_COMPRESSION_CHARLS		0x32
+/** RasterLite2 constant: Compression JPEG2000 (lossy mode) */
+#define RL2_COMPRESSION_LOSSY_JP2	0x33
+/** RasterLite2 constant: Compression JPEG2000 (lossless mode) */
+#define RL2_COMPRESSION_LOSSLESS_JP2	0x34
 
 /** RasterLite2 constant: UNKNOWN number of Bands */
 #define RL2_BANDS_UNKNOWN		0x00
@@ -214,10 +218,72 @@ extern "C"
 /** RasterLite2 constant: contrast enhancement GAMMA-VALUE */
 #define RL2_CONTRAST_ENHANCEMENT_GAMMA		0x93
 
-/** ResterLite2 constant: GroupRenderer - RasterLayer */
+/** RasterLite2 constant: GroupRenderer - RasterLayer */
 #define RL2_GROUP_RENDERER_RASTER_LAYER	0xba
 /** ResterLite2 constant: GroupRenderer - VectorLayer */
 #define RL2_GROUP_RENDERER_VECTOR_LAYER	0xbb
+
+/** RasterLite2 constants: unknown Symbolizer type */
+#define RL2_UNKNOWN_SYMBOLIZER	0xa0
+/** RasterLite2 constants: Point Symbolizer type */
+#define RL2_POINT_SYMBOLIZER	0xa1
+/** RasterLite2 constants: Line Symbolizer type */
+#define RL2_LINE_SYMBOLIZER	0xa2
+/** RasterLite2 constants: Polygon Symbolizer type */
+#define RL2_POLYGON_SYMBOLIZER	0xa3
+/** RasterLite2 constants: Text Symbolizer type */
+#define RL2_TEXT_SYMBOLIZER	0xa4
+
+/** RasterLite2 constants: unknown Stroke Linejoin */
+#define RL2_STROKE_LINEJOIN_UNKNOWN	0x50
+/** RasterLite2 constants: Stroke Linejoin - Mitre */
+#define RL2_STROKE_LINEJOIN_MITRE	0x51
+/** RasterLite2 constants: Stroke Linejoin - Round */
+#define RL2_STROKE_LINEJOIN_ROUND	0x52
+/** RasterLite2 constants: Stroke Linejoin - Bevel */
+#define RL2_STROKE_LINEJOIN_BEVEL	0x53
+
+/** RasterLite2 constants: unknown Stroke Linecap */
+#define RL2_STROKE_LINECAP_UNKNOWN	0x60
+/** RasterLite2 constants: Stroke Linecap - Butt */
+#define RL2_STROKE_LINECAP_BUTT		0x61
+/** RasterLite2 constants: Stroke Linecap - Round */
+#define RL2_STROKE_LINECAP_ROUND	0x62
+/** RasterLite2 constants: Stroke Linecap - Square */
+#define RL2_STROKE_LINECAP_SQUARE	0x63
+
+/** RasterLite2 constants: unknown Mark */
+#define RL2_GRAPHIC_MARK_UNKNOWN	0x70
+/** RasterLite2 constants: the well-known Square Mark */
+#define RL2_GRAPHIC_MARK_SQUARE		0x71
+/** RasterLite2 constants: the well-known Circle Mark */
+#define RL2_GRAPHIC_MARK_CIRCLE		0x72
+/** RasterLite2 constants: the well-known Triangle Mark */
+#define RL2_GRAPHIC_MARK_TRIANGLE	0x73
+/** RasterLite2 constants: the well-known Star Mark */
+#define RL2_GRAPHIC_MARK_STAR		0x74
+/** RasterLite2 constants: the well-known Cross Mark */
+#define RL2_GRAPHIC_MARK_CROSS		0x75
+/** RasterLite2 constants: the well-known X Mark */
+#define RL2_GRAPHIC_MARK_X		0x76
+
+/** Rasterlite2 constants: Font Style Normal */
+#define RL2_FONT_STYLE_NORMAL	0x30
+/** Rasterlite2 constants: Font Style Italic */
+#define RL2_FONT_STYLE_ITALIC	0x31
+/** Rasterlite2 constants: Font Style Oblique */
+#define RL2_FONT_STYLE_OBLIQUE	0x32
+/** Rasterlite2 constants: Font Weight Normal */
+#define RL2_FONT_WEIGHT_NORMAL	0x40
+/** Rasterlite2 constants: Font Weight Bold */
+#define RL2_FONT_WEIGHT_BOLD	0x41
+
+/** Rasterlite2 constants: LabelPlacement: Unknwn */
+#define RL2_LABEL_PLACEMENT_UNKNOWN	0x53
+/** Rasterlite2 constants: LabelPlacement: PointPlacement */
+#define RL2_LABEL_PLACEMENT_POINT	0x54
+/** Rasterlite2 constants: LabelPlacement: LinePlacement */
+#define RL2_LABEL_PLACEMENT_LINE	0x55
 
 /**
  Typedef for RL2 Pixel object (opaque, hidden)
@@ -285,17 +351,186 @@ extern "C"
     typedef rl2Coverage *rl2CoveragePtr;
 
 /**
- Typedef for RL2 RasterStyle object (opaque, hidden)
+ Typedef for RL2 Vector Layer object (opaque, hidden)
 
- \sa rl2RasterStylePtr
+ \sa rl2VectorLayerPtr
  */
-    typedef struct rl2_raster_style rl2RasterStyle;
+    typedef struct rl2_vector_layer rl2VectorLayer;
 /**
- Typedef for RL2 RasterStyle object pointer (opaque, hidden)
+ Typedef for RL2 Vector Layer object pointer (opaque, hidden)
 
- \sa rl2RasterStyle
+ \sa rl2VectorLayer
  */
-    typedef rl2RasterStyle *rl2RasterStylePtr;
+    typedef rl2VectorLayer *rl2VectorLayerPtr;
+
+/**
+ Typedef for RL2 CoverageStyle object (opaque, hidden)
+
+ \sa rl2CoverageStylePtr
+ */
+    typedef struct rl2_coverage_style rl2CoverageStyle;
+/**
+ Typedef for RL2 CoverageStyle object pointer (opaque, hidden)
+
+ \sa rl2CoverageStyle
+ */
+    typedef rl2CoverageStyle *rl2CoverageStylePtr;
+
+/**
+ Typedef for RL2 RasterSymbolizer object (opaque, hidden)
+
+ \sa rl2RasterSymbolizerPtr
+ */
+    typedef struct rl2_raster_symbolizer rl2RasterSymbolizer;
+/**
+ Typedef for RL2 RasterSymbolizer object pointer (opaque, hidden)
+
+ \sa rl2RasterSymbolizer
+ */
+    typedef rl2RasterSymbolizer *rl2RasterSymbolizerPtr;
+
+/**
+ Typedef for RL2 Rule Like Arguments object (opaque, hidden)
+
+ \sa rl2SRuleLikeArgsPtr
+ */
+    typedef struct rl2_rule_like_args rl2RuleLikeArgs;
+/**
+ Typedef for RL2 RuleLikeArgs object pointer (opaque, hidden)
+
+ \sa rl2RuleLikeArgs
+ */
+    typedef rl2RuleLikeArgs *rl2RuleLikeArgsPtr;
+
+/**
+ Typedef for RL2 Rule Between Arguments object (opaque, hidden)
+
+ \sa rl2SRuleBetweenArgsPtr
+ */
+    typedef struct rl2_rule_between_args rl2RuleBetweenArgs;
+/**
+ Typedef for RL2 RuleBetweenArgs object pointer (opaque, hidden)
+
+ \sa rl2RuleBetweenArgs
+ */
+    typedef rl2RuleBetweenArgs *rl2RuleBetweenArgsPtr;
+
+/**
+ Typedef for RL2 Rule Single Argument object (opaque, hidden)
+
+ \sa rl2SRuleSingleArgPtr
+ */
+    typedef struct rl2_rule_single_arg rl2RuleSingleArg;
+/**
+ Typedef for RL2 RuleSingleArg object pointer (opaque, hidden)
+
+ \sa rl2RuleSingleArg
+ */
+    typedef rl2RuleSingleArg *rl2RuleSingleArgPtr;
+
+/**
+ Typedef for RL2 VariantArray object (opaque, hidden)
+
+ \sa rl2VariantArrayPtr
+ */
+    typedef struct rl2_variant_array rl2VariantArray;
+/**
+ Typedef for RL2 VariantArray object pointer (opaque, hidden)
+
+ \sa rl2VariantArray
+ */
+    typedef rl2VariantArray *rl2VariantArrayPtr;
+
+/**
+ Typedef for RL2 StyleRule object (opaque, hidden)
+
+ \sa rl2StyleRulePtr
+ */
+    typedef struct rl2_style_rule rl2StyleRule;
+/**
+ Typedef for RL2 StyleRule object pointer (opaque, hidden)
+
+ \sa rl2StyleRule
+ */
+    typedef rl2StyleRule *rl2StyleRulePtr;
+
+/**
+ Typedef for RL2 FeatureTypeStyle object (opaque, hidden)
+
+ \sa rl2FeatureTypeStylePtr
+ */
+    typedef struct rl2_feature_type_style rl2FeatureTypeStyle;
+/**
+ Typedef for RL2 FeatureTypeStyle object pointer (opaque, hidden)
+
+ \sa rl2FeatureTypeStyle
+ */
+    typedef rl2FeatureTypeStyle *rl2FeatureTypeStylePtr;
+
+/**
+ Typedef for RL2 VectorSymbolizer object (opaque, hidden)
+
+ \sa rl2VectorSymbolizerPtr
+ */
+    typedef struct rl2_vector_symbolizer rl2VectorSymbolizer;
+/**
+ Typedef for RL2 VectorSymbolizer object pointer (opaque, hidden)
+
+ \sa rl2VectorSymbolizer
+ */
+    typedef rl2VectorSymbolizer *rl2VectorSymbolizerPtr;
+
+/**
+ Typedef for RL2 PointSymbolizer object (opaque, hidden)
+
+ \sa rl2PointSymbolizerPtr
+ */
+    typedef struct rl2_point_symbolizer rl2PointSymbolizer;
+/**
+ Typedef for RL2 PointSymbolizer object pointer (opaque, hidden)
+
+ \sa rl2PointSymbolizer
+ */
+    typedef rl2PointSymbolizer *rl2PointSymbolizerPtr;
+
+/**
+ Typedef for RL2 LineSymbolizer object (opaque, hidden)
+
+ \sa rl2LineSymbolizerPtr
+ */
+    typedef struct rl2_line_symbolizer rl2LineSymbolizer;
+/**
+ Typedef for RL2 LineSymbolizer object pointer (opaque, hidden)
+
+ \sa rl2LineSymbolizer
+ */
+    typedef rl2LineSymbolizer *rl2LineSymbolizerPtr;
+
+/**
+ Typedef for RL2 PolygonSymbolizer object (opaque, hidden)
+
+ \sa rl2PolygonSymbolizerPtr
+ */
+    typedef struct rl2_polygon_symbolizer rl2PolygonSymbolizer;
+/**
+ Typedef for RL2 PolygonSymbolizer object pointer (opaque, hidden)
+
+ \sa rl2PolygonSymbolizer
+ */
+    typedef rl2PolygonSymbolizer *rl2PolygonSymbolizerPtr;
+
+/**
+ Typedef for RL2 TextSymbolizer object (opaque, hidden)
+
+ \sa rl2TextSymbolizerPtr
+ */
+    typedef struct rl2_text_symbolizer rl2TextSymbolizer;
+/**
+ Typedef for RL2 TextSymbolizer object pointer (opaque, hidden)
+
+ \sa rl2TextSymbolizer
+ */
+    typedef rl2TextSymbolizer *rl2TextSymbolizerPtr;
 
 /**
  Typedef for RL2 GroupStyle object (opaque, hidden)
@@ -432,15 +667,48 @@ extern "C"
 #endif
 
 /**
+ Initializes the internal private memory block supporting each RL2 connection
+
+ \sa rl2_init, rl2_private_cleanup
+
+ */
+    RL2_DECLARE void *rl2_alloc_private (void);
+
+/**
  Initializes the library
  
  \param db_handle handle to the current SQLite connection
+ \param ptr a memory pointer returned by rl2_alloc_private()
  \param verbose if TRUE a short start-up message is shown on stderr
 
  \note you are always expected to explicitly call this function
  before attempting to call any RasterLite-2 own function.
  */
-    RL2_DECLARE void rl2_init (sqlite3 * db_handle, int verbose);
+    RL2_DECLARE void rl2_init (sqlite3 * db_handle, const void *ptr,
+			       int verbose);
+
+/**
+ Cleanup the internal private memory block supporting each RL2 connection
+
+ This function performs general cleanup, essentially undoing the effect
+ of rl2_init().
+
+ \param ptr the same memory pointer passed to the corresponding call to
+ rl2_init() and rl2_alloc_private()
+
+ \sa rl2_init_ex, rl2_alloc_private
+*/
+    RL2_DECLARE void rl2_cleanup_private (const void *ptr);
+
+/**
+ Testing if a given codec/compressor is actually supported by the library
+
+ \param compression e.g. RL2_COMPRESSION_NONE or RL2_COMPRESSION_DEFLATE
+ 
+ \return  RL2_TRUE or RL2_FALSE on success: RL2_ERROR on invalid/unknown
+ compriosson.
+ */
+    RL2_DECLARE int rl2_is_supported_codec (unsigned char compression);
 
 /**
  Allocates and initializes a new Pixel object
@@ -452,7 +720,7 @@ extern "C"
 		RL2_PIXEL_RGB, RL2_PIXEL_MULTIBAND, RL2_PIXEL_DATAGRID.
  \param num_samples number of samples per pixel (aka Bands)
  
- \return the pointer to newly created Coverage Object: NULL on failure.
+ \return the pointer to newly created Pixel Object: NULL on failure.
  
  \sa rl2_destroy_pixel, rl2_compare_pixels, rl2_get_pixel_type, 
 		rl2_get_pixel_sample_1bit,
@@ -1044,10 +1312,7 @@ extern "C"
  \param pixel_type one of RL2_PIXEL_MONOCHROME, RL2_PIXEL_PALETTE, RL2_PIXEL_GRAYSCALE,
 		RL2_PIXEL_RGB, RL2_PIXEL_MULTIBAND, RL2_PIXEL_DATAGRID.
  \param num_samples number of samples per pixel (aka Bands)
- \param compression one of RL2_COMPRESSION_NONE, RL2_COMPRESSION_DEFLATE,
-		RL2_COMPRESSION_LZMA, RL2_COMPRESSION_GIF, RL2_COMPRESSION_PNG,
-		RL2_COMPRESSION_JPEG, RL2_COMPRESSION_LOSSY_WEBP or
- 		RL2_COMPRESSION_LOSSLESS_WEBP
+ \param compression e.g. RL2_COMPRESSION_NONE or RL2_COMPRESSION_DEFLATE
  \param quality compression quality factor (0-100); only meaningfull for
 		JPEG or WEBP lossy compressions, ignored in any other case.
  \param tile_width the individual tile width in pixels.
@@ -1101,6 +1366,49 @@ extern "C"
     RL2_DECLARE int
 	rl2_coverage_georeference (rl2CoveragePtr cvg, int srid,
 				   double horz_res, double vert_res);
+
+/**
+ Gets the Policies from a Coverage Object
+
+ \param cvg pointer to the Coverage Object.
+ \param strict_resolution on completion the BOOLEAN variable referenced
+  by this pointer will contain the StrictResolution flag.
+ \param mixed_resolutions on completion the BOOLEAN variable referenced
+  by this pointer will contain the MixedResolutions flag.
+ \param section_paths on completion the BOOLEAN variable referenced
+  by this pointer will contain the SectionPaths flag.
+ \param section_md5 on completion the BOOLEAN variable referenced
+  by this pointer will contain the SectionMD5 flag.
+ \param section_summary on completion the BOOLEAN variable referenced
+  by this pointer will contain the SectionSummary flag.
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_create_coverage, rl2_set_coverage_policies
+ */
+    RL2_DECLARE int
+	rl2_get_coverage_policies (rl2CoveragePtr cvg, int *stric_resolution,
+				   int *mixed_resolutions, int *section_paths,
+				   int *section_md5, int *section_summary);
+
+/**
+ Sets the Policies for a Coverage Object
+
+ \param cvg pointer to the Coverage Object.
+ \param strict_resolution the StrictResolution BOOLEAN flag.
+ \param mixed_resolutions the MixedResolutions BOOLEAN flag.
+ \param section_paths the SectionPaths BOOLEAN flag.
+ \param section_md5 the SectionMD5 BOOLEAN flag.
+ \param section_summary the SectionSummary BOOLEAN flag.
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_create_coverage, rl2_get_coverage_policies
+ */
+    RL2_DECLARE int
+	rl2_set_coverage_policies (rl2CoveragePtr cvg, int stric_resolution,
+				   int mixed_resolutions, int section_paths,
+				   int section_md5, int section_summary);
 
 /**
  Retrieving the Name from a Coverage Object
@@ -1266,13 +1574,113 @@ extern "C"
 						 double *vResolution);
 
 /**
+ Allocates and initializes a new Vector Layer object
+
+ \param f_table_name a text string containing the Table name.
+ \param f_geometry_column a text string containing the Geometry Column name
+ \param geometry_type the numeric ID of some Geometry class; one between 
+  GAIA_POINT, GAIA_LINESTRING, GAIA_POLYGON and alike.
+ \param srid the SRID value
+ \param spatial_index one of GAIA_SPATIAL_INDEX_NONE, GAIA_SPATIAL_INDEX_RTREE
+ or GAIA_SPATIAL_INDEX_MBRCACHE
+ 
+ \return the pointer to newly created Vector Layer Object: NULL on failure.
+ 
+ \sa rl2_destroy_vector_layer, rl2_get_vector_table_name, 
+		rl2_get_vector_geometry_name, rl2_get_vector_geometry_type, 
+		rl2_get_vector_srid, rl2_get_vector_spatial_index
+ 
+ \note you are responsible to destroy (before or after) any allocated 
+ Vector Layer object.
+ */
+    RL2_DECLARE rl2VectorLayerPtr
+	rl2_create_vector_layer (const char *f_table_name,
+				 const char *f_geometry_column,
+				 unsigned short geometry_type, int srid,
+				 unsigned char spatial_index);
+
+/**
+ Destroys a Vector Layer Object
+
+ \param vector pointer to object to be destroyed
+
+ \sa rl2_create_vector_layer
+ */
+    RL2_DECLARE void rl2_destroy_vector_layer (rl2VectorLayerPtr vector);
+
+/**
+ Retrieving the Table name from a Vector Layer Object
+
+ \param vector pointer to the Vector Layer Object.
+ 
+ \return pointer to the Table name text string; NULL if any error is 
+ encountered.
+
+ \sa rl2_create_vector_layer, rl2_get_vector_geometry_name
+ */
+    RL2_DECLARE const char *rl2_get_vector_table_name (rl2VectorLayerPtr
+						       vector);
+
+/**
+ Retrieving the Geometry Column name from a Vector Layer Object
+
+ \param vector pointer to the Vector Layer Object.
+ 
+ \return pointer to the Geometry Column name text string; NULL if any 
+ error is encountered.
+
+ \sa rl2_create_vector_layer, rl2_get_vector_table_name
+ */
+    RL2_DECLARE const char *rl2_get_vector_geometry_name (rl2VectorLayerPtr
+							  vector);
+
+/**
+ Retrieving the Geometry Type from a Vector Layer Object
+
+ \param vector pointer to the Vector Layer Object.
+ \param geometry_type on completion the variable referenced by this
+ pointer will contain the Geometry Type.
+ 
+ \return  RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_create_vector_layer
+ */
+    RL2_DECLARE int rl2_get_vector_geometry_type (rl2VectorLayerPtr vector,
+						  unsigned short
+						  *geometry_type);
+
+/**
+ Retrieving the SRID from a Vector Layer Object
+
+ \param vector pointer to the Vector Layer Object.
+ \param srid on completion the variable referenced by this
+ pointer will contain the SRID.
+ 
+ \return  RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_create_vector_layer
+ */
+    RL2_DECLARE int rl2_get_vector_srid (rl2VectorLayerPtr vector, int *srid);
+
+/**
+ Retrieving the Spatial Index type from a Vector Layer Object
+
+ \param vector pointer to the Vector Layer Object.
+ \param idx on completion the variable referenced by this
+ pointer will contain the Spatial Index type.
+ 
+ \return  RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_create_vector_layer
+ */
+    RL2_DECLARE int rl2_get_vector_spatial_index (rl2VectorLayerPtr vector,
+						  unsigned char *idx);
+
+/**
  Allocates and initializes a new Section object
 
  \param name a text string intended to be the symbolic Section name.
- \param compression one of RL2_COMPRESSION_NONE, RL2_COMPRESSION_DEFLATE,
-		RL2_COMPRESSION_LZMA, RL2_COMPRESSION_GIF, RL2_COMPRESSION_PNG,
-		RL2_COMPRESSION_JPEG, RL2_COMPRESSION_LOSSY_WEBP or
- 		RL2_COMPRESSION_LOSSLESS_WEBP
+ \param compression e.g. RL2_COMPRESSION_NONE or RL2_COMPRESSION_DEFLATE
  \param tile_width the individual tile width in pixels.
  \param tile_height the individual tile height in pixels.
  \param rst pointer to a Raster Object.
@@ -1354,6 +1762,32 @@ extern "C"
     RL2_DECLARE rl2SectionPtr rl2_section_from_webp (const char *path);
 
 /**
+ Allocates and initializes a new Section object from an external 
+ Jpeg2000 image
+
+ \param path pathname leading to the external Jpeg2000 image.
+ \param sample_type one of RL2_SAMPLE_UINT8 or RL2_SAMPLE_INT16.
+ \param pixel_type one of RL2_PIXEL_GRAYSCALE, RL2_PIXEL_RGB, 
+ RL2_PIXEL_MULTIBAND, RL2_PIXEL_DATAGRID.
+ \param num_samples number of samples per pixel (aka Bands).
+ 
+ \return the pointer to newly created Section Object: NULL on failure.
+ 
+ \sa rl2_destroy_section, rl2_create_section, rl2_section_to_lossy_jpeg2000,
+	rl2_section_to_lossless_jpeg2000
+ 
+ \note you are responsible to destroy (before or after) any allocated 
+ Section object.
+ */
+    RL2_DECLARE rl2SectionPtr rl2_section_from_jpeg2000 (const char *path,
+							 unsigned char
+							 sample_type,
+							 unsigned char
+							 pixel_type,
+							 unsigned char
+							 num_samples);
+
+/**
  Exports a Section object as an external GIF image
 
  \param scn pointer to the Section Object.
@@ -1395,7 +1829,7 @@ extern "C"
  Exports a Section object as an external WEBP (lossy) image
 
  \param scn pointer to the Section Object.
- \param path pathname leading to the external JPEG image.
+ \param path pathname leading to the external WEBP image.
  \param quality compression quality factor (0-100).
  
  \return RL2_OK on success: RL2_ERROR on failure.
@@ -1417,6 +1851,34 @@ extern "C"
  */
     RL2_DECLARE int rl2_section_to_lossless_webp (rl2SectionPtr scn,
 						  const char *path);
+
+/**
+ Exports a Section object as an external Jpeg2000 (lossy) image
+
+ \param scn pointer to the Section Object.
+ \param path pathname leading to the external Jpeg2000 image.
+ \param quality compression quality factor (0-100).
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+ 
+ \sa rl2_create_section, rl2_section_from_jpeg
+ */
+    RL2_DECLARE int rl2_section_to_lossy_jpeg2000 (rl2SectionPtr scn,
+						   const char *path,
+						   int quality);
+
+/**
+ Exports a Section object as an external Jpeg2000 (lossless) image
+
+ \param scn pointer to the Section Object.
+ \param path pathname leading to the external Jpeg2000 image.
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+ 
+ \sa rl2_create_section, rl2_section_from_webp
+ */
+    RL2_DECLARE int rl2_section_to_lossless_jpeg2000 (rl2SectionPtr scn,
+						      const char *path);
 
 /**
  Destroys a Section Object
@@ -1576,6 +2038,57 @@ extern "C"
 			   rl2PixelPtr no_data);
 
 /**
+ Allocates and initializes a new Raster object
+
+ \param width Raster Width (in pixels).
+ \param height Raster Height (in pixels).
+ \param sample_type one of RL2_SAMPLE_1_BIT, RL2_SAMPLE_2_BIT, RL2_SAMPLE_4_BIT,
+        RL2_SAMPLE_INT8, RL2_SAMPLE_UINT8, RL2_SAMPLE_INT16, RL2_SAMPLE_UINT16,
+		RL2_SAMPLE_INT32, RL2_SAMPLE_UINT32, RL2_SAMPLE_FLOAT or RL2_SAMPLE_DOUBLE.
+ \param pixel_type one of RL2_PIXEL_MONOCHROME, RL2_PIXEL_PALETTE, RL2_PIXEL_GRAYSCALE,
+		RL2_PIXEL_RGB, RL2_PIXEL_MULTIBAND, RL2_PIXEL_DATAGRID.
+ \param num_samples number of samples per pixel (aka Bands)
+ \param bufpix pointer to the Buffer containing all Pixels
+ \param bufpix_size size (in bytes) of the above Buffer
+ \param palette pointer to a Palette object (NULL is the Pixel Type doesn't require a Palette)
+ \param alpha pointer to an optional Alpha Mask (may be NULL if no Mask is required)
+ \param alpha_size size (in bytes) of the above Mask (ZERO if no Mask is required)
+ \param no_data pointer to a Pixel Object indented as NO-DATA value;
+		could be eventually NULL if not required.
+ 
+ \return the pointer to newly created Raster Object: NULL on failure.
+ 
+ \sa rl2_destroy_raster, rl2_get_raster_size,
+		rl2_get_raster_raster_type, rl2_get_raster_pixel_type,
+		rl2_get_raster_bands, rl2_get_raster_no_data, rl2_get_raster_srid,
+		rl2_get_raster_horizontal_resolution, rl2_get_raster_vertical_resolution,
+		rl2_get_raster_minX, rl2_get_raster_minY, rl2_get_raster_maxX,
+		rl2_get_raster_maxY, rl2_create_raster_pixel,
+		rl2_raster_georeference_center, rl2_raster_georeference_upper_left,
+		rl2_raster_georeference_lower_left, rl2_raster_georeference_upper_right,
+		rl2_raster_georeference_lower_right, rl2_raster_georeference_frame,
+		rl2_raster_data_to_1bit, rl2_raster_data_to_2bit, rl2_raster_data_to_4bit,
+		rl2_raster_data_to_int8, rl2_raster_data_to_uint8, rl2_raster_data_to_int16, 
+		rl2_raster_data_to_uint16, rl2_raster_data_to_int32, rl2_raster_data_to_uint32,
+		rl2_raster_data_to_float, rl2_raster_data_to_double, rl2_raster_band_to_uint8, 
+		rl2_raster_band_to_uint16, rl2_raster_bands_to_RGB, rl2_raster_to_gif,
+		rl2_raster_to_png, rl2_raster_to_jpeg, rl2_raster_to_lossless_webp,
+		rl2_raster_to_lossy_webp, rl2_raster_from_gif, rl2_raster_from_png, 
+		rl2_raster_from_jpeg, rl2_raster_from_webp, rl2_raster_from_tiff
+ 
+ \note you are responsible to destroy (before or after) any allocated 
+ Raster object.
+ */
+    RL2_DECLARE rl2RasterPtr
+	rl2_create_raster_alpha (unsigned int width, unsigned int height,
+				 unsigned char sample_type,
+				 unsigned char pixel_type,
+				 unsigned char num_samples,
+				 unsigned char *bufpix, int bufpix_size,
+				 rl2PalettePtr palette, unsigned char *alpha,
+				 int alpha_size, rl2PixelPtr no_data);
+
+/**
  Destroys a Raster Object
 
  \param rst pointer to object to be destroyed
@@ -1696,18 +2209,6 @@ extern "C"
     RL2_DECLARE int rl2_get_raster_extent (rl2RasterPtr rst,
 					   double *minX, double *minY,
 					   double *maxX, double *maxY);
-
-/**
- Retrieving the bounding box from a Raster Object
-
- \param rst pointer to the Raster Object.
- 
- \return a Geometry Object (rectangle) corresponding to the Raster's BBox; 
-	NULL if any error is encountered or if the Raster doesn't support any GeoReferencing.
-
- \sa rl2_create_raster
- */
-    RL2_DECLARE gaiaGeomCollPtr rl2_get_raster_bbox (rl2RasterPtr rst);
 
 /**
  Creates a new Pixel Object suitable for a given Raster Object
@@ -1898,10 +2399,7 @@ extern "C"
  Encodes a Raster Object into the corresponding BLOB serialized format
 
  \param rst pointer to the Raster Object.
- \param compression one of RL2_COMPRESSION_NONE, RL2_COMPRESSION_DEFLATE,
-		RL2_COMPRESSION_LZMA, RL2_COMPRESSION_GIF, RL2_COMPRESSION_PNG,
-		RL2_COMPRESSION_JPEG, RL2_COMPRESSION_LOSSY_WEBP or
- 		RL2_COMPRESSION_LOSSLESS_WEBP
+ \param compression e.g. RL2_COMPRESSION_NONE or RL2_COMPRESSION_DEFLATE
  \param blob_odd on completion will point to the created encoded BLOB ("odd" half).
  \param blob_odd_sz on completion the variable referenced by this
  pointer will contain the size (in bytes) of the "odd" BLOB.
@@ -2770,6 +3268,8 @@ extern "C"
 
  \param png pointer to the memory block storing the input PNG image.
  \param png_size size (in bytes) of the PNG image.
+ \param alpha_mask set to TRUE if an eventual ALPHA mask should be
+ carefully preserved; otherwise a transparency mask will be assumed.
  
  \return the pointer to newly created Raster Object: NULL on failure.
  
@@ -2779,7 +3279,7 @@ extern "C"
  Raster object.
  */
     RL2_DECLARE rl2RasterPtr rl2_raster_from_png (const unsigned char *png,
-						  int png_size);
+						  int png_size, int alpha_mask);
 
 /**
  Exports a Raster object as an in-memory stored JPEG image
@@ -2818,8 +3318,8 @@ extern "C"
  Exports a Raster object as an in-memory stored WEBP image (lossy compressed)
 
  \param rst pointer to the Raster Object.
- \param buffer on completion will point to the memory block storing the created WEBP image.
- \param buf_size on completion the variable referenced by this
+ \param webp on completion will point to the memory block storing the created WEBP image.
+ \param webp_size on completion the variable referenced by this
  pointer will contain the size (in bytes) of the WEBP image.
  \param quality compression quality factor (0-100)
  
@@ -2835,8 +3335,8 @@ extern "C"
  Exports a Raster object as an in-memory stored WEBP image (lossless compressed)
 
  \param rst pointer to the Raster Object.
- \param buffer on completion will point to the memory block storing the created WEBP image.
- \param buf_size on completion the variable referenced by this
+ \param webp on completion will point to the memory block storing the created WEBP image.
+ \param webp_size on completion the variable referenced by this
  pointer will contain the size (in bytes) of the WEBP image.
  
  \return RL2_OK on success: RL2_ERROR on failure.
@@ -2865,6 +3365,68 @@ extern "C"
 	rl2_raster_from_webp (const unsigned char *webp, int webp_size);
 
 /**
+ Exports a Raster object as an in-memory stored Jpeg2000 image (lossy compressed)
+
+ \param rst pointer to the Raster Object.
+ \param jpeg2000 on completion will point to the memory block storing the created
+ Jpeg2000 image.
+ \param jpeg2000_size on completion the variable referenced by this
+ pointer will contain the size (in bytes) of the Jpeg2000 image.
+ \param quality compression quality factor (0-100)
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+ 
+ \sa rl2_create_raster, rl2_raster_from_jpeg2000, rl2_raster_to_lossless_jpeg2000
+ */
+    RL2_DECLARE int
+	rl2_raster_to_lossy_jpeg2000 (rl2RasterPtr rst,
+				      unsigned char **jpeg2000,
+				      int *jpeg2000_size, int quality);
+
+/**
+ Exports a Raster object as an in-memory stored Jpeg2000 image (lossless compressed)
+
+ \param rst pointer to the Raster Object.
+ \param jpeg2000 on completion will point to the memory block storing the created
+ Jpeg2000 image.
+ \param jpeg2000_size on completion the variable referenced by this
+ pointer will contain the size (in bytes) of the WEBP image.
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+ 
+ \sa rl2_create_raster, rl2_raster_from_jpeg2000, rl2_raster_to_lossy_jpeg2000
+ */
+    RL2_DECLARE int
+	rl2_raster_to_lossless_jpeg2000 (rl2RasterPtr rst,
+					 unsigned char **jpeg2000,
+					 int *jpeg20000_size);
+
+/**
+ Allocates and initializes a new Raster object from an in-memory stored
+ Jpeg2000 image
+
+ \param jpeg2000 pointer to the memory block storing the input Jpeg2000 image.
+ \param jpeg2000_size size (in bytes) of the Jpeg2000 image.
+ \param sample_type one of RL2_SAMPLE_UINT8 or RL2_SAMPLE_INT16.
+ \param pixel_type one of RL2_PIXEL_GRAYSCALE, RL2_PIXEL_RGB, 
+ RL2_PIXEL_MULTIBAND, RL2_PIXEL_DATAGRID.
+ \param num_samples number of samples per pixel (aka Bands).
+ 
+ \return the pointer to newly created Raster Object: NULL on failure.
+ 
+ \sa rl2_destroy_raster, rl2_create_raster, rl2_raster_to_lossy_jpeg2000,
+	rl2_raster_to_lossless_jpeg2000
+ 
+ \note you are responsible to destroy (before or after) any allocated 
+ Raster object.
+ */
+    RL2_DECLARE rl2RasterPtr
+	rl2_raster_from_jpeg2000 (const unsigned char *jpeg2000,
+				  int jpeg2000_size, unsigned char sample_type,
+				  unsigned char pixel_type,
+				  unsigned char num_samples);
+
+/**
  Allocates and initializes a new Raster object from an in-memory stored TIFF image
 
  \param webp pointer to the memory block storing the input TIFF image.
@@ -2889,20 +3451,44 @@ extern "C"
     RL2_DECLARE rl2CoveragePtr
 	rl2_create_coverage_from_dbms (sqlite3 * handle, const char *coverage);
 
+    RL2_DECLARE rl2VectorLayerPtr
+	rl2_create_vector_layer_from_dbms (sqlite3 * handle,
+					   const char *coverage);
+
     RL2_DECLARE int
 	rl2_find_matching_resolution (sqlite3 * handle, rl2CoveragePtr cvg,
+				      int by_section, sqlite3_int64 section_id,
 				      double *x_res, double *y_res,
 				      unsigned char *level,
 				      unsigned char *scale);
 
+    RL2_DECLARE int rl2_load_raw_raster_into_dbms (sqlite3 * sqlite,
+						   int max_threads,
+						   rl2CoveragePtr cvg,
+						   const char *sctn_name,
+						   rl2RasterPtr rst,
+						   int pyramidize);
+
     RL2_DECLARE int
-	rl2_get_raw_raster_data (sqlite3 * handle, rl2CoveragePtr cvg,
-				 unsigned int width, unsigned int height,
-				 double minx, double miny, double maxx,
-				 double maxy, double x_res, double y_res,
-				 unsigned char **buffer, int *buf_size,
-				 rl2PalettePtr * palette,
+	rl2_get_raw_raster_data (sqlite3 * handle, int max_threads,
+				 rl2CoveragePtr cvg, unsigned int width,
+				 unsigned int height, double minx, double miny,
+				 double maxx, double maxy, double x_res,
+				 double y_res, unsigned char **buffer,
+				 int *buf_size, rl2PalettePtr * palette,
 				 unsigned char out_pixel);
+
+    RL2_DECLARE int
+	rl2_get_section_raw_raster_data (sqlite3 * handle, int max_threads,
+					 rl2CoveragePtr cvg,
+					 sqlite3_int64 section_id,
+					 unsigned int width,
+					 unsigned int height, double minx,
+					 double miny, double maxx, double maxy,
+					 double x_res, double y_res,
+					 unsigned char **buffer, int *buf_size,
+					 rl2PalettePtr * palette,
+					 unsigned char out_pixel);
 
     RL2_DECLARE int
 	rl2_get_triple_band_raw_raster_data (sqlite3 * handle,
@@ -2920,6 +3506,22 @@ extern "C"
 					     rl2PixelPtr no_data);
 
     RL2_DECLARE int
+	rl2_get_section_triple_band_raw_raster_data (sqlite3 * handle,
+						     rl2CoveragePtr cvg,
+						     sqlite3_int64 section_id,
+						     unsigned int width,
+						     unsigned int height,
+						     double minx, double miny,
+						     double maxx, double maxy,
+						     double x_res, double y_res,
+						     unsigned char red_band,
+						     unsigned char green_band,
+						     unsigned char blue_band,
+						     unsigned char **buffer,
+						     int *buf_size,
+						     rl2PixelPtr no_data);
+
+    RL2_DECLARE int
 	rl2_get_mono_band_raw_raster_data (sqlite3 * handle,
 					   rl2CoveragePtr cvg,
 					   unsigned int width,
@@ -2932,8 +3534,22 @@ extern "C"
 					   int *buf_size, rl2PixelPtr no_data);
 
     RL2_DECLARE int
-	rl2_get_raw_raster_data_bgcolor (sqlite3 * handle, rl2CoveragePtr cvg,
-					 unsigned int width,
+	rl2_get_section_mono_band_raw_raster_data (sqlite3 * handle,
+						   rl2CoveragePtr cvg,
+						   sqlite3_int64 section_id,
+						   unsigned int width,
+						   unsigned int height,
+						   double minx, double miny,
+						   double maxx, double maxy,
+						   double x_res, double y_res,
+						   unsigned char mono_band,
+						   unsigned char **buffer,
+						   int *buf_size,
+						   rl2PixelPtr no_data);
+
+    RL2_DECLARE int
+	rl2_get_raw_raster_data_bgcolor (sqlite3 * handle, int max_threads,
+					 rl2CoveragePtr cvg, unsigned int width,
 					 unsigned int height, double minx,
 					 double miny, double maxx, double maxy,
 					 double x_res, double y_res,
@@ -2943,8 +3559,28 @@ extern "C"
 					 unsigned char bg_red,
 					 unsigned char bg_green,
 					 unsigned char bg_blue,
-					 rl2RasterStylePtr style,
+					 rl2RasterSymbolizerPtr style,
 					 rl2RasterStatisticsPtr stats);
+
+    RL2_DECLARE int
+	rl2_get_raw_raster_data_mixed_resolutions (sqlite3 * handle,
+						   int max_threads,
+						   rl2CoveragePtr cvg,
+						   unsigned int width,
+						   unsigned int height,
+						   double minx, double miny,
+						   double maxx, double maxy,
+						   double x_res, double y_res,
+						   unsigned char **buffer,
+						   int *buf_size,
+						   rl2PalettePtr * palette,
+						   unsigned char *out_pixel,
+						   unsigned char bg_red,
+						   unsigned char bg_green,
+						   unsigned char bg_blue,
+						   rl2RasterSymbolizerPtr style,
+						   rl2RasterStatisticsPtr
+						   stats);
 
     RL2_DECLARE int
 	rl2_create_dbms_coverage (sqlite3 * handle, const char *coverage,
@@ -2954,7 +3590,34 @@ extern "C"
 				  unsigned int tile_width,
 				  unsigned int tile_height, int srid,
 				  double x_res, double y_res,
-				  rl2PixelPtr no_data, rl2PalettePtr palette);
+				  rl2PixelPtr no_data, rl2PalettePtr palette,
+				  int strict_resolution, int mixed_resolutions,
+				  int section_paths, int section_md5,
+				  int section_summary);
+
+    RL2_DECLARE int
+	rl2_set_dbms_coverage_default_bands (sqlite3 * handle,
+					     const char *coverage,
+					     unsigned char red_band,
+					     unsigned char green_band,
+					     unsigned char blue_band,
+					     unsigned char nir_band);
+
+    RL2_DECLARE int
+	rl2_get_dbms_coverage_default_bands (sqlite3 * handle,
+					     const char *coverage,
+					     unsigned char *red_band,
+					     unsigned char *green_band,
+					     unsigned char *blue_band,
+					     unsigned char *nir_band);
+
+    RL2_DECLARE int
+	rl2_enable_dbms_coverage_auto_ndvi (sqlite3 * handle,
+					    const char *coverage, int on_off);
+
+    RL2_DECLARE int
+	rl2_is_dbms_coverage_auto_ndvi_enabled (sqlite3 * handle,
+						const char *coverage);
 
     RL2_DECLARE int
 	rl2_delete_dbms_section (sqlite3 * handle, const char *coverage,
@@ -2963,7 +3626,25 @@ extern "C"
     RL2_DECLARE int
 	rl2_get_dbms_section_id (sqlite3 * handle, const char *coverage,
 				 const char *section,
-				 sqlite3_int64 * section_id);
+				 sqlite3_int64 * section_id, int *duplicate);
+
+    RL2_DECLARE int
+	rl2_resolve_full_section_from_dbms (sqlite3 * handle,
+					    const char *coverage,
+					    sqlite3_int64 section_id,
+					    double x_res, double y_res,
+					    double *minx, double *miny,
+					    double *maxx, double *maxy,
+					    unsigned int *width,
+					    unsigned int *height);
+
+    RL2_DECLARE int
+	rl2_resolve_base_resolution_from_dbms (sqlite3 * handle,
+					       const char *coverage,
+					       int by_section,
+					       sqlite3_int64
+					       section_id,
+					       double *x_res, double *y_res);
 
     RL2_DECLARE int
 	rl2_drop_dbms_coverage (sqlite3 * handle, const char *coverage);
@@ -3020,7 +3701,8 @@ extern "C"
 
     RL2_DECLARE int
 	rl2_eval_ascii_grid_origin_compatibility (rl2CoveragePtr cvg,
-						  rl2AsciiGridOriginPtr ascii);
+						  rl2AsciiGridOriginPtr ascii,
+						  int verbose);
 
     RL2_DECLARE const char
 	*rl2_get_ascii_grid_origin_path (rl2AsciiGridOriginPtr ascii);
@@ -3054,11 +3736,14 @@ extern "C"
 					 double *hResolution,
 					 double *vResolution);
 
+    RL2_DECLARE char *rl2_build_ascii_xml_summary (rl2AsciiGridOriginPtr ascii);
+
     RL2_DECLARE rl2RasterPtr
 	rl2_get_tile_from_ascii_grid_origin (rl2CoveragePtr cvg,
 					     rl2AsciiGridOriginPtr ascii,
 					     unsigned int startRow,
-					     unsigned int startCol);
+					     unsigned int startCol,
+					     int verbose);
 
     RL2_DECLARE rl2AsciiGridDestinationPtr
 	rl2_create_ascii_grid_destination (const char *path,
@@ -3106,31 +3791,76 @@ extern "C"
 	rl2_get_tile_from_jpeg_origin (rl2CoveragePtr cvg, rl2RasterPtr rst,
 				       unsigned int startRow,
 				       unsigned int startCol,
-				       unsigned char forced_conversion);
+				       unsigned char forced_conversion,
+				       int verbose);
+
+    RL2_DECLARE char *rl2_build_jpeg_xml_summary (unsigned int width,
+						  unsigned int height,
+						  unsigned char pixel_type,
+						  int is_georeferenced,
+						  double res_x, double res_y,
+						  double minx, double miny,
+						  double maxx, double maxy);
+
+    RL2_DECLARE rl2RasterPtr
+	rl2_get_tile_from_jpeg2000_origin (rl2CoveragePtr cvg, rl2RasterPtr rst,
+					   unsigned int startRow,
+					   unsigned int startCol,
+					   unsigned char forced_conversion,
+					   int verbose);
+
+    RL2_DECLARE char *rl2_build_jpeg2000_xml_summary (unsigned int width,
+						      unsigned int height,
+						      unsigned char sample_type,
+						      unsigned char pixel_type,
+						      unsigned char num_bands,
+						      int is_georeferenced,
+						      double res_x,
+						      double res_y, double minx,
+						      double miny, double maxx,
+						      double maxy,
+						      unsigned int tile_width,
+						      unsigned int tile_height);
 
     RL2_DECLARE int
-	rl2_load_raster_into_dbms (sqlite3 * handle, const char *src_path,
+	rl2_load_raster_into_dbms (sqlite3 * handle, int max_threads,
+				   const char *src_path,
 				   rl2CoveragePtr coverage, int worldfile,
-				   int force_srid, int pyramidize);
+				   int force_srid, int pyramidize, int verbose);
 
     RL2_DECLARE int
-	rl2_load_mrasters_into_dbms (sqlite3 * handle, const char *dir_path,
-				     const char *file_ext,
+	rl2_load_mrasters_into_dbms (sqlite3 * handle, int max_threads,
+				     const char *dir_path, const char *file_ext,
 				     rl2CoveragePtr coverage, int worldfile,
-				     int force_srid, int pyramidize);
+				     int force_srid, int pyramidize,
+				     int verbose);
 
     RL2_DECLARE int
-	rl2_export_geotiff_from_dbms (sqlite3 * handle, const char *dst_path,
+	rl2_export_geotiff_from_dbms (sqlite3 * handle, int max_threads,
+				      const char *dst_path,
 				      rl2CoveragePtr coverage, double x_res,
 				      double y_res, double minx, double miny,
 				      double maxx, double maxy,
-				      unsigned int width,
-				      unsigned int height,
+				      unsigned int width, unsigned int height,
 				      unsigned char compression,
 				      unsigned int tile_sz, int with_worldfile);
 
     RL2_DECLARE int
-	rl2_export_tiff_worldfile_from_dbms (sqlite3 * handle,
+	rl2_export_section_geotiff_from_dbms (sqlite3 * handle, int max_threads,
+					      const char *dst_path,
+					      rl2CoveragePtr coverage,
+					      sqlite3_int64 section_id,
+					      double x_res, double y_res,
+					      double minx, double miny,
+					      double maxx, double maxy,
+					      unsigned int width,
+					      unsigned int height,
+					      unsigned char compression,
+					      unsigned int tile_sz,
+					      int with_worldfile);
+
+    RL2_DECLARE int
+	rl2_export_tiff_worldfile_from_dbms (sqlite3 * handle, int max_threads,
 					     const char *dst_path,
 					     rl2CoveragePtr coverage,
 					     double x_res, double y_res,
@@ -3142,14 +3872,41 @@ extern "C"
 					     unsigned int tile_sz);
 
     RL2_DECLARE int
-	rl2_export_tiff_from_dbms (sqlite3 * handle, const char *dst_path,
+	rl2_export_tiff_from_dbms (sqlite3 * handle, int max_threads,
+				   const char *dst_path,
 				   rl2CoveragePtr coverage, double x_res,
 				   double y_res, double minx, double miny,
-				   double maxx, double maxy,
-				   unsigned int width,
+				   double maxx, double maxy, unsigned int width,
 				   unsigned int height,
 				   unsigned char compression,
 				   unsigned int tile_sz);
+
+    RL2_DECLARE int
+	rl2_export_section_tiff_worldfile_from_dbms (sqlite3 * handle,
+						     int max_threads,
+						     const char *dst_path,
+						     rl2CoveragePtr coverage,
+						     sqlite3_int64 section_id,
+						     double x_res, double y_res,
+						     double minx, double miny,
+						     double maxx, double maxy,
+						     unsigned int width,
+						     unsigned int height,
+						     unsigned char compression,
+						     unsigned int tile_sz);
+
+    RL2_DECLARE int
+	rl2_export_section_tiff_from_dbms (sqlite3 * handle, int max_threads,
+					   const char *dst_path,
+					   rl2CoveragePtr coverage,
+					   sqlite3_int64 section_id,
+					   double x_res, double y_res,
+					   double minx, double miny,
+					   double maxx, double maxy,
+					   unsigned int width,
+					   unsigned int height,
+					   unsigned char compression,
+					   unsigned int tile_sz);
 
     RL2_DECLARE int
 	rl2_export_triple_band_geotiff_from_dbms (sqlite3 * handle,
@@ -3168,6 +3925,32 @@ extern "C"
 						  int with_worldfile);
 
     RL2_DECLARE int
+	rl2_export_section_triple_band_geotiff_from_dbms (sqlite3 * handle,
+							  const char *dst_path,
+							  rl2CoveragePtr
+							  coverage,
+							  sqlite3_int64
+							  section_id,
+							  double x_res,
+							  double y_res,
+							  double minx,
+							  double miny,
+							  double maxx,
+							  double maxy,
+							  unsigned int width,
+							  unsigned int height,
+							  unsigned char
+							  red_band,
+							  unsigned char
+							  green_band,
+							  unsigned char
+							  blue_band,
+							  unsigned char
+							  compression,
+							  unsigned int tile_sz,
+							  int with_worldfile);
+
+    RL2_DECLARE int
 	rl2_export_mono_band_geotiff_from_dbms (sqlite3 * handle,
 						const char *dst_path,
 						rl2CoveragePtr coverage,
@@ -3182,21 +3965,38 @@ extern "C"
 						int with_worldfile);
 
     RL2_DECLARE int
+	rl2_export_section_mono_band_geotiff_from_dbms (sqlite3 * handle,
+							const char *dst_path,
+							rl2CoveragePtr coverage,
+							sqlite3_int64
+							section_id,
+							double x_res,
+							double y_res,
+							double minx,
+							double miny,
+							double maxx,
+							double maxy,
+							unsigned int width,
+							unsigned int height,
+							unsigned char mono_band,
+							unsigned char
+							compression,
+							unsigned int tile_sz,
+							int with_worldfile);
+
+    RL2_DECLARE int
 	rl2_export_triple_band_tiff_worldfile_from_dbms (sqlite3 * handle,
 							 const char *dst_path,
 							 rl2CoveragePtr
-							 coverage,
-							 double x_res,
+							 coverage, double x_res,
 							 double y_res,
 							 double minx,
 							 double miny,
 							 double maxx,
 							 double maxy,
 							 unsigned int width,
-							 unsigned int
-							 height,
-							 unsigned char
-							 red_band,
+							 unsigned int height,
+							 unsigned char red_band,
 							 unsigned char
 							 green_band,
 							 unsigned char
@@ -3206,10 +4006,39 @@ extern "C"
 							 unsigned int tile_sz);
 
     RL2_DECLARE int
+	rl2_export_section_triple_band_tiff_worldfile_from_dbms (sqlite3 *
+								 handle,
+								 const char
+								 *dst_path,
+								 rl2CoveragePtr
+								 coverage,
+								 sqlite3_int64
+								 section_id,
+								 double x_res,
+								 double y_res,
+								 double minx,
+								 double miny,
+								 double maxx,
+								 double maxy,
+								 unsigned int
+								 width,
+								 unsigned int
+								 height,
+								 unsigned char
+								 red_band,
+								 unsigned char
+								 green_band,
+								 unsigned char
+								 blue_band,
+								 unsigned char
+								 compression,
+								 unsigned int
+								 tile_sz);
+
+    RL2_DECLARE int
 	rl2_export_mono_band_tiff_worldfile_from_dbms (sqlite3 * handle,
 						       const char *dst_path,
-						       rl2CoveragePtr
-						       coverage,
+						       rl2CoveragePtr coverage,
 						       double x_res,
 						       double y_res,
 						       double minx,
@@ -3224,6 +4053,31 @@ extern "C"
 						       unsigned char
 						       compression,
 						       unsigned int tile_sz);
+
+    RL2_DECLARE int
+	rl2_export_section_mono_band_tiff_worldfile_from_dbms (sqlite3 * handle,
+							       const char
+							       *dst_path,
+							       rl2CoveragePtr
+							       coverage,
+							       sqlite3_int64
+							       section_id,
+							       double x_res,
+							       double y_res,
+							       double minx,
+							       double miny,
+							       double maxx,
+							       double maxy,
+							       unsigned int
+							       width,
+							       unsigned int
+							       height,
+							       unsigned char
+							       mono_band,
+							       unsigned char
+							       compression,
+							       unsigned int
+							       tile_sz);
 
     RL2_DECLARE int
 	rl2_export_triple_band_tiff_from_dbms (sqlite3 * handle,
@@ -3241,6 +4095,24 @@ extern "C"
 					       unsigned int tile_sz);
 
     RL2_DECLARE int
+	rl2_export_section_triple_band_tiff_from_dbms (sqlite3 * handle,
+						       const char *dst_path,
+						       rl2CoveragePtr coverage,
+						       sqlite3_int64 section_id,
+						       double x_res,
+						       double y_res,
+						       double minx, double miny,
+						       double maxx, double maxy,
+						       unsigned int width,
+						       unsigned int height,
+						       unsigned char red_band,
+						       unsigned char green_band,
+						       unsigned char blue_band,
+						       unsigned char
+						       compression,
+						       unsigned int tile_sz);
+
+    RL2_DECLARE int
 	rl2_export_mono_band_tiff_from_dbms (sqlite3 * handle,
 					     const char *dst_path,
 					     rl2CoveragePtr coverage,
@@ -3254,7 +4126,22 @@ extern "C"
 					     unsigned int tile_sz);
 
     RL2_DECLARE int
-	rl2_export_ascii_grid_from_dbms (sqlite3 * handle, const char *dst_path,
+	rl2_export_section_mono_band_tiff_from_dbms (sqlite3 * handle,
+						     const char *dst_path,
+						     rl2CoveragePtr coverage,
+						     sqlite3_int64 section_id,
+						     double x_res, double y_res,
+						     double minx, double miny,
+						     double maxx, double maxy,
+						     unsigned int width,
+						     unsigned int height,
+						     unsigned char mono_band,
+						     unsigned char compression,
+						     unsigned int tile_sz);
+
+    RL2_DECLARE int
+	rl2_export_ascii_grid_from_dbms (sqlite3 * handle, int max_threads,
+					 const char *dst_path,
 					 rl2CoveragePtr coverage, double res,
 					 double minx, double miny, double maxx,
 					 double maxy, unsigned int width,
@@ -3262,28 +4149,108 @@ extern "C"
 					 int decimal_digits);
 
     RL2_DECLARE int
-	rl2_export_jpeg_from_dbms (sqlite3 * handle, const char *dst_path,
-				   rl2CoveragePtr coverage, double x_res,
-				   double y_res, double minx, double miny,
-				   double maxx, double maxy,
-				   unsigned int width, unsigned int height,
-				   int quality, int with_worldfile);
+	rl2_export_section_ascii_grid_from_dbms (sqlite3 * handle,
+						 int max_threads,
+						 const char *dst_path,
+						 rl2CoveragePtr coverage,
+						 sqlite3_int64 section_id,
+						 double res, double minx,
+						 double miny, double maxx,
+						 double maxy,
+						 unsigned int width,
+						 unsigned int height,
+						 int is_centered,
+						 int decimal_digits);
 
     RL2_DECLARE int
-	rl2_build_section_pyramid (sqlite3 * handle, const char *coverage,
-				   const char *section, int forced_rebuild);
+	rl2_export_ndvi_ascii_grid_from_dbms (sqlite3 * handle, int max_threads,
+					      const char *dst_path,
+					      rl2CoveragePtr coverage,
+					      double res, double minx,
+					      double miny, double maxx,
+					      double maxy, unsigned int width,
+					      unsigned int height, int red_band,
+					      int nir_band, int is_centered,
+					      int decimal_digits);
+
+    RL2_DECLARE int
+	rl2_export_section_ndvi_ascii_grid_from_dbms (sqlite3 * handle,
+						      int max_threads,
+						      const char *dst_path,
+						      rl2CoveragePtr coverage,
+						      sqlite3_int64 section_id,
+						      double res, double minx,
+						      double miny, double maxx,
+						      double maxy,
+						      unsigned int width,
+						      unsigned int height,
+						      int red_band,
+						      int nir_band,
+						      int is_centered,
+						      int decimal_digits);
+
+    RL2_DECLARE int
+	rl2_export_jpeg_from_dbms (sqlite3 * handle, int max_threads,
+				   const char *dst_path,
+				   rl2CoveragePtr coverage, double x_res,
+				   double y_res, double minx, double miny,
+				   double maxx, double maxy, unsigned int width,
+				   unsigned int height, int quality,
+				   int with_worldfile);
+
+    RL2_DECLARE int
+	rl2_export_section_jpeg_from_dbms (sqlite3 * handle, int max_threads,
+					   const char *dst_path,
+					   rl2CoveragePtr coverage,
+					   sqlite3_int64 section_id,
+					   double x_res, double y_res,
+					   double minx, double miny,
+					   double maxx, double maxy,
+					   unsigned int width,
+					   unsigned int height, int quality,
+					   int with_worldfile);
+
+    RL2_DECLARE int
+	rl2_export_raw_pixels_from_dbms (sqlite3 * handle, int max_threads,
+					 rl2CoveragePtr coverage, double x_res,
+					 double y_res, double minx, double miny,
+					 double maxx, double maxy,
+					 unsigned int width,
+					 unsigned int height, int big_endian,
+					 unsigned char **blob, int *blob_size);
+
+    RL2_DECLARE int
+	rl2_export_section_raw_pixels_from_dbms (sqlite3 * handle,
+						 int max_threads,
+						 rl2CoveragePtr coverage,
+						 sqlite3_int64 section_id,
+						 double x_res, double y_res,
+						 double minx, double miny,
+						 double maxx, double maxy,
+						 unsigned int width,
+						 unsigned int height,
+						 int big_endian,
+						 unsigned char **blob,
+						 int *blob_size);
+
+    RL2_DECLARE int
+	rl2_build_section_pyramid (sqlite3 * handle, int max_threads,
+				   const char *coverage,
+				   sqlite3_int64 section_id, int forced_rebuild,
+				   int verbose);
 
     RL2_DECLARE int
 	rl2_build_monolithic_pyramid (sqlite3 * handle, const char *coverage,
-				      int virtual_levels);
+				      int virtual_levels, int verbose);
 
     RL2_DECLARE int
-	rl2_build_all_section_pyramids (sqlite3 * handle, const char *coverage,
-					int forced_rebuild);
+	rl2_build_all_section_pyramids (sqlite3 * handle, int max_threads,
+					const char *coverage,
+					int forced_rebuild, int verbose);
 
     RL2_DECLARE int
 	rl2_delete_section_pyramid (sqlite3 * handle, const char *coverage,
-				    const char *section);
+				    sqlite3_int64 section_id);
 
     RL2_DECLARE int
 	rl2_delete_all_pyramids (sqlite3 * handle, const char *coverage);
@@ -3314,6 +4281,28 @@ extern "C"
  \param width the PNG image width.
  \param height the PNG image height.
  \param rgb pointer to the RGB buffer.
+ \param mask pointer to the transparency mask.
+ \param png on completion will point to the memory block storing the created PNG image.
+ \param png_size on completion the variable referenced by this
+ pointer will contain the size (in bytes) of the PNG image.
+ \param opacity standard opacity level (0.0 to 1.0)
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+ 
+ \sa rl2_rgb_to_png, rl2_rgb_to_jpeg, rl2_rgb_to_tiff, rl2_rgb_to_geotiff
+ */
+    RL2_DECLARE int
+	rl2_rgb_alpha_to_png (unsigned int width, unsigned int height,
+			      const unsigned char *rgb,
+			      const unsigned char *mask, unsigned char **png,
+			      int *png_size, double opacity);
+
+/**
+ Exports two separate RGB + Alpha buffers as an in-memory stored PNG image
+
+ \param width the PNG image width.
+ \param height the PNG image height.
+ \param rgb pointer to the RGB buffer.
  \param alpha pointer to the Alpha channel buffer.
  \param png on completion will point to the memory block storing the created PNG image.
  \param png_size on completion the variable referenced by this
@@ -3324,10 +4313,10 @@ extern "C"
  \sa rl2_rgb_to_png, rl2_rgb_to_jpeg, rl2_rgb_to_tiff, rl2_rgb_to_geotiff
  */
     RL2_DECLARE int
-	rl2_rgb_alpha_to_png (unsigned int width, unsigned int height,
-			      const unsigned char *rgb,
-			      const unsigned char *alpha, unsigned char **png,
-			      int *png_size, double opacity);
+	rl2_rgb_real_alpha_to_png (unsigned int width, unsigned int height,
+				   const unsigned char *rgb,
+				   const unsigned char *alpha,
+				   unsigned char **png, int *png_size);
 
 /**
  Exports an RGB buffer as an in-memory stored JPEG image
@@ -3547,128 +4536,724 @@ extern "C"
 	rl2_gray_pdf (unsigned int width, unsigned int height,
 		      unsigned char **pdf, int *pdf_size);
 
+/**
+ Encodes a Font into the corresponding BLOB serialized format
+
+ \param font pointer to a memory block containig the Font.
+ \param font_sz the size (in bytes) of the in-memory Font,
+ \param blob on completion will point to the created encoded BLOB.
+ \param blob_sz on completion the variable referenced by this
+ pointer will contain the size (in bytes) of the BLOB.
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_font_decode, rl2_is_valid_encoded_font,
+ rl2_get_encoded_font_facename, rl2_get_encoded_font_family, 
+ rl2_get_encoded_font_style, rl2_is_encoded_font_bold, 
+ rl2_is_encoded_font_italic
+ 
+ \note you are responsible to destroy (before or after) any allocated 
+ BLOB serialized Font.
+ */
+    RL2_DECLARE int
+	rl2_font_encode (const unsigned char *font, int font_sz,
+			 unsigned char **blob, int *blob_sz);
+
+/**
+ Tests a BLOB serialized Font for validity
+
+ \param blob pointer to the BLOB serialized Font.
+ \param blob_sz size (in bytes) of the BLOB.
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_font_encode, rl2_font_decode, rl2_get_encoded_font_facename,
+ rl2_get_encoded_font_family, rl2_get_encoded_font_style, 
+ rl2_is_encoded_font_bold, rl2_is_encoded_font_italic
+ */
+    RL2_DECLARE int
+	rl2_is_valid_encoded_font (const unsigned char *blob, int blob_sz);
+
+/**
+ Decodes a Font from the corresponding BLOB serialized format
+
+ \param blob pointer to the BLOB serialized Font.
+ \param blob_sz size (in bytes) of the BLOB.
+ \param font on completion will point to a memory block containing the
+ decoded Font.
+ \param font_sz on completion the variable referenced by this
+ pointer will contain the size (in bytes) of in-memory Font.
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_font_encode, rl2_is_valid_encoded_font,
+ rl2_get_encoded_font_facename, rl2_get_encoded_font_family, 
+ rl2_get_encoded_font_style, rl2_is_encoded_font_bold, 
+ rl2_is_encoded_font_italic
+ 
+ \note you are responsible to destroy (before or after) the memory 
+ block created by this function and containing the Font.
+ */
+    RL2_DECLARE int
+	rl2_font_decode (const unsigned char *blob, int blob_sz,
+			 unsigned char **font, int *font_sz);
+
+/**
+ Returns the Facename from a BLOB serialized Font
+
+ \param blob pointer to the BLOB serialized Font.
+ \param blob_sz size (in bytes) of the BLOB.
+ 
+ \return the Facename; or NULL on invalid args.
+
+ \sa rl2_font_encode, rl2_font_decode, rl2_is_valid_encoded_font,
+ rl2_get_encoded_font_family, rl2_get_encoded_font_style, 
+ rl2_is_encoded_font_bold, rl2_is_encoded_font_italic
+ 
+ \note you are responsible to destroy (before or after) the text
+ string returned by this function.
+ */
+    RL2_DECLARE char *rl2_get_encoded_font_facename (const unsigned char
+						     *blob, int blob_sz);
+
+/**
+ Returns the Family name from a BLOB serialized Font
+
+ \param blob pointer to the BLOB serialized Font.
+ \param blob_sz size (in bytes) of the BLOB.
+ 
+ \return the Family name; or NULL on invalid args.
+
+ \sa rl2_font_encode, rl2_font_decode, rl2_is_valid_encoded_font,
+ rl2_get_encode_font_facename, rl2_get_encoded_font_style, 
+ rl2_is_encoded_font_bold, rl2_is_encoded_font_italic
+ 
+ \note you are responsible to destroy (before or after) the text
+ string returned by this function.
+ */
+    RL2_DECLARE char *rl2_get_encoded_font_family (const unsigned char
+						   *blob, int blob_sz);
+
+/**
+ Returns the Style name from a BLOB serialized Font
+
+ \param blob pointer to the BLOB serialized Font.
+ \param blob_sz size (in bytes) of the BLOB.
+ 
+ \return the Style name (could be eventually NULL for some valid fonts).
+
+ \sa rl2_font_encode, rl2_font_decode, rl2_is_valid_encoded_font, 
+ rl2_get_encoded_font_facename, rl2_get_encoded_font_family, 
+ rl2_is_encoded_font_bold, rl2_is_encoded_font_italic
+ 
+ \note you are responsible to destroy (before or after) the text
+ string returned by this function.
+ */
+    RL2_DECLARE char *rl2_get_encoded_font_style (const unsigned char
+						  *blob, int blob_sz);
+
+/**
+ Tests if a BLOB serialized Font is Bold
+
+ \param blob pointer to the BLOB serialized Font.
+ \param blob_sz size (in bytes) of the BLOB.
+ 
+ \return FALSE (0) if the Font isn't Bold, any otherpositive value 
+ if it's Bold. a negative value will be returned on invalid args.
+
+ \sa rl2_font_encode, rl2_font_decode, rl2_is_valid_encoded_font, 
+ rl2_get_encoded_font_family, rl2_get_encoded_font_style, 
+ rl2_is_encoded_font_italic
+ */
+    RL2_DECLARE int rl2_is_encoded_font_bold (const unsigned char *blob,
+					      int blob_sz);
+
+/**
+ Tests if a BLOB serialized Font is Italic
+
+ \param blob pointer to the BLOB serialized Font.
+ \param blob_sz size (in bytes) of the BLOB.
+ 
+ \return FALSE (0) if the Font isn't Italic, any other positive value 
+ if it's Italic. a negative value will be returned on invalid args.
+
+ \sa rl2_font_encode, rl2_font_decode, rl2_is_valid_encoded_font, 
+ rl2_get_encoded_font_family, rl2_get_encoded_font_style, 
+ rl2_is_encoded_font_bold
+ */
+    RL2_DECLARE int rl2_is_encoded_font_italic (const unsigned char
+						*blob, int blob_sz);
+
+
     RL2_DECLARE int
 	rl2_parse_hexrgb (const char *hex, unsigned char *red,
 			  unsigned char *green, unsigned char *blue);
 
-    RL2_DECLARE rl2RasterStylePtr
-	rl2_create_raster_style_from_dbms (sqlite3 * handle,
-					   const char *coverage,
-					   const char *style);
+    RL2_DECLARE rl2CoverageStylePtr
+	rl2_create_coverage_style_from_dbms (sqlite3 * handle,
+					     const char *coverage,
+					     const char *style);
+
+    RL2_DECLARE rl2FeatureTypeStylePtr
+	rl2_create_feature_type_style_from_dbms (sqlite3 * handle,
+						 const char *coverage,
+						 const char *style);
 
     RL2_DECLARE rl2RasterStatisticsPtr
 	rl2_create_raster_statistics_from_dbms (sqlite3 * handle,
 						const char *coverage);
 
-    RL2_DECLARE void rl2_destroy_raster_style (rl2RasterStylePtr style);
+    RL2_DECLARE void rl2_destroy_coverage_style (rl2CoverageStylePtr style);
 
-    RL2_DECLARE const char *rl2_get_raster_style_name (rl2RasterStylePtr style);
+    RL2_DECLARE const char *rl2_get_coverage_style_name (rl2CoverageStylePtr
+							 style);
 
-    RL2_DECLARE const char *rl2_get_raster_style_title (rl2RasterStylePtr
-							style);
+    RL2_DECLARE rl2RasterSymbolizerPtr
+	rl2_get_symbolizer_from_coverage_style (rl2CoverageStylePtr style,
+						double scale);
 
-    RL2_DECLARE const char *rl2_get_raster_style_abstract (rl2RasterStylePtr
-							   style);
+    RL2_DECLARE const char *rl2_get_rule_like_wild_card (rl2RuleLikeArgsPtr
+							 args);
 
-    RL2_DECLARE int rl2_get_raster_style_opacity (rl2RasterStylePtr style,
-						  double *opacity);
+    RL2_DECLARE const char *rl2_get_rule_like_single_char (rl2RuleLikeArgsPtr
+							   args);
 
-    RL2_DECLARE int rl2_is_raster_style_mono_band_selected (rl2RasterStylePtr
-							    style,
-							    int *selected);
+    RL2_DECLARE const char *rl2_get_rule_like_value (rl2RuleLikeArgsPtr args);
 
-    RL2_DECLARE int rl2_get_raster_style_mono_band_selection (rl2RasterStylePtr
-							      style,
-							      unsigned char
-							      *gray_band);
+    RL2_DECLARE const char *rl2_get_rule_like_escape_char (rl2RuleLikeArgsPtr
+							   args);
 
-    RL2_DECLARE int rl2_is_raster_style_triple_band_selected (rl2RasterStylePtr
-							      style,
-							      int *selected);
+    RL2_DECLARE const char *rl2_get_rule_between_lower (rl2RuleBetweenArgsPtr
+							args);
 
-    RL2_DECLARE int
-	rl2_get_raster_style_triple_band_selection (rl2RasterStylePtr style,
-						    unsigned char *red_band,
-						    unsigned char *green_band,
-						    unsigned char *blue_band);
+    RL2_DECLARE const char *rl2_get_rule_between_upper (rl2RuleBetweenArgsPtr
+							args);
 
-    RL2_DECLARE int
-	rl2_get_raster_style_overall_contrast_enhancement (rl2RasterStylePtr
-							   style,
-							   unsigned char
-							   *contrast_enhancement,
-							   double *gamma_value);
+    RL2_DECLARE const char *rl2_get_rule_value (rl2RuleSingleArgPtr arg);
+
+    RL2_DECLARE int rl2_get_raster_symbolizer_opacity (rl2RasterSymbolizerPtr
+						       style, double *opacity);
 
     RL2_DECLARE int
-	rl2_get_raster_style_red_band_contrast_enhancement (rl2RasterStylePtr
-							    style,
-							    unsigned char
-							    *contrast_enhancement,
+	rl2_is_raster_symbolizer_mono_band_selected (rl2RasterSymbolizerPtr
+						     style, int *selected,
+						     int *categorize,
+						     int *interpolate);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_mono_band_selection (rl2RasterSymbolizerPtr
+						       style,
+						       unsigned char
+						       *gray_band);
+
+    RL2_DECLARE int
+	rl2_is_raster_symbolizer_triple_band_selected (rl2RasterSymbolizerPtr
+						       style, int *selected);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_triple_band_selection (rl2RasterSymbolizerPtr
+							 style,
+							 unsigned char
+							 *red_band,
+							 unsigned char
+							 *green_band,
+							 unsigned char
+							 *blue_band);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_overall_contrast_enhancement
+	(rl2RasterSymbolizerPtr style, unsigned char *contrast_enhancement,
+	 double *gamma_value);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_red_band_contrast_enhancement
+	(rl2RasterSymbolizerPtr style, unsigned char *contrast_enhancement,
+	 double *gamma_value);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_green_band_contrast_enhancement
+	(rl2RasterSymbolizerPtr style, unsigned char *contrast_enhancement,
+	 double *gamma_value);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_blue_band_contrast_enhancement
+	(rl2RasterSymbolizerPtr style, unsigned char *contrast_enhancement,
+	 double *gamma_value);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_gray_band_contrast_enhancement
+	(rl2RasterSymbolizerPtr style, unsigned char *contrast_enhancement,
+	 double *gamma_value);
+
+    RL2_DECLARE int
+	rl2_has_raster_symbolizer_color_map_interpolated (rl2RasterSymbolizerPtr
+							  style,
+							  int *interpolated);
+
+    RL2_DECLARE int
+	rl2_has_raster_symbolizer_color_map_categorized (rl2RasterSymbolizerPtr
+							 style,
+							 int *categorized);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_color_map_default (rl2RasterSymbolizerPtr
+						     style, unsigned char *red,
+						     unsigned char *green,
+						     unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_color_map_category_base
+	(rl2RasterSymbolizerPtr style, unsigned char *red, unsigned char *green,
+	 unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_color_map_count (rl2RasterSymbolizerPtr style,
+						   int *count);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_color_map_entry (rl2RasterSymbolizerPtr style,
+						   int index, double *value,
+						   unsigned char *red,
+						   unsigned char *green,
+						   unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_has_raster_symbolizer_shaded_relief (rl2RasterSymbolizerPtr style,
+						 int *shaded_relief);
+
+    RL2_DECLARE int
+	rl2_get_raster_symbolizer_shaded_relief (rl2RasterSymbolizerPtr style,
+						 int *brightness_only,
+						 double *relief_factor);
+
+    RL2_DECLARE void rl2_destroy_feature_type_style (rl2FeatureTypeStylePtr
+						     style);
+
+    RL2_DECLARE const char
+	*rl2_get_feature_type_style_name (rl2FeatureTypeStylePtr style);
+
+    RL2_DECLARE int
+	rl2_get_feature_type_style_columns_count (rl2FeatureTypeStylePtr style);
+
+    RL2_DECLARE const char
+	*rl2_get_feature_type_style_column_name (rl2FeatureTypeStylePtr style,
+						 int index);
+
+    RL2_DECLARE rl2VariantArrayPtr rl2_create_variant_array (int count);
+
+    RL2_DECLARE void rl2_destroy_variant_array (rl2VariantArrayPtr variant);
+
+    RL2_DECLARE int rl2_set_variant_int (rl2VariantArrayPtr variant, int index,
+					 const char *name, sqlite3_int64 value);
+
+    RL2_DECLARE int rl2_set_variant_double (rl2VariantArrayPtr variant,
+					    int index, const char *name,
+					    double value);
+
+    RL2_DECLARE int rl2_set_variant_text (rl2VariantArrayPtr variant, int index,
+					  const char *name, const char *value,
+					  int bytes);
+
+    RL2_DECLARE int rl2_set_variant_blob (rl2VariantArrayPtr variant, int index,
+					  const char *name,
+					  const unsigned char *value,
+					  int bytes);
+
+    RL2_DECLARE int rl2_set_variant_null (rl2VariantArrayPtr variant, int index,
+					  const char *name);
+
+    RL2_DECLARE rl2VectorSymbolizerPtr
+	rl2_get_symbolizer_from_feature_type_style (rl2FeatureTypeStylePtr
+						    style, double scale,
+						    rl2VariantArrayPtr variant,
+						    int *scale_forbidden);
+
+    RL2_DECLARE int
+	rl2_is_visible_style (rl2FeatureTypeStylePtr style, double scale);
+
+    RL2_DECLARE int
+	rl2_is_valid_vector_symbolizer (rl2VectorSymbolizerPtr symbolizer,
+					int *valid);
+
+    RL2_DECLARE int
+	rl2_get_vector_symbolizer_count (rl2VectorSymbolizerPtr symbolizer,
+					 int *count);
+
+    RL2_DECLARE int
+	rl2_get_vector_symbolizer_item_type (rl2VectorSymbolizerPtr symbolizer,
+					     int index, int *type);
+
+    RL2_DECLARE rl2PointSymbolizerPtr
+	rl2_get_point_symbolizer (rl2VectorSymbolizerPtr symbolizer, int index);
+
+    RL2_DECLARE rl2LineSymbolizerPtr
+	rl2_get_line_symbolizer (rl2VectorSymbolizerPtr symbolizer, int index);
+
+    RL2_DECLARE rl2PolygonSymbolizerPtr
+	rl2_get_polygon_symbolizer (rl2VectorSymbolizerPtr symbolizer,
+				    int index);
+
+    RL2_DECLARE rl2TextSymbolizerPtr
+	rl2_get_text_symbolizer (rl2VectorSymbolizerPtr symbolizer, int index);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_get_count (rl2PointSymbolizerPtr symbolizer,
+					int *count);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_is_graphic (rl2PointSymbolizerPtr symbolizer,
+					 int index, int *external_graphic);
+
+    RL2_DECLARE const char
+	*rl2_point_symbolizer_get_graphic_href (rl2PointSymbolizerPtr
+						symbolizer, int index);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_get_graphic_recode_color
+	(rl2PointSymbolizerPtr symbolizer, int index, int repl_index,
+	 int *color_index, unsigned char *red, unsigned char *green,
+	 unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_is_mark (rl2PointSymbolizerPtr symbolizer,
+				      int index, int *mark);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_well_known_type (rl2PointSymbolizerPtr
+						       symbolizer, int index,
+						       unsigned char *type);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_has_stroke (rl2PointSymbolizerPtr symbolizer,
+					      int index, int *stroke);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_stroke_color (rl2PointSymbolizerPtr
+						    symbolizer, int index,
+						    unsigned char *red,
+						    unsigned char *green,
+						    unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_stroke_width (rl2PointSymbolizerPtr
+						    symbolizer, int index,
+						    double *width);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_stroke_linejoin (rl2PointSymbolizerPtr
+						       symbolizer, int index,
+						       unsigned char *linejoin);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_stroke_linecap (rl2PointSymbolizerPtr
+						      symbolizer, int index,
+						      unsigned char *linecap);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_stroke_dash_offset (rl2PointSymbolizerPtr
+							  symbolizer, int index,
+							  double *offset);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_stroke_dash_count (rl2PointSymbolizerPtr
+							 symbolizer, int index,
+							 int *count);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_stroke_dash_item (rl2PointSymbolizerPtr
+							symbolizer, int index,
+							int item_index,
+							double *item);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_has_fill (rl2PointSymbolizerPtr symbolizer,
+					    int index, int *fill);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_mark_get_fill_color (rl2PointSymbolizerPtr
+						  symbolizer, int index,
+						  unsigned char *red,
+						  unsigned char *green,
+						  unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_get_opacity (rl2PointSymbolizerPtr symbolizer,
+					  double *opacity);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_get_size (rl2PointSymbolizerPtr symbolizer,
+				       double *size);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_get_rotation (rl2PointSymbolizerPtr symbolizer,
+					   double *rotation);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_get_anchor_point (rl2PointSymbolizerPtr symbolizer,
+					       double *x, double *y);
+
+    RL2_DECLARE int
+	rl2_point_symbolizer_get_displacement (rl2PointSymbolizerPtr symbolizer,
+					       double *x, double *y);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_has_stroke (rl2LineSymbolizerPtr symbolizer,
+					int *stroke);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_has_graphic_stroke (rl2LineSymbolizerPtr symbolizer,
+						int *stroke);
+
+    RL2_DECLARE const char
+	*rl2_line_symbolizer_get_graphic_stroke_href (rl2LineSymbolizerPtr
+						      symbolizer);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_graphic_stroke_recode_count
+	(rl2LineSymbolizerPtr symbolizer, int *count);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_graphic_stroke_recode_color
+	(rl2LineSymbolizerPtr symbolizer, int index, int *color_index,
+	 unsigned char *red, unsigned char *green, unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_color (rl2LineSymbolizerPtr symbolizer,
+					      unsigned char *red,
+					      unsigned char *green,
+					      unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_opacity (rl2LineSymbolizerPtr symbolizer,
+						double *opacity);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_width (rl2LineSymbolizerPtr symbolizer,
+					      double *width);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_linejoin (rl2LineSymbolizerPtr
+						 symbolizer,
+						 unsigned char *linejoin);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_linecap (rl2LineSymbolizerPtr symbolizer,
+						unsigned char *linecap);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_dash_offset (rl2LineSymbolizerPtr
+						    symbolizer, double *offset);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_dash_count (rl2LineSymbolizerPtr
+						   symbolizer, int *count);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_stroke_dash_item (rl2LineSymbolizerPtr
+						  symbolizer, int index,
+						  double *item);
+
+    RL2_DECLARE int
+	rl2_line_symbolizer_get_perpendicular_offset (rl2LineSymbolizerPtr
+						      symbolizer,
+						      double *offset);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_has_stroke (rl2PolygonSymbolizerPtr symbolizer,
+					   int *stroke);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_has_graphic_stroke (rl2PolygonSymbolizerPtr
+						   symbolizer, int *stroke);
+
+    RL2_DECLARE const char
+	*rl2_polygon_symbolizer_get_graphic_stroke_href (rl2PolygonSymbolizerPtr
+							 symbolizer);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_graphic_stroke_recode_count
+	(rl2PolygonSymbolizerPtr symbolizer, int *count);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_graphic_stroke_recode_color
+	(rl2PolygonSymbolizerPtr symbolizer, int index, int *color_index,
+	 unsigned char *red, unsigned char *green, unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_color (rl2PolygonSymbolizerPtr
+						 symbolizer, unsigned char *red,
+						 unsigned char *green,
+						 unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_opacity (rl2PolygonSymbolizerPtr
+						   symbolizer, double *opacity);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_width (rl2PolygonSymbolizerPtr
+						 symbolizer, double *width);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_linejoin (rl2PolygonSymbolizerPtr
+						    symbolizer,
+						    unsigned char *linejoin);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_linecap (rl2PolygonSymbolizerPtr
+						   symbolizer,
+						   unsigned char *linecap);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_dash_offset (rl2PolygonSymbolizerPtr
+						       symbolizer,
+						       double *offset);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_dash_count (rl2PolygonSymbolizerPtr
+						      symbolizer, int *count);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_stroke_dash_item (rl2PolygonSymbolizerPtr
+						     symbolizer, int index,
+						     double *item);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_has_fill (rl2PolygonSymbolizerPtr symbolizer,
+					 int *fill);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_has_graphic_fill (rl2PolygonSymbolizerPtr
+						 symbolizer, int *fill);
+
+    RL2_DECLARE const char
+	*rl2_polygon_symbolizer_get_graphic_fill_href (rl2PolygonSymbolizerPtr
+						       symbolizer);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_graphic_fill_recode_count
+	(rl2PolygonSymbolizerPtr symbolizer, int *count);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_graphic_fill_recode_color
+	(rl2PolygonSymbolizerPtr symbolizer, int index, int *color_index,
+	 unsigned char *red, unsigned char *green, unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_fill_color (rl2PolygonSymbolizerPtr
+					       symbolizer, unsigned char *red,
+					       unsigned char *green,
+					       unsigned char *blue);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_fill_opacity (rl2PolygonSymbolizerPtr
+						 symbolizer, double *opacity);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_displacement (rl2PolygonSymbolizerPtr
+						 symbolizer, double *x,
+						 double *y);
+
+    RL2_DECLARE int
+	rl2_polygon_symbolizer_get_perpendicular_offset (rl2PolygonSymbolizerPtr
+							 symbolizer,
+							 double *offset);
+
+    RL2_DECLARE const char *rl2_text_symbolizer_get_label (rl2TextSymbolizerPtr
+							   symbolizer);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_font_families_count (rl2TextSymbolizerPtr
+						     symbolizer, int *count);
+
+    RL2_DECLARE const char
+	*rl2_text_symbolizer_get_font_family_name (rl2TextSymbolizerPtr
+						   symbolizer, int index);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_font_style (rl2TextSymbolizerPtr symbolizer,
+					    unsigned char *style);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_font_weight (rl2TextSymbolizerPtr symbolizer,
+					     unsigned char *weight);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_font_size (rl2TextSymbolizerPtr symbolizer,
+					   double *size);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_label_placement_mode (rl2TextSymbolizerPtr
+						      symbolizer,
+						      unsigned char *mode);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_point_placement_anchor_point
+	(rl2TextSymbolizerPtr symbolizer, double *x, double *y);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_point_placement_displacement
+	(rl2TextSymbolizerPtr symbolizer, double *x, double *y);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_point_placement_rotation (rl2TextSymbolizerPtr
+							  symbolizer,
+							  double *rotation);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_line_placement_perpendicular_offset
+	(rl2TextSymbolizerPtr symbolizer, double *offset);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_line_placement_is_repeated (rl2TextSymbolizerPtr
+							    symbolizer,
+							    int *is_repeated);
+
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_line_placement_initial_gap (rl2TextSymbolizerPtr
+							    symbolizer,
 							    double
-							    *gamma_value);
+							    *initial_gap);
 
     RL2_DECLARE int
-	rl2_get_raster_style_green_band_contrast_enhancement (rl2RasterStylePtr
-							      style,
-							      unsigned char
-							      *contrast_enhancement,
-							      double
-							      *gamma_value);
+	rl2_text_symbolizer_get_line_placement_gap (rl2TextSymbolizerPtr
+						    symbolizer, double *gap);
 
     RL2_DECLARE int
-	rl2_get_raster_style_blue_band_contrast_enhancement (rl2RasterStylePtr
-							     style,
-							     unsigned char
-							     *contrast_enhancement,
-							     double
-							     *gamma_value);
+	rl2_text_symbolizer_get_line_placement_is_aligned (rl2TextSymbolizerPtr
+							   symbolizer,
+							   int *is_aligned);
 
     RL2_DECLARE int
-	rl2_get_raster_style_gray_band_contrast_enhancement (rl2RasterStylePtr
-							     style,
-							     unsigned char
-							     *contrast_enhancement,
-							     double
-							     *gamma_value);
+	rl2_text_symbolizer_get_line_placement_generalize_line
+	(rl2TextSymbolizerPtr symbolizer, int *generalize_line);
 
     RL2_DECLARE int
-	rl2_has_raster_style_color_map_interpolated (rl2RasterStylePtr style,
-						     int *interpolated);
+	rl2_text_symbolizer_has_halo (rl2TextSymbolizerPtr symbolizer,
+				      int *halo);
 
     RL2_DECLARE int
-	rl2_has_raster_style_color_map_categorized (rl2RasterStylePtr style,
-						    int *categorized);
-
-    RL2_DECLARE int rl2_get_raster_style_color_map_default (rl2RasterStylePtr
-							    style,
-							    unsigned char *red,
-							    unsigned char
-							    *green,
-							    unsigned char
-							    *blue);
+	rl2_text_symbolizer_get_halo_radius (rl2TextSymbolizerPtr symbolizer,
+					     double *radius);
 
     RL2_DECLARE int
-	rl2_get_raster_style_color_map_category_base (rl2RasterStylePtr style,
-						      unsigned char *red,
-						      unsigned char *green,
-						      unsigned char *blue);
+	rl2_text_symbolizer_has_halo_fill (rl2TextSymbolizerPtr symbolizer,
+					   int *fill);
 
-    RL2_DECLARE int rl2_get_raster_style_color_map_count (rl2RasterStylePtr
-							  style, int *count);
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_halo_fill_color (rl2TextSymbolizerPtr
+						 symbolizer, unsigned char *red,
+						 unsigned char *green,
+						 unsigned char *blue);
 
-    RL2_DECLARE int rl2_get_raster_style_color_map_entry (rl2RasterStylePtr
-							  style, int index,
-							  double *value,
-							  unsigned char *red,
-							  unsigned char *green,
-							  unsigned char *blue);
+    RL2_DECLARE int
+	rl2_text_symbolizer_has_fill (rl2TextSymbolizerPtr symbolizer,
+				      int *fill);
 
-    RL2_DECLARE int rl2_has_raster_style_shaded_relief (rl2RasterStylePtr style,
-							int *shaded_relief);
-
-    RL2_DECLARE int rl2_get_raster_style_shaded_relief (rl2RasterStylePtr style,
-							int *brightness_only,
-							double *relief_factor);
+    RL2_DECLARE int
+	rl2_text_symbolizer_get_fill_color (rl2TextSymbolizerPtr symbolizer,
+					    unsigned char *red,
+					    unsigned char *green,
+					    unsigned char *blue);
 
     RL2_DECLARE rl2GroupStylePtr
 	rl2_create_group_style_from_dbms (sqlite3 * handle, const char *group,
@@ -3677,11 +5262,6 @@ extern "C"
     RL2_DECLARE void rl2_destroy_group_style (rl2GroupStylePtr style);
 
     RL2_DECLARE const char *rl2_get_group_style_name (rl2GroupStylePtr style);
-
-    RL2_DECLARE const char *rl2_get_group_style_title (rl2GroupStylePtr style);
-
-    RL2_DECLARE const char *rl2_get_group_style_abstract (rl2GroupStylePtr
-							  style);
 
     RL2_DECLARE int rl2_is_valid_group_style (rl2GroupStylePtr style,
 					      int *valid);
@@ -3706,6 +5286,51 @@ extern "C"
 							       style);
 
     RL2_DECLARE void rl2_destroy_group_renderer (rl2GroupRendererPtr group);
+
+    RL2_DECLARE char *rl2_build_worldfile_path (const char *path,
+						const char *suffix);
+
+    RL2_DECLARE char *rl2_compute_file_md5_checksum (const char *src_path);
+
+    RL2_DECLARE int rl2_get_jpeg_infos (const char *path, unsigned int *width,
+					unsigned int *height,
+					unsigned char *pixel_type);
+
+    RL2_DECLARE int rl2_get_jpeg2000_infos (const char *path,
+					    unsigned int *width,
+					    unsigned int *height,
+					    unsigned char *sample_type,
+					    unsigned char *pixel_type,
+					    unsigned char *num_bands,
+					    unsigned int *tile_width,
+					    unsigned int *tile_height,
+					    unsigned char *num_levels);
+
+    RL2_DECLARE int rl2_get_jpeg2000_blob_type (const unsigned char *blob,
+						int blob_size,
+						unsigned char *sample_type,
+						unsigned char *pixel_type,
+						unsigned char *num_bands);
+
+    RL2_DECLARE char *rl2_build_raw_pixels_xml_summary (rl2RasterPtr rst);
+
+    RL2_DECLARE rl2RasterPtr
+	rl2_get_tile_from_raw_pixels (rl2CoveragePtr cvg, rl2RasterPtr rst,
+				      unsigned int startRow,
+				      unsigned int startCol);
+
+    RL2_DECLARE int
+	rl2_check_raster_coverage_destination (sqlite3 * sqlite,
+					       const char *coverage_name);
+
+    RL2_DECLARE int
+	rl2_check_raster_coverage_origin (sqlite3 * sqlite,
+					  const char *db_prefix,
+					  const char *coverage_name);
+
+    RL2_DECLARE int
+	rl2_copy_raster_coverage (sqlite3 * sqlite, const char *db_prefix,
+				  const char *coverage_name);
 
 #ifdef __cplusplus
 }

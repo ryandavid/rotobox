@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -46,6 +46,8 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
+
 #include "sqlite3.h"
 #include "spatialite.h"
 
@@ -53,6 +55,9 @@ the terms of any one of the MPL, the GPL or the LGPL.
 
 #define TILE_256	256
 #define TILE_1024	1024
+
+/* global variable used to alternatively enable/disable multithreading */
+int multithreading = 1;
 
 static int
 execute_check (sqlite3 * sqlite, const char *sql)
@@ -108,6 +113,52 @@ do_export_ascii (sqlite3 * sqlite, const char *coverage, gaiaGeomCollPtr geom,
     sqlite3_bind_double (stmt, 6, res);
     sqlite3_bind_int (stmt, 7, 1);
     sqlite3_bind_int (stmt, 8, 2);
+    ret = sqlite3_step (stmt);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+      {
+	  if (sqlite3_column_int (stmt, 0) == 1)
+	      retcode = 1;
+      }
+    sqlite3_finalize (stmt);
+    unlink (path);
+    if (!retcode)
+	fprintf (stderr, "ERROR: unable to export \"%s\"\n", path);
+    sqlite3_free (path);
+    return retcode;
+}
+
+static int
+do_export_section_ascii (sqlite3 * sqlite, const char *coverage,
+			 gaiaGeomCollPtr geom, int scale)
+{
+/* exporting an ASCII Grid */
+    char *sql;
+    char *path;
+    sqlite3_stmt *stmt;
+    int ret;
+    unsigned char *blob;
+    int blob_size;
+    int retcode = 0;
+    double res = 1.0 * (double) scale;
+
+    path = sqlite3_mprintf ("./%s_sect1_%d.asc", coverage, scale);
+
+    sql = "SELECT RL2_WriteSectionAsciiGrid(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+	return 0;
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
+    sqlite3_bind_text (stmt, 1, coverage, strlen (coverage), SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 2, 1);
+    sqlite3_bind_text (stmt, 3, path, strlen (path), SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 4, 1024);
+    sqlite3_bind_int (stmt, 5, 1024);
+    gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
+    sqlite3_bind_blob (stmt, 6, blob, blob_size, free);
+    sqlite3_bind_double (stmt, 7, res);
+    sqlite3_bind_int (stmt, 8, 1);
+    sqlite3_bind_int (stmt, 9, 2);
     ret = sqlite3_step (stmt);
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
       {
@@ -353,14 +404,14 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 /* testing some DBMS Coverage */
     int ret;
     char *err_msg = NULL;
-    const char *coverage;
-    const char *sample_name;
-    const char *pixel_name;
-    unsigned char num_bands;
-    const char *compression_name;
+    const char *coverage = NULL;
+    const char *sample_name = NULL;
+    const char *pixel_name = NULL;
+    unsigned char num_bands = 1;
+    const char *compression_name = NULL;
     int qlty;
     char *sql;
-    int tile_size;
+    int tile_size = 256;
     gaiaGeomCollPtr geom;
 
 /* setting the coverage name */
@@ -380,7 +431,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -391,7 +442,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -418,7 +469,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -429,7 +480,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -456,7 +507,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -467,7 +518,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -494,7 +545,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -505,7 +556,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -532,7 +583,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -543,7 +594,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -570,7 +621,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -581,7 +632,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -608,7 +659,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -619,7 +670,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -646,7 +697,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -657,7 +708,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -708,12 +759,12 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  compression_name = "NONE";
 	  qlty = 100;
 	  break;
-      case RL2_COMPRESSION_DEFLATE:
-	  compression_name = "DEFLATE";
+      case RL2_COMPRESSION_DEFLATE_NO:
+	  compression_name = "DEFLATE_NO";
 	  qlty = 100;
 	  break;
-      case RL2_COMPRESSION_LZMA:
-	  compression_name = "LZMA";
+      case RL2_COMPRESSION_LZMA_NO:
+	  compression_name = "LZMA_NO";
 	  qlty = 100;
 	  break;
       };
@@ -727,8 +778,21 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  break;
       };
 
+/* setting the MultiThreading mode alternatively on/off */
+    if (multithreading)
+      {
+	  sql = "SELECT RL2_SetMaxThreads(2)";
+	  multithreading = 0;
+      }
+    else
+      {
+	  sql = "SELECT RL2_SetMaxThreads(1)";
+	  multithreading = 1;
+      }
+    execute_check (sqlite, sql);
+
 /* creating the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_CreateCoverage("
+    sql = sqlite3_mprintf ("SELECT RL2_CreateRasterCoverage("
 			   "%Q, %Q, %Q, %d, %Q, %d, %d, %d, %d, %1.8f, %1.8f)",
 			   coverage, sample_name, pixel_name, num_bands,
 			   compression_name, qlty, tile_size, tile_size, 3003,
@@ -737,7 +801,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "CreateCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "CreateRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -761,8 +825,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
       }
 
 /* deleting the first section */
-    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, %Q, 1)",
-			   coverage, "ascii1");
+    sql = sqlite3_mprintf ("SELECT RL2_DeleteSection(%Q, 1, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
@@ -814,13 +877,33 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 	  *retcode += -9;
 	  return 0;
       }
+    if (!do_export_section_ascii (sqlite, coverage, geom, 1))
+      {
+	  *retcode += -10;
+	  return 0;
+      }
+    if (!do_export_section_ascii (sqlite, coverage, geom, 2))
+      {
+	  *retcode += -11;
+	  return 0;
+      }
+    if (!do_export_section_ascii (sqlite, coverage, geom, 4))
+      {
+	  *retcode += -12;
+	  return 0;
+      }
+    if (!do_export_section_ascii (sqlite, coverage, geom, 8))
+      {
+	  *retcode += -13;
+	  return 0;
+      }
     gaiaFreeGeomColl (geom);
 
-    *retcode += -10;
+    *retcode += -14;
     if (!test_statistics (sqlite, coverage, retcode))
 	return 0;
 
-    if (compression == RL2_COMPRESSION_DEFLATE)
+    if (compression == RL2_COMPRESSION_DEFLATE_NO)
       {
 	  /* testing a Monolithic Pyramid */
 	  sql =
@@ -833,7 +916,7 @@ test_coverage (sqlite3 * sqlite, unsigned char sample,
 		fprintf (stderr, "PyramidizeMonolithic \"%s\" error: %s\n",
 			 coverage, err_msg);
 		sqlite3_free (err_msg);
-		*retcode += -11;
+		*retcode += -15;
 		return 0;
 	    }
       }
@@ -868,7 +951,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -879,7 +962,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -906,7 +989,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -917,7 +1000,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -944,7 +1027,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -955,7 +1038,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -982,7 +1065,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -993,7 +1076,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1020,7 +1103,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1031,7 +1114,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1058,7 +1141,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1069,7 +1152,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1096,7 +1179,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1107,7 +1190,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1134,7 +1217,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_DEFLATE:
+	    case RL2_COMPRESSION_DEFLATE_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1145,7 +1228,7 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
 		      break;
 		  };
 		break;
-	    case RL2_COMPRESSION_LZMA:
+	    case RL2_COMPRESSION_LZMA_NO:
 		switch (tile_sz)
 		  {
 		  case TILE_256:
@@ -1161,12 +1244,12 @@ drop_coverage (sqlite3 * sqlite, unsigned char sample,
       };
 
 /* dropping the DBMS Coverage */
-    sql = sqlite3_mprintf ("SELECT RL2_DropCoverage(%Q, 1)", coverage);
+    sql = sqlite3_mprintf ("SELECT RL2_DropRasterCoverage(%Q, 1)", coverage);
     ret = execute_check (sqlite, sql);
     sqlite3_free (sql);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "DropCoverage \"%s\" error: %s\n", coverage,
+	  fprintf (stderr, "DropRasterCoverage \"%s\" error: %s\n", coverage,
 		   err_msg);
 	  sqlite3_free (err_msg);
 	  *retcode += -1;
@@ -1192,6 +1275,7 @@ main (int argc, char *argv[])
     char *err_msg = NULL;
     sqlite3 *db_handle;
     void *cache = spatialite_alloc_connection ();
+    void *priv_data = rl2_alloc_private ();
     char *old_SPATIALITE_SECURITY_ENV = NULL;
 
     if (argc > 1 || argv[0] == NULL)
@@ -1214,7 +1298,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     spatialite_init_ex (db_handle, cache, 0);
-    rl2_init (db_handle, 0);
+    rl2_init (db_handle, priv_data, 0);
     ret =
 	sqlite3_exec (db_handle, "SELECT InitSpatialMetadata(1)", NULL, NULL,
 		      &err_msg);
@@ -1241,7 +1325,8 @@ main (int argc, char *argv[])
 	return ret;
     ret = -120;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_DEFLATE_NO, TILE_1024,
+	 &ret))
 	return ret;
     ret = -150;
     if (!test_coverage
@@ -1249,11 +1334,13 @@ main (int argc, char *argv[])
 	return ret;
     ret = -170;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_DEFLATE_NO, TILE_1024,
+	 &ret))
 	return ret;
     ret = -200;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
     ret = -220;
     if (!test_coverage
@@ -1261,23 +1348,31 @@ main (int argc, char *argv[])
 	return ret;
     ret = -250;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -270;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA_NO, TILE_1024,
+	 &ret))
 	return ret;
+#endif
+
     ret = -300;
     if (!test_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_NONE, TILE_256, &ret))
 	return ret;
     ret = -320;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_DEFLATE_NO, TILE_1024,
+	 &ret))
 	return ret;
     ret = -350;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
     ret = -370;
     if (!test_coverage
@@ -1285,15 +1380,21 @@ main (int argc, char *argv[])
 	return ret;
     ret = -400;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -420;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA_NO, TILE_1024, &ret))
 	return ret;
+#endif
+
     ret = -450;
     if (!test_coverage
-	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
     ret = -470;
     if (!test_coverage
@@ -1307,7 +1408,8 @@ main (int argc, char *argv[])
 	return ret;
     ret = -130;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_INT8, RL2_COMPRESSION_DEFLATE_NO, TILE_1024,
+	 &ret))
 	return ret;
     ret = -160;
     if (!drop_coverage
@@ -1315,11 +1417,13 @@ main (int argc, char *argv[])
 	return ret;
     ret = -180;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_UINT8, RL2_COMPRESSION_DEFLATE_NO, TILE_1024,
+	 &ret))
 	return ret;
     ret = -210;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_INT16, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
     ret = -230;
     if (!drop_coverage
@@ -1327,23 +1431,31 @@ main (int argc, char *argv[])
 	return ret;
     ret = -260;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -280;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_UINT16, RL2_COMPRESSION_LZMA_NO, TILE_1024,
+	 &ret))
 	return ret;
+#endif
+
     ret = -310;
     if (!drop_coverage
 	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_NONE, TILE_256, &ret))
 	return ret;
     ret = -330;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_DEFLATE, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_INT32, RL2_COMPRESSION_DEFLATE_NO, TILE_1024,
+	 &ret))
 	return ret;
     ret = -360;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_UINT32, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
     ret = -380;
     if (!drop_coverage
@@ -1351,15 +1463,21 @@ main (int argc, char *argv[])
 	return ret;
     ret = -410;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
+
+#ifndef OMIT_LZMA		/* only if LZMA is enabled */
     ret = -430;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA, TILE_1024, &ret))
+	(db_handle, RL2_SAMPLE_FLOAT, RL2_COMPRESSION_LZMA_NO, TILE_1024, &ret))
 	return ret;
+#endif
+
     ret = -460;
     if (!drop_coverage
-	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_DEFLATE, TILE_256, &ret))
+	(db_handle, RL2_SAMPLE_DOUBLE, RL2_COMPRESSION_DEFLATE_NO, TILE_256,
+	 &ret))
 	return ret;
     ret = -480;
     if (!drop_coverage
@@ -1434,9 +1552,12 @@ main (int argc, char *argv[])
 	  return 510;
       }
     rl2_destroy_ascii_grid_destination (ascii);
+    unlink ("test_ascii.asc");
 
 /* closing the DB */
     sqlite3_close (db_handle);
+    spatialite_cleanup_ex (cache);
+    rl2_cleanup_private (priv_data);
     spatialite_shutdown ();
     if (old_SPATIALITE_SECURITY_ENV)
       {

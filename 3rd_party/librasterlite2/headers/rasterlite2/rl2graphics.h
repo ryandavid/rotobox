@@ -59,20 +59,23 @@ extern "C"
 {
 #endif
 
-#define RL2_PENSTYLE_SOLID	5001
-#define RL2_PENSTYLE_DOT	5002
-#define RL2_PENSTYLE_LONG_DASH 	5003
-#define RL2_PENSTYLE_SHORT_DASH	5004
-#define RL2_PENSTYLE_DOT_DASH	5005
-
 #define RL2_FONTSTYLE_NORMAL	5101
 #define RL2_FONTSTYLE_ITALIC	5102
+#define RL2_FONTSTYLE_OBLIQUE	5103
 
 #define RL2_FONTWEIGHT_NORMAL	5201
 #define RL2_FONTWEIGHT_BOLD	5202
 
 #define RL2_CLEAR_PATH		5100
 #define RL2_PRESERVE_PATH	5101
+
+#define RL2_PEN_CAP_BUTT	5210
+#define RL2_PEN_CAP_ROUND	5211
+#define RL2_PEN_CAP_SQUARE	5212
+
+#define RL2_PEN_JOIN_MITER	5261
+#define RL2_PEN_JOIN_ROUND	5262
+#define RL2_PEN_JOIN_BEVEL	5263
 
     typedef struct rl2_graphics_context rl2GraphicsContext;
     typedef rl2GraphicsContext *rl2GraphicsContextPtr;
@@ -232,7 +235,7 @@ extern "C"
 					    unsigned char **buffer, int *size);
 
 /**
- Selects the currently set Pen for a Graphics Context
+ Selects the currently set Pen for a Graphics Context (solid style)
 
  \param context the pointer to a valid Graphics Context returned by a previous call
  to rl2_graph_create_context(), rl2_graph_create_svg_context() or
@@ -242,20 +245,241 @@ extern "C"
  \param blue Pen color: blue component.
  \param alpha Pen transparency (0 full transparent; 255 full opaque).
  \param width Pen width
- \param style one of RL2_PENSTYLE_SOLID, RL2_PENSTYLE_DOT, RL2_PENSTYLE_LONG_DASH,
- RL2_PENSTYLE_SHORT_DASH, RL2_PENSTYLE_DOT_DASH
+ \param line_cap one of RL2_PEN_CAP_BUTT, RL2_PEN_CAP_ROUND or RL2_PEN_CAP_SQUARE
+ \param line_join one of RL2_PEN_JOIN_MITER, RL2_PEN_JOIN_MITER or RL2_PEN_JOIN_BEVEL
 
  \return 0 (false) on error, any other value on success.
  
  \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
- rl2_graph_create_pdf_context, rl2_graph_set_brush, 
- rl2_graph_set_linear_gradient_brush, rl2_graph_set_pattern_brush,
- rl2_graph_set_font
+ rl2_graph_create_pdf_context, rl2_graph_set_dashed_pen,
+ rl2_graph_set_linear_gradient_solid_pen, rl2_graph_set_linear_gradient_dashed_pen,
+ rl2_graph_set_pattern_solid_pen, rl2_graph_set_pattern_dashed_pen, 
+ rl2_graph_set_brush, rl2_graph_set_font
  */
-    RL2_DECLARE int rl2_graph_set_pen (rl2GraphicsContextPtr context,
-				       unsigned char red, unsigned char green,
-				       unsigned char blue, unsigned char alpha,
-				       double width, int style);
+    RL2_DECLARE int rl2_graph_set_solid_pen (rl2GraphicsContextPtr context,
+					     unsigned char red,
+					     unsigned char green,
+					     unsigned char blue,
+					     unsigned char alpha, double width,
+					     int line_cap, int line_join);
+
+/**
+ Selects the currently set Pen for a Graphics Context (dashed style)
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+ \param red Pen color: red component.
+ \param green Pen color: green component.
+ \param blue Pen color: blue component.
+ \param alpha Pen transparency (0 full transparent; 255 full opaque).
+ \param width Pen width
+ \param line_cap one of RL2_PEN_CAP_BUTT, RL2_PEN_CAP_ROUND or RL2_PEN_CAP_SQUARE
+ \param line_join one of RL2_PEN_JOIN_MITER, RL2_PEN_JOIN_MITER or RL2_PEN_JOIN_BEVEL
+ \param dash_count the total count of dash_list items
+ \param dash_list an array of dash items 
+ \param dash_offset start offset
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_pen,
+ rl2_graph_set_linear_gradient_solid_pen, rl2_graph_set_linear_gradient_dashed_pen,
+ rl2_graph_set_pattern_solid_pen, rl2_graph_set_pattern_dashed_pen, 
+ rl2_graph_set_brush, rl2_graph_set_font
+ */
+    RL2_DECLARE int rl2_graph_set_dashed_pen (rl2GraphicsContextPtr context,
+					      unsigned char red,
+					      unsigned char green,
+					      unsigned char blue,
+					      unsigned char alpha, double width,
+					      int line_cap, int line_join,
+					      int dash_count,
+					      double dash_list[],
+					      double dash_offset);
+
+/**
+ Selects the currently set Linear Gradient Pen for a Graphics Context (solid style)
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+ \param x start point (X coord, in pixels) of the Gradient.
+ \param y start point (Y coord, in pixels) of the Gradient.
+ \param width the Gradient width.
+ \param height the Gradient height.
+ \param red1 first Gradient color: red component.
+ \param green1 first Gradient color: green component.
+ \param blue1 first Gradient color: blue component.
+ \param alpha1 first Gradient color transparency (0 full transparent; 255 full opaque).
+ \param red2 second Gradient color: red component.
+ \param green2 second Gradient color: green component.
+ \param blue2 second Gradient color: blue component.
+ \param alpha2 second Gradient color transparency (0 full transparent; 255 full opaque).
+ \param width Pen width
+ \param line_cap one of RL2_PEN_CAP_BUTT, RL2_PEN_CAP_ROUND or RL2_PEN_CAP_SQUARE
+ \param line_join one of RL2_PEN_JOIN_MITER, RL2_PEN_JOIN_MITER or RL2_PEN_JOIN_BEVEL
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_brush, 
+ rl2_graph_set_dashed_pen, rl2_graph_set_linear_gradient_dashed_pen,
+ rl2_graph_set_pattern_solid_pen, rl2_graph_set_pattern_dashed_pen, 
+ rl2_graph_set_brush, rl2_graph_set_font
+
+ \note a Pen created by this function always is a Linear Gradient Pen.
+ */
+    RL2_DECLARE int
+	rl2_graph_set_linear_gradient_solid_pen (rl2GraphicsContextPtr,
+						 double x, double y,
+						 double width, double height,
+						 unsigned char red1,
+						 unsigned char green1,
+						 unsigned char blue1,
+						 unsigned char alpha1,
+						 unsigned char red2,
+						 unsigned char green2,
+						 unsigned char blue2,
+						 unsigned char alpha2,
+						 double pen_width, int line_cap,
+						 int line_join);
+
+/**
+ Selects the currently set Linear Gradient Pen for a Graphics Context (dashed style)
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+ \param x start point (X coord, in pixels) of the Gradient.
+ \param y start point (Y coord, in pixels) of the Gradient.
+ \param width the Gradient width.
+ \param height the Gradient height.
+ \param red1 first Gradient color: red component.
+ \param green1 first Gradient color: green component.
+ \param blue1 first Gradient color: blue component.
+ \param alpha1 first Gradient color transparency (0 full transparent; 255 full opaque).
+ \param red2 second Gradient color: red component.
+ \param green2 second Gradient color: green component.
+ \param blue2 second Gradient color: blue component.
+ \param alpha2 second Gradient color transparency (0 full transparent; 255 full opaque).
+ \param width Pen width
+ \param line_cap one of RL2_PEN_CAP_BUTT, RL2_PEN_CAP_ROUND or RL2_PEN_CAP_SQUARE
+ \param line_join one of RL2_PEN_JOIN_MITER, RL2_PEN_JOIN_MITER or RL2_PEN_JOIN_BEVEL
+ \param dash_count the total count of dash_list items
+ \param dash_list an array of dash items 
+ \param dash_offset start offset
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_pen, 
+ rl2_graph_set_dashed_pen, rl2_graph_set_linear_gradient_solid_pen, 
+ rl2_graph_set_pattern_solid_pen, rl2_graph_set_pattern_dashed_pen, 
+ rl2_graph_set_brush, rl2_graph_set_font
+
+ \note a Pen created by this function always is a Linear Gradient Pen.
+ */
+    RL2_DECLARE int
+	rl2_graph_set_linear_gradient_dashed_pen (rl2GraphicsContextPtr,
+						  double x, double y,
+						  double width, double height,
+						  unsigned char red1,
+						  unsigned char green1,
+						  unsigned char blue1,
+						  unsigned char alpha1,
+						  unsigned char red2,
+						  unsigned char green2,
+						  unsigned char blue2,
+						  unsigned char alpha2,
+						  double pen_width,
+						  int line_cap, int line_join,
+						  int dash_count,
+						  double dash_list[],
+						  double offset);
+
+/**
+ Selects the currently set Pattern Pen for a Graphics Context (solid style)
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+ \param pattern the pointer to a valid Graphics Pattern returned by a previous
+ call to rl2_graph_create_pattern().
+ \param pen_width Pen width
+ \param line_cap one of RL2_PEN_CAP_BUTT, RL2_PEN_CAP_ROUND or RL2_PEN_CAP_SQUARE
+ \param line_join one of RL2_PEN_JOIN_MITER, RL2_PEN_JOIN_MITER or RL2_PEN_JOIN_BEVEL
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen,
+ rl2_graph_set_linear_gradient_solid_pen, rl2_graph_set_linear_gradient_dashed_pen,
+ rl2_graph_set_pattern_dashed_pen, rl2_graph_set_brush, rl2_graph_set_font, 
+ rl2_create_pattern, rl2_graph_realease_pattern_pen
+
+ \note a Pen created by this function always is a Pattern Pen, 
+ i.e. a Pen repeatedly using a small bitmap as a filling source.
+ */
+    RL2_DECLARE int rl2_graph_set_pattern_solid_pen (rl2GraphicsContextPtr
+						     context,
+						     rl2GraphicsPatternPtr
+						     pattern, double width,
+						     int line_cap,
+						     int line_join);
+
+/**
+ Selects the currently set Pattern Pen for a Graphics Context (dashed style)
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+ \param pattern the pointer to a valid Graphics Pattern returned by a previous
+ call to rl2_graph_create_pattern().
+ \param pen_width Pen width
+ \param line_cap one of RL2_PEN_CAP_BUTT, RL2_PEN_CAP_ROUND or RL2_PEN_CAP_SQUARE
+ \param line_join one of RL2_PEN_JOIN_MITER, RL2_PEN_JOIN_MITER or RL2_PEN_JOIN_BEVEL
+ \param dash_count the total count of dash_list items
+ \param dash_list an array of dash items 
+ \param dash_offset start offset
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen,
+ rl2_graph_set_linear_gradient_solid_pen, rl2_graph_set_linear_gradient_dashed_pen,
+ rl2_graph_set_pattern_solid_pen, rl2_graph_set_brush, rl2_graph_set_font, 
+ rl2_create_pattern, rl2_graph_realease_pattern_pen
+
+ \note a Pen created by this function always is a Pattern Pen, 
+ i.e. a Pen repeatedly using a small bitmap as a filling source.
+ */
+    RL2_DECLARE int rl2_graph_set_pattern_dashed_pen (rl2GraphicsContextPtr
+						      context,
+						      rl2GraphicsPatternPtr
+						      pattern, double width,
+						      int line_cap,
+						      int line_join,
+						      int dash_count,
+						      double dash_list[],
+						      double offset);
+
+/**
+ Releases the currently set Pattern Pen (if any) from a Graphics Context
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_set_pattern_solid_pen, rl2_graph_set_pattern_dashed_pen
+
+ \note you should always release a Pattern Pen before attempting to
+ destroy the corresponding Pattern object.
+ */
+    RL2_DECLARE int rl2_graph_release_pattern_pen (rl2GraphicsContextPtr
+						   context);
 
 /**
  Selects the currently set Brush for a Graphics Context
@@ -271,7 +495,8 @@ extern "C"
  \return 0 (false) on error, any other value on success.
  
  \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
- rl2_graph_create_pdf_context, rl2_graph_set_pen, 
+ rl2_graph_create_pdf_context, rrl2_graph_set_solid_pen, rl2_graph_set_dashed_pen,
+ rl2_graph_set_linear_gradient_pen, rl2_graph_set_pattern_pen,
  rl2_graph_set_linear_gradient_brush, rl2_graph_set_pattern_brush,
  rl2_graph_set_font
 
@@ -305,7 +530,8 @@ extern "C"
  \return 0 (false) on error, any other value on success.
  
  \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
- rl2_graph_create_pdf_context, rl2_graph_set_pen, 
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen,
+ rl2_graph_set_linear_gradient_pen, rl2_graph_set_pattern_pen,
  rl2_graph_set_brush, rl2_graph_set_pattern_brush,
  rl2_graph_set_font
 
@@ -330,21 +556,38 @@ extern "C"
  \param context the pointer to a valid Graphics Context returned by a previous call
  to rl2_graph_create_context(), rl2_graph_create_svg_context() or
  rl2_graph_create_pdf_context()
- \param brush the pointer to a valid Graphics Pattern returned by a previous
+ \param pattern the pointer to a valid Graphics Pattern returned by a previous
  call to rl2_graph_create_pattern().
 
  \return 0 (false) on error, any other value on success.
  
  \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
- rl2_graph_create_pdf_context, rl2_graph_set_pen, 
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen,
  rl2_graph_set_brush, rl2_graph_set_linear_gradient_brush, 
- rl2_graph_set_font, rl2_create_pattern
+ rl2_graph_set_font, rl2_create_pattern, rl2_graph_release_pattern_brush
 
  \note a Brush created by this function always is a Pattern Brush, 
  i.e. a Brush repeatedly using a small bitmap as a filling source.
  */
     RL2_DECLARE int rl2_graph_set_pattern_brush (rl2GraphicsContextPtr context,
-						 rl2GraphicsPatternPtr brush);
+						 rl2GraphicsPatternPtr pattern);
+
+/**
+ Releases the currently set Pattern Brush (if any) from a Graphics Context
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_set_pattern_brush
+
+ \note you should always release a Pattern Brush before attempting to
+ destroy the corresponding Pattern object.
+ */
+    RL2_DECLARE int rl2_graph_release_pattern_brush (rl2GraphicsContextPtr
+						     context);
 
 /**
  Selects the currently set Font for a Graphics Context
@@ -358,12 +601,28 @@ extern "C"
  \return 0 (false) on error, any other value on success.
  
  \sa rl2_graph_create_context, rl2_graph_create_svg_context, 
- rl2_graph_create_pdf_context, rl2_graph_set_pen, rl2_graph_set_brush,
- rl2_graph_set_linear_gradient_brush, rl2_graph_set_pattern_brush,
+ rl2_graph_create_pdf_context, rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen,
+ rl2_graph_set_brush, rl2_graph_set_linear_gradient_brush, rl2_graph_set_pattern_brush,
  rl2_create_font
  */
     RL2_DECLARE int rl2_graph_set_font (rl2GraphicsContextPtr context,
 					rl2GraphicsFontPtr font);
+
+/**
+ Releases the currently set Font out from a Graphics Context
+
+ \param context the pointer to a valid Graphics Context returned by a previous call
+ to rl2_graph_create_context(), rl2_graph_create_svg_context() or
+ rl2_graph_create_pdf_context()
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_set_font, rl2_graph_destroy_font
+ 
+ \note you must always call rl2_graph_release_font() before attempting
+ to destroy a currently selected TrueType Font.
+ */
+    RL2_DECLARE int rl2_graph_release_font (rl2GraphicsContextPtr context);
 
 /**
  Creates a Pattern Brush 
@@ -372,10 +631,13 @@ extern "C"
  supporting the Pattern Brush to be created.
  \param width Pattern width (in pixels)
  \param height Pattern height (in pixels)
+ \param extend if TRUE the pattern will be infinitely repeated
+  so to completely fill the plane 
 
  \return the pointer to the corresponding Pattern Brush object: NULL on failure
  
- \sa rl2_graph_set_pattern_brush, rl2_graph_destroy_brush
+ \sa rl2_graph_set_pattern_brush, rl2_graph_destroy_brush,
+ rl2_create_pattern_from_external_graphic, rl2_create_pattern_from_external_svg
  
  \note you are responsible to destroy (before or after) any Pattern Brush
  returned by rl2_graph_create_pattern() by invoking rl2_graph_destroy_pattern().
@@ -383,44 +645,309 @@ extern "C"
     RL2_DECLARE rl2GraphicsPatternPtr rl2_graph_create_pattern (unsigned char
 								*rgbaArray,
 								int width,
-								int height);
+								int height,
+								int extend);
+
+/**
+ Creates a Pattern from an External Graphic resource (PNG, GIF, JPEG)
+
+ \param handle SQLite3 connection handle
+ \param xlink_href unique External Graphic identifier
+ \param extend if TRUE the pattern will be infinitely repeated
+  so to completely fill the plane 
+
+ \return the pointer to the corresponding Pattern Brush object: NULL on failure
+ 
+ \sa rl2_graph_set_pattern_brush, rl2_graph_destroy_brush,
+ rl2_graph_create_pattern, rl2_create_pattern_from_external_svg,
+ rl2_graph_pattern_get_size
+ 
+ \note you are responsible to destroy (before or after) any Pattern Brush
+ returned by rl2_create_pattern_from_external_graphic() by invoking 
+ rl2_graph_destroy_pattern().
+ */
+    RL2_DECLARE rl2GraphicsPatternPtr
+	rl2_create_pattern_from_external_graphic (sqlite3 * handle,
+						  const char *xlink_href,
+						  int extend);
+
+/**
+ Creates a Pattern from an External Graphic resource (SVG)
+
+ \param handle SQLite3 connection handle
+ \param xlink_href unique External Graphic identifier
+ \param size the scaled size of the SVG symbol
+
+ \return the pointer to the corresponding Pattern Brush object: NULL on failure
+ 
+ \sa rl2_graph_set_pattern_brush, rl2_graph_destroy_brush,
+ rl2_graph_create_pattern, rl2_create_pattern_from_external_graphic,
+ rl2_graph_pattern_get_size
+ 
+ \note you are responsible to destroy (before or after) any Pattern Brush
+ returned by rl2_create_pattern_from_external_graphic() by invoking 
+ rl2_graph_destroy_pattern().
+ */
+    RL2_DECLARE rl2GraphicsPatternPtr
+	rl2_create_pattern_from_external_svg (sqlite3 * handle,
+					      const char *xlink_href,
+					      double size);
 
 /**
  Destroys a Pattern Brush object freeing any allocated resource 
 
- \param handle the pointer to a valid Pattern Brush returned by a previous call
- to rl2_graph_create_pattern()
+ \param pattern pointer to a valid Pattern object
  
- \sa rl2_graph_create_pattern
+ \sa rl2_graph_create_pattern, rl2_create_pattern_from_external_graphic
+
+ \note you should always release a Pattern Pen or Pattern Brush from any
+ referencing Graphic Context before attempting to destroy the corresponding
+ Pattern object.
  */
     RL2_DECLARE void rl2_graph_destroy_pattern (rl2GraphicsPatternPtr pattern);
 
 /**
- Creates a Graphics Font Object
+ Retrieving the Dimensions from a Pattern Brush object
 
+ \param pattern pointer to a valid Pattern object
+ \param width on completion the variable referenced by this
+ pointer will contain the Pattern's Width (in pixels).
+ \param height on completion the variable referenced by this
+ pointer will contain the Pattern's Height (in pixels).
+ 
+ \return RL2_OK on success: RL2_ERROR on failure.
+
+ \sa rl2_graph_create_pattern, rl2_create_pattern_from_external_graphic
+ */
+    RL2_DECLARE int rl2_graph_get_pattern_size (rl2GraphicsPatternPtr pattern,
+						unsigned int *width,
+						unsigned int *height);
+
+/**
+ Recolors a Monochrome Pattern object  
+
+ \param handle the pointer to a valid Pattern returned by a previous call
+ to rl2_graph_create_pattern() or rl2_create_pattern_from_external_graphic()
+ \param r the new Red component value to be set
+ \param g the new Green component value
+ \param b the new Blue component value
+ 
+ \return RL2_OK on success: RL2_ERROR on failure. 
+ 
+ \sa rl2_graph_create_pattern, rl2_create_pattern_from_external_graphic,
+ rl2_graph_destroy_pattern, rl2_graph_pattern_transparency,
+ rl2_graph_draw_graphic_symbol
+
+ \note only a Monochrome Pattern can be succesfully recolored.
+ Completely transparent pixels will be ignored; all opaque pixels
+ should declare exactly the same color.
+ */
+    RL2_DECLARE int rl2_graph_pattern_recolor (rl2GraphicsPatternPtr pattern,
+					       unsigned char r, unsigned char g,
+					       unsigned char b);
+
+/**
+ Sets half-transparency for a Pattern object  
+
+ \param handle the pointer to a valid Pattern returned by a previous call
+ to rl2_graph_create_pattern() or rl2_create_pattern_from_external_graphic()
+ \param alpha transparency (0 full transparent; 255 full opaque).
+ 
+ \return RL2_OK on success: RL2_ERROR on failure. 
+ 
+ \sa rl2_graph_create_pattern, rl2_create_pattern_from_external_graphic,
+ rl2_graph_destroy_pattern, rl2_graph_pattern_recolor, 
+ rl2_graph_draw_graphic_symbol
+
+ \note Completely transparent pixels will be always preserved as such; 
+ all other pixels will assume the required transparency.
+ */
+    RL2_DECLARE int rl2_graph_pattern_transparency (rl2GraphicsPatternPtr
+						    pattern,
+						    unsigned char alpha);
+
+/**
+ Draws a Graphic Symbol into the Canvass
+
+ \param context the pointer to a valid Graphics Context (aka Canvass).
+ \param pattern the pointer to a valid  Pattern returned by a previous call
+ \param width of the rendered image.
+ \param height of the rendered image.
+ \param x the X coordinate of the Anchor Point.
+ \param y the Y coordinate of the Anchor Point.
+ \param angle an angle (in decimal degrees) to rotate the image.
+ \param angle an angle (in decimal degrees) to rotate the image.
+ \param anchor_point_x relative X position of the Anchor Point
+  expressed as a percent position within the image bounding box
+  (expected to be a value between 0.0 and 1.0)
+ \param anchor_point_y relative Y position of the Anchor Point
+  expressed as a percent position within the image bounding box
+  (expected to be a value between 0.0 and 1.0)
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_create_pattern, rl2_create_pattern_from_external_graphic,
+ rl2_graph_destroy_pattern, rl2_graph_pattern_transparency, 
+ rl2_graph_pattern_recolor, rl2_graph_draw_mark_symbol
+ */
+    RL2_DECLARE int rl2_graph_draw_graphic_symbol (rl2GraphicsContextPtr
+						   context,
+						   rl2GraphicsPatternPtr
+						   pattern, double width,
+						   double height, double x,
+						   double y, double angle,
+						   double anchor_point_x,
+						   double anchor_point_y);
+
+/**
+ Draws a Mark Symbol into the Canvass
+
+ \param context the pointer to a valid Graphics Context (aka Canvass).
+ \param mark_type expected to be one between RL2_GRAPHIC_MARK_SQUARE,
+  RL2_GRAPHIC_MARK_CIRCLE, RL2_GRAPHIC_MARK_TRIANGLE, 
+  RL2_GRAPHIC_MARK_STAR, RL2_GRAPHIC_MARK_CROSS and RL2_GRAPHIC_MARK_X 
+  (default: RL2_GRAPHIC_MARK_SQUARE).
+ \param size the Mark Symbol size (in pixels).
+ \param x the X coordinate of the Anchor Point.
+ \param y the Y coordinate of the Anchor Point.
+ \param angle an angle (in decimal degrees) to rotate the image.
+ \param angle an angle (in decimal degrees) to rotate the image.
+ \param anchor_point_x relative X position of the Anchor Point
+  expressed as a percent position within the image bounding box
+  (expected to be a value between 0.0 and 1.0)
+ \param anchor_point_y relative Y position of the Anchor Point
+  expressed as a percent position within the image bounding box
+  (expected to be a value between 0.0 and 1.0)
+ \param fill if TRUE the Mark Symboll will be filled using the
+  currently set brush
+ \param stroke if TRUE the Mark Symboll will be stroked using
+  the currently set pen
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_draw_graphic_symbol
+ */
+    RL2_DECLARE int rl2_graph_draw_mark_symbol (rl2GraphicsContextPtr
+						context, int mark_type,
+						double size,
+						double x, double y,
+						double angle,
+						double anchor_point_x,
+						double anchor_point_y, int fill,
+						int stroke);
+
+/**
+ Creates a Graphics Font Object (CAIRO built-in "toy" fonts)
+
+ \param facename the font Facename. Expected to be one of "serif", 
+ "sans-serif" or "monospace". a NULL facename will default to "monospace".
  \param size the Graphics Font size (in points).
- \param style one of RL2_FONTSTYLE_NORMAL or RL2_FONTSTYLE_ITALIC
+ \param style one of RL2_FONTSTYLE_NORMAL, RL2_FONTSTYLE_ITALIC or
+ RL2_FONTSTYLE_OBLIQUE
  \param weight one of RL2_FONTWEIGHT_NORMAL or RL2_FONTWEIGHT_BOLD
 
  \return the pointer to the corresponding Font object: NULL on failure
  
- \sa rl2_graph_set_font, rl2_graph_destroy_font, rl2_graph_font_set_color,
- rl2_graph_font_set_color, rl2_graph_font_set_outline
+ \sa rl2_graph_set_font, 
+ rl2_graph_destroy_font, rl2_graph_font_set_color,
+ rl2_graph_font_set_color, rl2_graph_font_set_halo
  
  \note you are responsible to destroy (before or after) any Pattern Brush
- returned by rl2_graph_create_font() by invoking rl2_graph_destroy_font().
+ returned by rl2_graph_create_toy_font() by invoking rl2_graph_destroy_font().
  */
-    RL2_DECLARE rl2GraphicsFontPtr rl2_graph_create_font (double size,
-							  int style,
-							  int weight);
+    RL2_DECLARE rl2GraphicsFontPtr rl2_graph_create_toy_font (const char
+							      *facename,
+							      double size,
+							      int style,
+							      int weight);
+
+/**
+ Will retrieve a BLOB-encoded TrueType Font by its FaceName
+ 
+ \param handle SQLite3 connection handle
+ \param fontname name of the required font: e.g. "Roboto-BoldItalic"
+ \param font on completion this variable will point to the a memory block 
+  containing the BLOB-encoded TrueType font (may be NULL if any error occurred).
+ \param font_sz on completion this variable will contain the size (in bytes)
+ of the memory block containing the BLOB-encoded TrueType font.
+ 
+ \return RL2_OK on success; RL2_ERROR if any error is encountered (this
+ including requesting a not existing TrueType font).
+ 
+ \note you are responsible to free (before or after) the BLOB-encode
+ font returned by rl2_get_TrueType_font()
+ */
+
+    RL2_DECLARE int rl2_get_TrueType_font (sqlite3 * handle,
+					   const char *facename,
+					   unsigned char **font, int *font_sz);
+
+/**
+ Creates a Graphics Font Object (TrueType fonts)
+
+ \param priv_data pointer to the opaque internal connection object 
+ returned by a previous call to rl2_alloc_private() 
+ \param ttf the TrueType font definition (internal BLOB format).
+ \param ttf_bytes length (in bytes) of the above TTF definition
+ \param size the Graphics Font size (in points).
+
+ \return the pointer to the corresponding Font object: NULL on failure
+ 
+ \sa rl2_graph_create_toy_font, rl2_get_TrueType_font, 
+ rl2_search_TrueType_font, rl2_graph_set_font, rl2_graph_destroy_font, 
+ rl2_graph_font_set_color, rl2_graph_font_set_color, 
+ rl2_graph_font_set_halo
+ 
+ \note you are responsible to destroy (before or after) any TrueType
+ font returned by rl2_graph_create_TrueType_font() by invoking 
+ rl2_graph_destroy_font().
+ */
+    RL2_DECLARE rl2GraphicsFontPtr rl2_graph_create_TrueType_font (const void
+								   *priv_data,
+								   const
+								   unsigned char
+								   *ttf,
+								   int
+								   ttf_bytes,
+								   double size);
+
+/**
+ Searches and creates a Graphics Font Object (TrueType fonts)
+
+ \param handle SQLite3 connection handle
+ \param priv_data pointer to the opaque internal connection object 
+ returned by a previous call to rl2_alloc_private() 
+ \param fontname name of the required font: e.g. "Roboto-BoldItalic"
+ \param size the Graphics Font size (in points).
+
+ \return the pointer to the corresponding Font object: NULL on failure
+ 
+ \sa rl2_graph_create_toy_font, rl2_get_TrueType_font, 
+ rl2_graph_create_TrueType_font, rl2_graph_set_font, 
+ rl2_graph_destroy_font, rl2_graph_font_set_color,
+ rl2_graph_font_set_color, rl2_graph_font_set_halo
+ 
+ \note you are responsible to destroy (before or after) any TrueType
+ font returned by rl2_search_TrueType_font() by invoking 
+ rl2_graph_destroy_font().
+ */
+    RL2_DECLARE rl2GraphicsFontPtr rl2_search_TrueType_font (sqlite3 * handle,
+							     const void
+							     *priv_data,
+							     const char
+							     *facename,
+							     double size);
 
 /**
  Destroys a Graphics Font object freeing any allocated resource 
 
  \param handle the pointer to a valid Font returned by a previous call
- to rl2_graph_create_font()
+ to rl2_graph_create_toy_font() or rl2_graph_create_TrueType_font()
  
- \sa rl2_graph_create_font
+ \sa rl2_graph_create_toy_font, rl2_graph_create_TrueType_font
+ 
+ \note you must always call rl2_graph_release_font() before attempting
+ to destroy the currently selected font if it is of the TrueType class.
  */
     RL2_DECLARE void rl2_graph_destroy_font (rl2GraphicsFontPtr font);
 
@@ -428,7 +955,7 @@ extern "C"
  Selects the currently set Color for a Graphics Font
 
  \param font the pointer to a valid Graphics Font returned by a previous call
- to rl2_graph_create_font()
+ to rl2_graph_create_toy_font() or rl2_graph_create_TrueType_font()
  \param red Font color: red component.
  \param green Font color: green component.
  \param blue Font color: blue component.
@@ -436,8 +963,8 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_create_font, rl2_graph_font_set_outline,
- rl2_graph_set_font
+ \sa rl2_graph_create_toy_font, rl2_graph_create_TrueType_font,
+ rl2_graph_font_set_halo, rl2_graph_set_font
  */
     RL2_DECLARE int rl2_graph_font_set_color (rl2GraphicsFontPtr font,
 					      unsigned char red,
@@ -446,20 +973,28 @@ extern "C"
 					      unsigned char alpha);
 
 /**
- Selects the currently set Outline for a Graphics Font
+ Selects the currently set Halo for a Graphics Font
 
  \param font the pointer to a valid Graphics Font returned by a previous call
- to rl2_graph_create_font()
- \param width the outline width (in points); declaring a zero or negative value
- will remove any outline from the Font.
+ to rl2_graph_create_toy_font() or rl2_graph_create_TrueType_font()
+ \param radius the Halo Radius (in points); declaring a zero or negative value
+ will remove the Halo from the Font.
+ \param red Halo color: red component.
+ \param green Halo color: green component.
+ \param blue Halo color: blue component.
+ \param alpha Halo transparency (0 full transparent; 255 full opaque).
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_create_font, rl2_graph_font_set_color,
- rl2_graph_set_font
+ \sa rl2_graph_create_toy_font, rl2_graph_create_TrueType_font, 
+ rl2_graph_font_set_color, rl2_graph_set_font
  */
-    RL2_DECLARE int rl2_graph_font_set_outline (rl2GraphicsFontPtr font,
-						double width);
+    RL2_DECLARE int rl2_graph_font_set_halo (rl2GraphicsFontPtr font,
+					     double radius,
+					     unsigned char red,
+					     unsigned char green,
+					     unsigned char blue,
+					     unsigned char alpha);
 
 /**
  Creates a Graphics Bitmap 
@@ -501,9 +1036,9 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_graph, draw_rectangle,
- rl2_graph_draw_ellipse, rl2_graph_draw_circle_sector, rl2_graph_stroke_line, 
- rl2_graph_fill_path, rl2_graph_stroke_path
+ \sa rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen, rl2_graph_set_brush,
+ rl2_graph, draw_rectangle, rl2_graph_draw_ellipse, rl2_graph_draw_circle_sector, 
+ rl2_graph_stroke_line, rl2_graph_fill_path, rl2_graph_stroke_path
 
  \note the rectangle will be stroked using the current Pen and will
  be filled using the current Brush.
@@ -524,9 +1059,9 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_draw_rectangle,
- rl2_graph_draw_ellipse, rl2_graph_draw_circle_sector, rl2_graph_stroke_line, 
- rl2_graph_fill_path, rl2_graph_stroke_path
+ \sa rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen, rl2_graph_set_brush,
+ rl2_draw_rectangle, rl2_graph_draw_ellipse, rl2_graph_draw_circle_sector, 
+ rl2_graph_stroke_line, rl2_graph_fill_path, rl2_graph_stroke_path
 
  \note the rectangle will be stroked using the current Pen and will
  be filled using the current Brush.
@@ -549,8 +1084,8 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_draw_rectangle,
- rl2_graph_draw_rounded_rectangle, rl2_graph_draw_circle_sector, 
+ \sa rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen, rl2_graph_set_brush, 
+ rl2_draw_rectangle, rl2_graph_draw_rounded_rectangle, rl2_graph_draw_circle_sector, 
  rl2_graph_stroke_line, rl2_graph_fill_path, rl2_graph_stroke_path
 
  \note the ellipse will be stroked using the current Pen and will
@@ -572,8 +1107,8 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_draw_rectangle,
- rl2_graph_draw_rounded_rectangle, rl2_graph_draw_ellipse, 
+ \sa rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen, rl2_graph_set_brush, 
+ rl2_draw_rectangle, rl2_graph_draw_rounded_rectangle, rl2_graph_draw_ellipse, 
  rl2_graph_stroke_line, rl2_graph_fill_path, rl2_graph_stroke_path
 
  \note the Sector will be stroked using the current Pen and will
@@ -597,8 +1132,8 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_draw_rectangle,
- rl2_graph_draw_rounded_rectangle, rl2_graph_draw_ellipse, 
+ \sa rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen, rl2_graph_set_brush, 
+ rl2_draw_rectangle, rl2_graph_draw_rounded_rectangle, rl2_graph_draw_ellipse, 
  rl2_graph_draw_circular_sector, rl2_graph_fill_path, rl2_graph_stroke_path
 
  \note the Sector will be stroked using the current Pen and will
@@ -617,7 +1152,7 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_graph_add_line_to_path,
+ \sa rl2_graph_add_line_to_path,
  rl2_graph_close_subpath, rl2_graph_fill_path, rl2_graph_stroke_path
  */
     RL2_DECLARE int rl2_graph_move_to_point (rl2GraphicsContextPtr context,
@@ -632,7 +1167,7 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_graph_move_to_point,
+ \sa rl2_graph_set_brush, rl2_graph_move_to_point,
  rl2_graph_close_subpath, rl2_graph_fill_path, rl2_graph_stroke_path
  */
     RL2_DECLARE int rl2_graph_add_line_to_path (rl2GraphicsContextPtr context,
@@ -645,7 +1180,7 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_graph_move_to_point,
+ \sa rl2_graph_set_brush, rl2_graph_move_to_point,
  rl2_graph_add_line_to_path, rl2_graph_fill_path, rl2_graph_stroke_path
  */
     RL2_DECLARE int rl2_graph_close_subpath (rl2GraphicsContextPtr context);
@@ -659,7 +1194,7 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_graph_move_to_point,
+ \sa rl2_graph_set_brush, rl2_graph_move_to_point,
  rl2_graph_add_line_to_path, rl2_graph_close_subpath, rl2_graph_stroke_path
  */
     RL2_DECLARE int rl2_graph_fill_path (rl2GraphicsContextPtr context,
@@ -674,7 +1209,7 @@ extern "C"
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_pen, rl2_graph_set_brush, rl2_graph_move_to_point,
+ \sa rl2_graph_set_solid_pen, rl2_graph_set_dashed_pen, rl2_graph_move_to_point,
  rl2_graph_add_line_to_path, rl2_graph_close_subpath, rl2_graph_fill_path
  */
     RL2_DECLARE int rl2_graph_stroke_path (rl2GraphicsContextPtr context,
@@ -687,15 +1222,57 @@ extern "C"
  \param text string to be printed into the canvass.
  \param x the X coordinate of the top left corner of the text.
  \param y the Y coordinate of the top left corner of the text.
- \param angle an angle (in degrees) to rotate the text
+ \param angle an angle (in decimal degrees) to rotate the text.
+ \param anchor_point_x relative X position of the Anchor Point
+  expressed as a percent position within the text bounding box
+  (expected to be a value between 0.0 and 1.0)
+ \param anchor_point_y relative Y position of the Anchor Point
+  expressed as a percent position within the text bounding box
+  (expected to be a value between 0.0 and 1.0)
 
  \return 0 (false) on error, any other value on success.
  
- \sa rl2_graph_set_font, rl2_graph_get_text_extent
+ \sa rl2_graph_set_font, rl2_graph_get_text_extent,
+ rl2_graph_draw_warped_text
  */
     RL2_DECLARE int rl2_graph_draw_text (rl2GraphicsContextPtr context,
 					 const char *text, double x, double y,
-					 double angle);
+					 double angle,
+					 double anchor_point_x,
+					 double anchor_point_y);
+
+/**
+ Draws a text warped along a curve using the currently set Font
+
+ \param handle connection handle
+ \param context the pointer to a valid Graphics Context (aka Canvass).
+ \param text string to be printed into the canvass.
+ \param points number of item in both X and Y arrays
+ \param x array of X coordinates.
+ \param y array of Y coordinates; both X and Y arrays represent
+  the curve modelling the text to be warped. 
+ \param initial_gap white space to be preserved before printing
+ the first label occurrence.
+ \param gap distance separating two cosecutive label occurrences.
+ (both initial_gap and gap are only meaningfull in the repeated case).
+ \param repeated if TRUE the text (aka label) will be repeated
+  as many times as allowed by the modelling curve lenght.
+  If FALSE the text (aka label) will be printed only once near
+  the mid-point of the modelling curve.
+
+ \return 0 (false) on error, any other value on success.
+ 
+ \sa rl2_graph_set_font, rl2_graph_draw_text
+ 
+ \note if the modelling curve length is shorter than the text
+ (aka label) length then no output at all will be printed.
+ */
+    RL2_DECLARE int rl2_graph_draw_warped_text (sqlite3 * handle,
+						rl2GraphicsContextPtr context,
+						const char *text, int points,
+						double *x, double *y,
+						double initial_gap, double gap,
+						int repeated);
 
 /**
  Computes the extent corresponding to a text into the Canvass using the currently set Font
@@ -730,39 +1307,41 @@ extern "C"
 
  \param context the pointer to a valid Graphics Context (aka Canvass).
  \param bitmap the pointer to a valid Graphics Bitmap to be rendered.
- \param x the X coordinate of the top left corner of the image.
- \param y the Y coordinate of the top left corner of the image.
+ \param x the X coordinate of the image's left upper corner.
+ \param y the Y coordinate of the image's left upper corner.
 
  \return 0 (false) on error, any other value on success.
  
  \sa rl2_graph_create_bitmap, rl2_graph_destroy_bitmap,
- rl2_graph_draw_rescaled_bitmap
+ rl2_graph_draw_rescaled_bitmap, rl2_graph_draw_graphic_symbol, 
+ rl2_graph_draw_mark_symbol
  */
     RL2_DECLARE int rl2_graph_draw_bitmap (rl2GraphicsContextPtr context,
-					   rl2GraphicsBitmapPtr bitmap, int x,
-					   int y);
+					   rl2GraphicsBitmapPtr bitmap,
+					   double x, double y);
 
 /**
  Draws a Rescaled Bitmap into the Canvass
 
  \param context the pointer to a valid Graphics Context (aka Canvass).
  \param bitmap the pointer to a valid Graphics Bitmap to be rendered.
- \param scale_x the Scale Factor for X axis
- \param scale_y the Scale Factor for Y axis
- \param x the X coordinate of the top left corner of the image.
- \param y the Y coordinate of the top left corner of the image.
+ \param scale_x the Scale Factor for X axis.
+ \param scale_y the Scale Factor for Y axis.
+ \param x the X coordinate of the image's left upper corner.
+ \param y the Y coordinate of the image's left upper corner.
 
  \return 0 (false) on error, any other value on success.
  
  \sa rl2_graph_create_bitmap, rl2_graph_destroy_bitmap,
- rl2_graph_draw_bitmap
+ rl2_graph_draw_bitmap, rl2_graph_draw_graphic_symbol, 
+ rl2_graph_draw_mark_symbol
  */
     RL2_DECLARE int rl2_graph_draw_rescaled_bitmap (rl2GraphicsContextPtr
 						    context,
 						    rl2GraphicsBitmapPtr bitmap,
 						    double scale_x,
-						    double scale_y, int x,
-						    int y);
+						    double scale_y, double x,
+						    double y);
 
 /**
  Creates an RGB Array corresponding to the current Canvass
@@ -783,6 +1362,9 @@ extern "C"
  Creates an Array of Alpha values corresponding to the current Canvass
 
  \param context the pointer to a valid Graphics Context (aka Canvass).
+ \param half_transparent after successful completion this variable will
+ ontain 1 or 0, accordingly to the presence of half-transparencies 
+ strictly requiring an alpha band.
 
  \return the pointer to the Array of Alpha Values: NULL on failure.
  
@@ -792,7 +1374,8 @@ extern "C"
  returned by rl2_graph_get_context_alpha_array() by invoking free().
  */
     RL2_DECLARE unsigned char
-	*rl2_graph_get_context_alpha_array (rl2GraphicsContextPtr context);
+	*rl2_graph_get_context_alpha_array (rl2GraphicsContextPtr context,
+					    int *half_transparent);
 
 #ifdef __cplusplus
 }

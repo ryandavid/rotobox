@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -46,6 +46,8 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <float.h>
 
 #include "rasterlite2/rasterlite2.h"
+
+#include "spatialite.h"
 
 static rl2PalettePtr
 build_palette (int num)
@@ -79,7 +81,6 @@ main (int argc, char *argv[])
     double vResolution;
     unsigned char sample;
     unsigned char *mask;
-    gaiaGeomCollPtr geom = NULL;
     unsigned char *bufpix = malloc (256 * 256);
     memset (bufpix, 255, 256 * 256);
 
@@ -229,14 +230,6 @@ main (int argc, char *argv[])
 	  fprintf (stderr, "Unexpected raster MaxY (Center point)\n");
 	  return -22;
       }
-
-    geom = rl2_get_raster_bbox (raster);
-    if (geom == NULL)
-      {
-	  fprintf (stderr, "Unable to get raster BBOX (Center point)\n");
-	  return -250;
-      }
-    gaiaFreeGeomColl (geom);
     rl2_destroy_raster (raster);
 
     bufpix = malloc (256 * 256);
@@ -1727,12 +1720,6 @@ main (int argc, char *argv[])
       {
 	  fprintf (stderr, "Unexpected result: Raster GeoRef Frame (NULL)\n");
 	  return -221;
-      }
-
-    if (rl2_get_raster_bbox (NULL) != NULL)
-      {
-	  fprintf (stderr, "Unexpected result: Raster BBOX (NULL)\n");
-	  return -222;
       }
 
     rl2_destroy_raster (NULL);

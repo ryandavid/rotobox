@@ -1,7 +1,7 @@
-rl2_pyramidize - INT Section
+rl2_pyramidize - TEXT Section
 :memory: #use in-memory database
-SELECT rl2_pyramidize('coverage', 1);
+SELECT rl2_pyramidize('coverage', 'alpha');
 1 # rows (not including the header row)
 1 # columns
-rl2_pyramidize('coverage', 1)
+rl2_pyramidize('coverage', 'alpha')
 -1

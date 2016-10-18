@@ -99,6 +99,14 @@ extern "C"
 {
 #endif
 
+/* macro handling X,Y coordinates */
+#define rl2GetPoint(xy,v,x,y)	\
+				{*x = xy[(v) * 2]; \
+				 *y = xy[(v) * 2 + 1];}
+#define rl2SetPoint(xy,v,x,y)	\
+				{xy[(v) * 2] = x; \
+				 xy[(v) * 2 + 1] = y;}
+
 /* internal binary format markers */
 #define RL2_ODD_BLOCK_START			0xfa
 #define RL2_ODD_BLOCK_END			0xf0
@@ -122,6 +130,10 @@ extern "C"
 #define RL2_NO_DATA_END				0x23
 #define RL2_SAMPLE_START			0x06
 #define RL2_SAMPLE_END				0x26
+#define RL2_CHARLS_START			0x35
+#define RL2_CHARLS_END				0x79
+#define RL2_FONT_START				0xa7
+#define RL2_FONT_END				0x7b
 
 /* internal ColorSpace forced conversions */
 #define RL2_CONVERT_NO				0x00
@@ -189,9 +201,63 @@ extern "C"
 #define RL2_CONVERT_GRID_DOUBLE_TO_INT32	0x3e
 #define RL2_CONVERT_GRID_DOUBLE_TO_FLOAT	0x3f
 
-/* internal RasterStyle constants */
+/* internal Style Rule constants */
+#define RL2_UNKNOWN_STYLE			0xf0
+#define RL2_VECTOR_STYLE			0xfa
+#define RL2_RASTER_STYLE			0xfb
+
+/* internal Graphic types */
+#define RL2_UNKNOWN_GRAPHIC			0x8a
+#define RL2_EXTERNAL_GRAPHIC			0x8c
+#define RL2_MARK_GRAPHIC			0x8d
+
+/* internal Style Rule comparison Ops */
+#define RL2_COMPARISON_NONE			0xa0
+#define RL2_COMPARISON_EQ			0xa1
+#define RL2_COMPARISON_NE			0xa2
+#define RL2_COMPARISON_LT			0xa3
+#define RL2_COMPARISON_GT			0xa4
+#define RL2_COMPARISON_LE			0xa5
+#define RL2_COMPARISON_GE			0xa6
+#define RL2_COMPARISON_LIKE			0xa7
+#define RL2_COMPARISON_NULL			0xa8
+#define RL2_COMPARISON_BETWEEN			0xa9
+
+/* internal RasterSymbolizer constants */
 #define RL2_BAND_SELECTION_TRIPLE		0xd1
 #define RL2_BAND_SELECTION_MONO			0xd2
+
+/* internal TextSymbolizer constants */
+#define RL2_MAX_FONT_FAMILIES	16
+
+/* internal origin type constants */
+#define RL2_ORIGIN_UNKNOWN		0x4a
+#define RL2_ORIGIN_JPEG			0x4b
+#define RL2_ORIGIN_JPEG2000		0x4c
+#define RL2_ORIGIN_ASCII_GRID	0x4d
+#define RL2_ORIGIN_RAW			0x4e
+#define RL2_ORIGIN_TIFF			0x4f
+
+
+    struct rl2_private_tt_font
+    {
+	char *facename;
+	int is_bold;
+	int is_italic;
+	struct rl2_private_data *container;
+	void *FTface;
+	void *ttf_data;
+	struct rl2_private_tt_font *prev;
+	struct rl2_private_tt_font *next;
+    };
+
+    struct rl2_private_data
+    {
+	int max_threads;
+	void *FTlibrary;
+	struct rl2_private_tt_font *first_font;
+	struct rl2_private_tt_font *last_font;
+    };
 
     typedef union rl2_priv_sample
     {
@@ -247,6 +313,7 @@ extern "C"
 	double vResolution;
 	unsigned char *rasterBuffer;
 	unsigned char *maskBuffer;
+	int alpha_mask;
 	rl2PrivPalettePtr Palette;
 	rl2PrivPixelPtr noData;
     } rl2PrivRaster;
@@ -285,8 +352,23 @@ extern "C"
 	double hResolution;
 	double vResolution;
 	rl2PrivPixelPtr noData;
+	int strictResolution;
+	int mixedResolutions;
+	int sectionPaths;
+	int sectionMD5;
+	int sectionSummary;
     } rl2PrivCoverage;
     typedef rl2PrivCoverage *rl2PrivCoveragePtr;
+
+    typedef struct rl2_priv_vector_layer
+    {
+	char *f_table_name;
+	char *f_geometry_column;
+	unsigned short geometry_type;
+	int srid;
+	unsigned char spatial_index;
+    } rl2PrivVectorLayer;
+    typedef rl2PrivVectorLayer *rl2PrivVectorLayerPtr;
 
     typedef struct rl2_priv_tiff_origin
     {
@@ -528,11 +610,8 @@ extern "C"
     } rl2PrivColorMapInterpolate;
     typedef rl2PrivColorMapInterpolate *rl2PrivColorMapInterpolatePtr;
 
-    typedef struct rl2_priv_raster_style
+    typedef struct rl2_priv_raster_symbolizer
     {
-	char *name;
-	char *title;
-	char *abstract;
 	double opacity;
 	unsigned char contrastEnhancement;
 	double gammaValue;
@@ -542,8 +621,238 @@ extern "C"
 	int shadedRelief;
 	int brightnessOnly;
 	double reliefFactor;
-    } rl2PrivRasterStyle;
-    typedef rl2PrivRasterStyle *rl2PrivRasterStylePtr;
+    } rl2PrivRasterSymbolizer;
+    typedef rl2PrivRasterSymbolizer *rl2PrivRasterSymbolizerPtr;
+
+    typedef struct rl2_priv_color_replacement
+    {
+	int index;
+	unsigned char red;
+	unsigned char green;
+	unsigned char blue;
+	struct rl2_priv_color_replacement *next;
+    } rl2PrivColorReplacement;
+    typedef rl2PrivColorReplacement *rl2PrivColorReplacementPtr;
+
+    typedef struct rl2_priv_external_graphic
+    {
+	char *xlink_href;
+	rl2PrivColorReplacementPtr first;
+	rl2PrivColorReplacementPtr last;
+    } rl2PrivExternalGraphic;
+    typedef rl2PrivExternalGraphic *rl2PrivExternalGraphicPtr;
+
+    typedef struct rl2_priv_mark
+    {
+	unsigned char well_known_type;
+	rl2PrivExternalGraphicPtr external_graphic;
+	struct rl2_priv_stroke *stroke;
+	struct rl2_priv_fill *fill;
+    } rl2PrivMark;
+    typedef rl2PrivMark *rl2PrivMarkPtr;
+
+    typedef struct rl2_priv_graphic_item
+    {
+	unsigned char type;
+	void *item;
+	struct rl2_priv_graphic_item *next;
+    } rl2PrivGraphicItem;
+    typedef rl2PrivGraphicItem *rl2PrivGraphicItemPtr;
+
+    typedef struct rl2_priv_graphic
+    {
+	rl2PrivGraphicItemPtr first;
+	rl2PrivGraphicItemPtr last;
+	double opacity;
+	double size;
+	double rotation;
+	double anchor_point_x;
+	double anchor_point_y;
+	double displacement_x;
+	double displacement_y;
+    } rl2PrivGraphic;
+    typedef rl2PrivGraphic *rl2PrivGraphicPtr;
+
+    typedef struct rl2_priv_stroke
+    {
+	rl2PrivGraphicPtr graphic;
+	unsigned char red;
+	unsigned char green;
+	unsigned char blue;
+	double opacity;
+	double width;
+	unsigned char linejoin;
+	unsigned char linecap;
+	int dash_count;
+	double *dash_list;
+	double dash_offset;
+    } rl2PrivStroke;
+    typedef rl2PrivStroke *rl2PrivStrokePtr;
+
+    typedef struct rl2_priv_fill
+    {
+	rl2PrivGraphicPtr graphic;
+	unsigned char red;
+	unsigned char green;
+	unsigned char blue;
+	double opacity;
+    } rl2PrivFill;
+    typedef rl2PrivFill *rl2PrivFillPtr;
+
+    typedef struct rl2_priv_point_symbolizer
+    {
+	rl2PrivGraphicPtr graphic;
+    } rl2PrivPointSymbolizer;
+    typedef rl2PrivPointSymbolizer *rl2PrivPointSymbolizerPtr;
+
+    typedef struct rl2_priv_line_symbolizer
+    {
+	rl2PrivStrokePtr stroke;
+	double perpendicular_offset;
+    } rl2PrivLineSymbolizer;
+    typedef rl2PrivLineSymbolizer *rl2PrivLineSymbolizerPtr;
+
+    typedef struct rl2_priv_polygon_symbolizer
+    {
+	rl2PrivStrokePtr stroke;
+	rl2PrivFillPtr fill;
+	double displacement_x;
+	double displacement_y;
+	double perpendicular_offset;
+    } rl2PrivPolygonSymbolizer;
+    typedef rl2PrivPolygonSymbolizer *rl2PrivPolygonSymbolizerPtr;
+
+    typedef struct rl2_priv_point_placement
+    {
+	double anchor_point_x;
+	double anchor_point_y;
+	double displacement_x;
+	double displacement_y;
+	double rotation;
+    } rl2PrivPointPlacement;
+    typedef rl2PrivPointPlacement *rl2PrivPointPlacementPtr;
+
+    typedef struct rl2_priv_line_placement
+    {
+	double perpendicular_offset;
+	int is_repeated;
+	double initial_gap;
+	double gap;
+	int is_aligned;
+	int generalize_line;
+    } rl2PrivLinePlacement;
+    typedef rl2PrivLinePlacement *rl2PrivLinePlacementPtr;
+
+    typedef struct rl2_priv_halo
+    {
+	double radius;
+	rl2PrivFillPtr fill;
+    } rl2PrivHalo;
+    typedef rl2PrivHalo *rl2PrivHaloPtr;
+
+    typedef struct rl2_priv_text_symbolizer
+    {
+	char *label;
+	int font_families_count;
+	char *font_families[RL2_MAX_FONT_FAMILIES];
+	unsigned char font_style;
+	unsigned char font_weight;
+	double font_size;
+	unsigned char label_placement_type;
+	void *label_placement;
+	rl2PrivHaloPtr halo;
+	rl2PrivFillPtr fill;
+    } rl2PrivTextSymbolizer;
+    typedef rl2PrivTextSymbolizer *rl2PrivTextSymbolizerPtr;
+
+    typedef struct rl2_priv_vector_symbolizer_item
+    {
+	unsigned char symbolizer_type;
+	void *symbolizer;
+	struct rl2_priv_vector_symbolizer_item *next;
+    } rl2PrivVectorSymbolizerItem;
+    typedef rl2PrivVectorSymbolizerItem *rl2PrivVectorSymbolizerItemPtr;
+
+    typedef struct rl2_priv_vector_symbolizer
+    {
+	rl2PrivVectorSymbolizerItemPtr first;
+	rl2PrivVectorSymbolizerItemPtr last;
+    } rl2PrivVectorSymbolizer;
+    typedef rl2PrivVectorSymbolizer *rl2PrivVectorSymbolizerPtr;
+
+    typedef struct rl2_priv_rule_single_arg
+    {
+	char *value;
+    } rl2PrivRuleSingleArg;
+    typedef rl2PrivRuleSingleArg *rl2PrivRuleSingleArgPtr;
+
+    typedef struct rl2_priv_rule_like_args
+    {
+	char *wild_card;
+	char *single_char;
+	char *escape_char;
+	char *value;
+    } rl2PrivRuleLikeArgs;
+    typedef rl2PrivRuleLikeArgs *rl2PrivRuleLikeArgsPtr;
+
+    typedef struct rl2_priv_rule_between_args
+    {
+	char *lower;
+	char *upper;
+    } rl2PrivRuleBetweenArgs;
+    typedef rl2PrivRuleBetweenArgs *rl2PrivRuleBetweenArgsPtr;
+
+    typedef struct rl2_priv_variant_value
+    {
+	char *column_name;
+	sqlite3_int64 int_value;
+	double dbl_value;
+	char *text_value;
+	unsigned char *blob_value;
+	int bytes;
+	int sqlite3_type;
+    } rl2PrivVariantValue;
+    typedef rl2PrivVariantValue *rl2PrivVariantValuePtr;
+
+    typedef struct rl2_priv_variant_array
+    {
+	int count;
+	rl2PrivVariantValuePtr *array;
+    } rl2PrivVariantArray;
+    typedef rl2PrivVariantArray *rl2PrivVariantArrayPtr;
+
+    typedef struct rl2_priv_style_rule
+    {
+	int else_rule;
+	double min_scale;
+	double max_scale;
+	unsigned char comparison_op;
+	void *comparison_args;
+	char *column_name;
+	unsigned char style_type;
+	void *style;
+	struct rl2_priv_style_rule *next;
+    } rl2PrivStyleRule;
+    typedef rl2PrivStyleRule *rl2PrivStyleRulePtr;
+
+    typedef struct rl2_priv_coverage_style
+    {
+	char *name;
+	rl2PrivStyleRulePtr first_rule;
+	rl2PrivStyleRulePtr last_rule;
+    } rl2PrivCoverageStyle;
+    typedef rl2PrivCoverageStyle *rl2PrivCoverageStylePtr;
+
+    typedef struct rl2_priv_feature_type_style
+    {
+	char *name;
+	rl2PrivStyleRulePtr first_rule;
+	rl2PrivStyleRulePtr last_rule;
+	rl2PrivStyleRulePtr else_rule;
+	int columns_count;
+	char **column_names;
+    } rl2PrivFeatureTypeStyle;
+    typedef rl2PrivFeatureTypeStyle *rl2PrivFeatureTypeStylePtr;
 
     typedef struct rl2_priv_child_style
     {
@@ -558,8 +867,6 @@ extern "C"
     typedef struct rl2_priv_group_style
     {
 	char *name;
-	char *title;
-	char *abstract;
 	rl2PrivChildStylePtr first;
 	rl2PrivChildStylePtr last;
 	int valid;
@@ -571,8 +878,8 @@ extern "C"
 	int layer_type;
 	char *layer_name;
 	rl2CoveragePtr coverage;
-	char *style_name;
-	rl2PrivRasterStylePtr raster_symbolizer;
+	sqlite3_int64 raster_style_id;
+	rl2PrivRasterSymbolizerPtr raster_symbolizer;
 	rl2PrivRasterStatisticsPtr raster_stats;
     } rl2PrivGroupRendererLayer;
     typedef rl2PrivGroupRendererLayer *rl2PrivGroupRendererLayerPtr;
@@ -687,6 +994,10 @@ extern "C"
 	unsigned char *rgba_tile;
 	rl2CoveragePtr coverage;
 	const char *sect_name;
+	int mixedResolutions;
+	int sectionPaths;
+	int sectionMD5;
+	int sectionSummary;
 	double x;
 	double y;
 	int width;
@@ -710,6 +1021,7 @@ extern "C"
 	sqlite3_stmt *stmt_levl;
 	sqlite3_stmt *stmt_tils;
 	sqlite3_stmt *stmt_data;
+	char *xml_summary;
     } InsertWms;
     typedef InsertWms *InsertWmsPtr;
 
@@ -725,6 +1037,7 @@ extern "C"
     {
 	/* helper struct for passing arguments to aux_render_image */
 	sqlite3 *sqlite;
+	int max_threads;
 	int width;
 	int height;
 	int base_width;
@@ -734,6 +1047,10 @@ extern "C"
 	double maxx;
 	double maxy;
 	int srid;
+	int by_section;
+	sqlite3_int64 section_id;
+	double x_res;
+	double y_res;
 	double xx_res;
 	double yy_res;
 	int transparent;
@@ -744,7 +1061,7 @@ extern "C"
 	unsigned char bg_green;
 	unsigned char bg_blue;
 	rl2CoveragePtr coverage;
-	rl2RasterStylePtr symbolizer;
+	rl2RasterSymbolizerPtr symbolizer;
 	rl2RasterStatisticsPtr stats;
 	unsigned char *outbuf;
 	rl2PalettePtr palette;
@@ -772,6 +1089,150 @@ extern "C"
 	int reaspect;
     };
 
+    typedef struct rl2_point
+    {
+	double x;
+	double y;
+	struct rl2_point *next;
+    } rl2Point;
+    typedef rl2Point *rl2PointPtr;
+
+    typedef struct rl2_linestring
+    {
+	int points;
+	double *coords;
+	double minx;
+	double miny;
+	double maxx;
+	double maxy;
+	struct rl2_linestring *next;
+    } rl2Linestring;
+    typedef rl2Linestring *rl2LinestringPtr;
+
+    typedef struct rl2_ring
+    {
+	int points;
+	double *coords;
+	double minx;
+	double miny;
+	double maxx;
+	double maxy;
+	struct rl2_ring *next;
+    } rl2Ring;
+    typedef rl2Ring *rl2RingPtr;
+
+    typedef struct rl2_polygon
+    {
+	rl2RingPtr exterior;
+	int num_interiors;
+	rl2RingPtr interiors;
+	struct rl2_polygon *next;
+    } rl2Polygon;
+    typedef rl2Polygon *rl2PolygonPtr;
+
+    typedef struct rl2_geometry
+    {
+	rl2PointPtr first_point;
+	rl2PointPtr last_point;
+	rl2LinestringPtr first_linestring;
+	rl2LinestringPtr last_linestring;
+	rl2PolygonPtr first_polygon;
+	rl2PolygonPtr last_polygon;
+    } rl2Geometry;
+    typedef rl2Geometry *rl2GeometryPtr;
+
+    typedef struct rl2_aux_importer_tile
+    {
+	struct rl2_aux_importer *mother;
+	void *opaque_thread_id;
+	rl2RasterPtr raster;
+	unsigned int row;
+	unsigned int col;
+	double minx;
+	double miny;
+	double maxx;
+	double maxy;
+	int retcode;
+	unsigned char *blob_odd;
+	unsigned char *blob_even;
+	int blob_odd_sz;
+	int blob_even_sz;
+	struct rl2_aux_importer_tile *next;
+    } rl2AuxImporterTile;
+    typedef rl2AuxImporterTile *rl2AuxImporterTilePtr;
+
+    typedef struct rl2_aux_importer
+    {
+	rl2PrivCoveragePtr coverage;
+	int srid;
+	double maxx;
+	double miny;
+	unsigned int tile_w;
+	unsigned int tile_h;
+	double res_x;
+	double res_y;
+	unsigned char origin_type;
+	const void *origin;
+	unsigned char forced_conversion;
+	int verbose;
+	unsigned char compression;
+	int quality;
+	rl2AuxImporterTilePtr first;
+	rl2AuxImporterTilePtr last;
+    } rl2AuxImporter;
+    typedef rl2AuxImporter *rl2AuxImporterPtr;
+
+    typedef struct rl2_aux_decoder
+    {
+	void *opaque_thread_id;
+	sqlite3_int64 tile_id;
+	unsigned char *blob_odd;
+	unsigned char *blob_even;
+	int blob_odd_sz;
+	int blob_even_sz;
+	unsigned char *outbuf;
+	unsigned int width;
+	unsigned int height;
+	unsigned char sample_type;
+	unsigned char num_bands;
+	unsigned char auto_ndvi;
+	unsigned char red_band_index;
+	unsigned char nir_band_index;
+	double x_res;
+	double y_res;
+	int scale;
+	double minx;
+	double maxy;
+	double tile_minx;
+	double tile_maxy;
+	rl2PrivPixelPtr no_data;
+	rl2PrivRasterSymbolizerPtr style;
+	rl2PrivRasterStatisticsPtr stats;
+	rl2PrivRasterPtr raster;
+	rl2PrivPalettePtr palette;
+	int retcode;
+    } rl2AuxDecoder;
+    typedef rl2AuxDecoder *rl2AuxDecoderPtr;
+
+    typedef struct rl2_aux_shadower
+    {
+	void *opaque_thread_id;
+	unsigned int width;
+	unsigned int height;
+	double relief_factor;
+	double scale_factor;
+	double altRadians;
+	double azRadians;
+	void *rawbuf;
+	unsigned short start_row;
+	unsigned short row_increment;
+	unsigned short row_stride;
+	unsigned char sample_type;
+	rl2PrivPixelPtr no_data;
+	float *sr_mask;
+    } rl2AuxShadower;
+    typedef rl2AuxShadower *rl2AuxShadowerPtr;
+
     RL2_PRIVATE int
 	rl2_blob_from_file (const char *path, unsigned char **blob,
 			    int *blob_size);
@@ -795,10 +1256,20 @@ extern "C"
 				unsigned char **mask, int *mask_sz);
 
     RL2_PRIVATE int
-	rl2_data_to_png (const unsigned char *pixels, const unsigned char *mask,
-			 double opacity, rl2PalettePtr plt,
-			 unsigned int width, unsigned int height,
-			 unsigned char sample_type, unsigned char pixel_type,
+	rl2_decode_jpeg2000_scaled (int scale, const unsigned char *jpeg2000,
+				    int jpeg2000_sz, unsigned int *width,
+				    unsigned int *height,
+				    unsigned char sample_type,
+				    unsigned char pixel_type,
+				    unsigned char num_bands,
+				    unsigned char **pixels, int *pixels_sz);
+
+    RL2_PRIVATE int
+	rl2_data_to_png (const unsigned char *pixels,
+			 const unsigned char *mask, double opacity,
+			 rl2PalettePtr plt, unsigned int width,
+			 unsigned int height, unsigned char sample_type,
+			 unsigned char pixel_type, unsigned char num_bands,
 			 unsigned char **compr_data, int *compressed_size);
 
     RL2_PRIVATE int
@@ -807,7 +1278,21 @@ extern "C"
 			unsigned char *sample_type, unsigned char *pixel_type,
 			unsigned char *num_bands, unsigned char **pixels,
 			int *pixels_sz, unsigned char **mask, int *mask_sz,
-			rl2PalettePtr * palette);
+			rl2PalettePtr * palette, int alpha_mask);
+
+    RL2_PRIVATE int
+	rl2_data_to_charls (const unsigned char *pixels, unsigned int width,
+			    unsigned int height, unsigned char sample_type,
+			    unsigned char pixel_type, unsigned char num_bands,
+			    unsigned char **compr_data, int *compressed_size);
+
+    RL2_PRIVATE int
+	rl2_decode_charls (const unsigned char *charls, int charls_sz,
+			   unsigned int *width, unsigned int *height,
+			   unsigned char *sample_type,
+			   unsigned char *pixel_type,
+			   unsigned char *num_bands, unsigned char **pixels,
+			   int *pixels_sz);
 
     RL2_PRIVATE int
 	rl2_data_to_gif (const unsigned char *pixels,
@@ -859,34 +1344,43 @@ extern "C"
 				      unsigned char num_bands,
 				      rl2PixelPtr no_data);
 
-    RL2_PRIVATE int load_dbms_tiles (sqlite3 * handle,
-				     sqlite3_stmt * stmt_tiles,
-				     sqlite3_stmt * stmt_data,
-				     unsigned char *outbuf,
-				     unsigned int width,
-				     unsigned int height,
-				     unsigned char sample_type,
-				     unsigned char num_bands, double x_res,
-				     double y_res, double minx, double miny,
-				     double maxx, double maxy, int level,
-				     int scale, rl2PalettePtr palette,
-				     rl2PixelPtr no_data,
-				     rl2RasterStylePtr style,
-				     rl2RasterStatisticsPtr stats);
+    RL2_PRIVATE int rl2_load_dbms_tiles (sqlite3 * handle, int max_threads,
+					 sqlite3_stmt * stmt_tiles,
+					 sqlite3_stmt * stmt_data,
+					 unsigned char *outbuf,
+					 unsigned int width,
+					 unsigned int height,
+					 unsigned char sample_type,
+					 unsigned char num_bands,
+					 unsigned char auto_ndvi,
+					 unsigned char red_band_index,
+					 unsigned char nir_band_index,
+					 double x_res, double y_res,
+					 double minx, double miny,
+					 double maxx, double maxy, int level,
+					 int scale, rl2PalettePtr palette,
+					 rl2PixelPtr no_data,
+					 rl2RasterSymbolizerPtr style,
+					 rl2RasterStatisticsPtr stats);
 
-    RL2_PRIVATE int load_dbms_tiles_section (sqlite3 * handle,
-					     sqlite3_int64 section_id,
-					     sqlite3_stmt * stmt_tiles,
-					     sqlite3_stmt * stmt_data,
-					     unsigned char *outbuf,
-					     unsigned int width,
-					     unsigned int height,
-					     unsigned char sample_type,
-					     unsigned char num_bands,
-					     double x_res, double y_res,
-					     double minx, double maxy,
-					     int scale, rl2PalettePtr palette,
-					     rl2PixelPtr no_data);
+    RL2_PRIVATE int rl2_load_dbms_tiles_section (sqlite3 * handle,
+						 int max_threads,
+						 sqlite3_int64 section_id,
+						 sqlite3_stmt * stmt_tiles,
+						 sqlite3_stmt * stmt_data,
+						 unsigned char *outbuf,
+						 unsigned int width,
+						 unsigned int height,
+						 unsigned char sample_type,
+						 unsigned char num_bands,
+						 unsigned char auto_ndvi,
+						 unsigned char red_band_index,
+						 unsigned char nir_band_index,
+						 double x_res, double y_res,
+						 double minx, double maxy,
+						 int scale,
+						 rl2PalettePtr palette,
+						 rl2PixelPtr no_data);
 
     RL2_PRIVATE void
 	compute_aggregate_sq_diff (rl2RasterStatisticsPtr aggreg_stats);
@@ -915,45 +1409,35 @@ extern "C"
     RL2_PRIVATE void add_retry (WmsRetryListPtr lst, double minx, double miny,
 				double maxx, double maxy);
 
-    RL2_PRIVATE gaiaGeomCollPtr build_extent (int srid, double minx,
-					      double miny, double maxx,
-					      double maxy);
+    RL2_PRIVATE int rl2_do_insert_levels (sqlite3 * handle, double base_res_x,
+					  double base_res_y, double factor,
+					  unsigned char sample_type,
+					  sqlite3_stmt * stmt_levl);
 
-    RL2_PRIVATE int do_insert_wms_tile (sqlite3 * handle,
-					unsigned char *blob_odd,
-					int blob_odd_sz,
-					unsigned char *blob_even,
-					int blob_even_sz,
-					sqlite3_int64 section_id, int srid,
-					double res_x, double res_y,
-					unsigned int tile_w,
-					unsigned int tile_h, double miny,
-					double maxx, double tile_minx,
-					double tile_miny, double tile_maxx,
-					double tile_maxy,
-					rl2PalettePtr aux_palette,
-					rl2PixelPtr no_data,
-					sqlite3_stmt * stmt_tils,
-					sqlite3_stmt * stmt_data,
-					rl2RasterStatisticsPtr section_stats);
+    RL2_PRIVATE int rl2_do_insert_section_levels (sqlite3 * handle,
+						  sqlite3_int64 section_id,
+						  double base_res_x,
+						  double base_res_y,
+						  double factor,
+						  unsigned char sample_type,
+						  sqlite3_stmt * stmt_levl);
 
-    RL2_PRIVATE int do_insert_levels (sqlite3 * handle, double base_res_x,
-				      double base_res_y, double factor,
-				      unsigned char sample_type,
-				      sqlite3_stmt * stmt_levl);
+    RL2_PRIVATE int rl2_do_insert_stats (sqlite3 * handle,
+					 rl2RasterStatisticsPtr section_stats,
+					 sqlite3_int64 section_id,
+					 sqlite3_stmt * stmt_upd_sect);
 
-    RL2_PRIVATE int do_insert_stats (sqlite3 * handle,
-				     rl2RasterStatisticsPtr section_stats,
-				     sqlite3_int64 section_id,
-				     sqlite3_stmt * stmt_upd_sect);
-
-    RL2_PRIVATE int do_insert_section (sqlite3 * handle, const char *src_path,
-				       const char *section, int srid,
-				       unsigned int width,
-				       unsigned int height, double minx,
-				       double miny, double maxx, double maxy,
-				       sqlite3_stmt * stmt_sect,
-				       sqlite3_int64 * id);
+    RL2_PRIVATE int rl2_do_insert_section (sqlite3 * handle,
+					   const char *src_path,
+					   const char *section, int srid,
+					   unsigned int width,
+					   unsigned int height, double minx,
+					   double miny, double maxx,
+					   double maxy, char *xml_summary,
+					   int section_paths, int section_md5,
+					   int section_summary,
+					   sqlite3_stmt * stmt_sect,
+					   sqlite3_int64 * id);
 
     RL2_PRIVATE char *get_section_name (const char *src_path);
 
@@ -964,8 +1448,6 @@ extern "C"
 				     rl2RasterStatisticsPtr * section_stats,
 				     sqlite3_int64 * section_id);
 
-    RL2_PRIVATE int is_point (gaiaGeomCollPtr geom);
-
     RL2_PRIVATE ResolutionsListPtr alloc_resolutions_list ();
 
     RL2_PRIVATE void destroy_resolutions_list (ResolutionsListPtr list);
@@ -974,12 +1456,16 @@ extern "C"
 					  int scale, double x_res,
 					  double y_res);
 
-    RL2_PRIVATE int find_best_resolution_level (sqlite3 * handle,
-						const char *coverage,
-						double x_res, double y_res,
-						int *level_id, int *scale,
-						int *real_scale, double *xx_res,
-						double *yy_res);
+    RL2_PRIVATE int rl2_find_best_resolution_level (sqlite3 * handle,
+						    const char *coverage,
+						    int by_section,
+						    sqlite3_int64 section_id,
+						    double x_res,
+						    double y_res,
+						    int *level_id, int *scale,
+						    int *real_scale,
+						    double *xx_res,
+						    double *yy_res);
 
     RL2_PRIVATE unsigned char get_palette_format (rl2PrivPalettePtr plt);
 
@@ -1025,13 +1511,17 @@ extern "C"
 
     RL2_PRIVATE int get_payload_from_palette_transparent (unsigned int width,
 							  unsigned int height,
-							  unsigned char *pixels,
-							  rl2PalettePtr palette,
-							  unsigned char format,
-							  int quality,
-							  unsigned char **image,
+							  unsigned char
+							  *pixels,
+							  rl2PalettePtr
+							  palette,
+							  unsigned char
+							  format, int quality,
+							  unsigned char
+							  **image,
 							  int *image_sz,
-							  unsigned char bg_red,
+							  unsigned char
+							  bg_red,
 							  unsigned char
 							  bg_green,
 							  unsigned char
@@ -1041,9 +1531,10 @@ extern "C"
     RL2_PRIVATE int get_payload_from_grayscale_opaque (unsigned int width,
 						       unsigned int height,
 						       sqlite3 * handle,
-						       double minx, double miny,
-						       double maxx, double maxy,
-						       int srid,
+						       double minx,
+						       double miny,
+						       double maxx,
+						       double maxy, int srid,
 						       unsigned char *pixels,
 						       unsigned char format,
 						       int quality,
@@ -1057,7 +1548,8 @@ extern "C"
 							    unsigned char
 							    *pixels,
 							    unsigned char
-							    format, int quality,
+							    format,
+							    int quality,
 							    unsigned char
 							    **image,
 							    int *image_sz,
@@ -1067,9 +1559,10 @@ extern "C"
 
     RL2_PRIVATE int get_payload_from_rgb_opaque (unsigned int width,
 						 unsigned int height,
-						 sqlite3 * handle, double minx,
-						 double miny, double maxx,
-						 double maxy, int srid,
+						 sqlite3 * handle,
+						 double minx, double miny,
+						 double maxx, double maxy,
+						 int srid,
 						 unsigned char *pixels,
 						 unsigned char format,
 						 int quality,
@@ -1102,7 +1595,8 @@ extern "C"
 
     RL2_PRIVATE int get_rgba_from_monochrome_transparent (unsigned int width,
 							  unsigned int height,
-							  unsigned char *pixels,
+							  unsigned char
+							  *pixels,
 							  unsigned char *rgba);
 
     RL2_PRIVATE int get_rgba_from_palette_mask (unsigned int base_width,
@@ -1142,7 +1636,8 @@ extern "C"
 
     RL2_PRIVATE int get_rgba_from_grayscale_transparent (unsigned int width,
 							 unsigned int height,
-							 unsigned char *pixels,
+							 unsigned char
+							 *pixels,
 							 unsigned char *rgba,
 							 unsigned char bg_gray);
 
@@ -1174,12 +1669,22 @@ extern "C"
 						 rl2PrivPixelPtr no_made,
 						 unsigned char *rgba);
 
+    RL2_PRIVATE int get_rgba_from_multiband_mask (unsigned int width,
+						  unsigned int height,
+						  unsigned char sample_type,
+						  unsigned char num_bands,
+						  void *pixels,
+						  unsigned char *mask,
+						  rl2PrivPixelPtr no_made,
+						  unsigned char *rgba);
+
     RL2_PRIVATE int get_payload_from_gray_rgba_opaque (unsigned int width,
 						       unsigned int height,
 						       sqlite3 * handle,
-						       double minx, double miny,
-						       double maxx, double maxy,
-						       int srid,
+						       double minx,
+						       double miny,
+						       double maxx,
+						       double maxy, int srid,
 						       unsigned char *rgb,
 						       unsigned char format,
 						       int quality,
@@ -1190,11 +1695,13 @@ extern "C"
 							    width,
 							    unsigned int
 							    height,
-							    unsigned char *rgb,
+							    unsigned char
+							    *rgb,
 							    unsigned char
 							    *alpha,
 							    unsigned char
-							    format, int quality,
+							    format,
+							    int quality,
 							    unsigned char
 							    **image,
 							    int *image_sz,
@@ -1203,9 +1710,10 @@ extern "C"
     RL2_PRIVATE int get_payload_from_rgb_rgba_opaque (unsigned int width,
 						      unsigned int height,
 						      sqlite3 * handle,
-						      double minx, double miny,
-						      double maxx, double maxy,
-						      int srid,
+						      double minx,
+						      double miny,
+						      double maxx,
+						      double maxy, int srid,
 						      unsigned char *rgb,
 						      unsigned char format,
 						      int quality,
@@ -1216,17 +1724,22 @@ extern "C"
 							   unsigned int
 							   height,
 							   unsigned char *rgb,
-							   unsigned char *alpha,
-							   unsigned char format,
+							   unsigned char
+							   *alpha,
+							   unsigned char
+							   format,
 							   int quality,
 							   unsigned char
 							   **image,
 							   int *image_sz,
-							   double opacity);
+							   double opacity,
+							   int
+							   half_transparent);
 
     RL2_PRIVATE int build_rgb_alpha (unsigned int width,
 				     unsigned int height, unsigned char *rgba,
-				     unsigned char **rgb, unsigned char **alpha,
+				     unsigned char **rgb,
+				     unsigned char **alpha,
 				     unsigned char bg_red,
 				     unsigned char bg_green,
 				     unsigned char bg_blue);
@@ -1255,33 +1768,160 @@ extern "C"
     RL2_PRIVATE int parse_worldfile (FILE * in, double *px, double *py,
 				     double *pres_x, double *pres_y);
 
-    RL2_PRIVATE rl2RasterStylePtr raster_style_from_sld_se_xml (char *name,
-								char *title,
-								char *abstract,
-								unsigned char
-								*xml);
+    RL2_PRIVATE rl2CoverageStylePtr coverage_style_from_xml (char *name,
+							     unsigned char
+							     *xml);
+
+    RL2_PRIVATE rl2FeatureTypeStylePtr feature_type_style_from_xml (char
+								    *name,
+								    unsigned
+								    char *xml);
 
     RL2_PRIVATE rl2GroupStylePtr group_style_from_sld_xml (char *name,
-							   char *title,
-							   char *abstract,
 							   unsigned char *xml);
+
+    RL2_PRIVATE rl2PrivCoverageStylePtr
+	rl2_create_default_coverage_style (void);
+
+    RL2_PRIVATE rl2PrivRasterSymbolizerPtr
+	rl2_create_default_raster_symbolizer (void);
+
+    RL2_PRIVATE rl2PrivVectorSymbolizerPtr
+	rl2_create_default_vector_symbolizer (void);
+
+    RL2_PRIVATE rl2PrivStrokePtr rl2_create_default_stroke (void);
+
+    RL2_PRIVATE rl2PrivFillPtr rl2_create_default_fill (void);
+
+    RL2_PRIVATE rl2PrivColorReplacementPtr
+	rl2_create_default_color_replacement (void);
+
+    RL2_PRIVATE rl2PrivGraphicItemPtr
+	rl2_create_default_external_graphic (void);
+
+    RL2_PRIVATE rl2PrivGraphicItemPtr rl2_create_default_mark (void);
+
+    RL2_PRIVATE rl2PrivGraphicPtr rl2_create_default_graphic (void);
+
+    RL2_PRIVATE rl2PrivPointPlacementPtr
+	rl2_create_default_point_placement (void);
+
+    RL2_PRIVATE rl2PrivLinePlacementPtr
+	rl2_create_default_line_placement (void);
+
+    RL2_PRIVATE rl2PrivHaloPtr rl2_create_default_halo (void);
+
+    RL2_PRIVATE rl2PrivVectorSymbolizerItemPtr
+	rl2_create_default_point_symbolizer (void);
+
+    RL2_PRIVATE rl2PrivVectorSymbolizerItemPtr
+	rl2_create_default_line_symbolizer (void);
+
+    RL2_PRIVATE rl2PrivVectorSymbolizerItemPtr
+	rl2_create_default_polygon_symbolizer (void);
+
+    RL2_PRIVATE rl2PrivVectorSymbolizerItemPtr
+	rl2_create_default_text_symbolizer (void);
+
+    RL2_PRIVATE void rl2_destroy_raster_symbolizer (rl2PrivRasterSymbolizerPtr
+						    symbolizer);
+
+    RL2_PRIVATE void rl2_destroy_vector_symbolizer (rl2PrivVectorSymbolizerPtr
+						    symbolizer);
+
+    RL2_PRIVATE void
+	rl2_destroy_vector_symbolizer_item (rl2PrivVectorSymbolizerItemPtr
+					    item);
+
+    RL2_PRIVATE void rl2_destroy_stroke (rl2PrivStrokePtr stroke);
+
+    RL2_PRIVATE void rl2_destroy_fill (rl2PrivFillPtr fill);
+
+    RL2_PRIVATE void rl2_destroy_color_replacement (rl2PrivColorReplacementPtr
+						    repl);
+
+    RL2_PRIVATE void rl2_destroy_external_graphic (rl2PrivExternalGraphicPtr
+						   ext);
+
+    RL2_PRIVATE void rl2_destroy_mark (rl2PrivMarkPtr mark);
+
+    RL2_PRIVATE void rl2_destroy_graphic_item (rl2PrivGraphicItemPtr item);
+
+    RL2_PRIVATE void rl2_destroy_graphic (rl2PrivGraphicPtr graphic);
+
+    RL2_PRIVATE void rl2_destroy_point_placement (rl2PrivPointPlacementPtr
+						  place);
+
+    RL2_PRIVATE void rl2_destroy_line_placement (rl2PrivLinePlacementPtr place);
+
+    RL2_PRIVATE void rl2_destroy_halo (rl2PrivHaloPtr halo);
+
+    RL2_PRIVATE void rl2_destroy_point_symbolizer (rl2PrivPointSymbolizerPtr
+						   symbolizer);
+
+    RL2_PRIVATE void rl2_destroy_line_symbolizer (rl2PrivLineSymbolizerPtr
+						  symbolizer);
+
+    RL2_PRIVATE void
+	rl2_destroy_polygon_symbolizer (rl2PrivPolygonSymbolizerPtr symbolizer);
+
+    RL2_PRIVATE void rl2_destroy_text_symbolizer (rl2PrivTextSymbolizerPtr
+						  symbolizer);
+
+    RL2_PRIVATE rl2PrivRuleSingleArgPtr
+	rl2_create_default_rule_single_arg (void);
+
+    RL2_PRIVATE rl2PrivRuleLikeArgsPtr rl2_create_default_rule_like_args (void);
+
+    RL2_PRIVATE rl2PrivRuleBetweenArgsPtr
+	rl2_create_default_rule_between_args (void);
+
+    RL2_PRIVATE rl2PrivStyleRulePtr rl2_create_default_style_rule (void);
+
+    RL2_PRIVATE void rl2_destroy_style_rule (rl2PrivStyleRulePtr rule);
+
+    RL2_PRIVATE void rl2_destroy_rule_like_args (rl2PrivRuleLikeArgsPtr like);
+
+    RL2_PRIVATE void rl2_destroy_rule_between_args (rl2PrivRuleBetweenArgsPtr
+						    between);
+
+    RL2_PRIVATE void rl2_destroy_rule_single_arg (rl2PrivRuleSingleArgPtr
+						  single);
 
     RL2_PRIVATE int get_raster_band_histogram (rl2PrivBandStatisticsPtr band,
 					       unsigned char **image,
 					       int *image_sz);
 
-    RL2_PRIVATE int copy_raw_pixels (rl2RasterPtr raster, unsigned char *outbuf,
-				     unsigned int width,
-				     unsigned int height,
-				     unsigned char sample_type,
-				     unsigned char num_bands, double x_res,
-				     double y_res, double minx, double maxy,
-				     double tile_minx, double tile_maxy,
-				     rl2PixelPtr no_data,
-				     rl2RasterStylePtr style,
-				     rl2RasterStatisticsPtr stats);
+    RL2_PRIVATE int rl2_copy_raw_pixels (rl2RasterPtr raster,
+					 unsigned char *outbuf,
+					 unsigned int width,
+					 unsigned int height,
+					 unsigned char sample_type,
+					 unsigned char num_bands,
+					 unsigned char auto_ndvi,
+					 unsigned char red_band_index,
+					 unsigned char nir_band_index,
+					 double x_res, double y_res,
+					 double minx, double maxy,
+					 double tile_minx, double tile_maxy,
+					 rl2PixelPtr no_data,
+					 rl2RasterSymbolizerPtr style,
+					 rl2RasterStatisticsPtr stats);
+
+    RL2_PRIVATE unsigned char *rl2_copy_endian_raw_pixels (const unsigned char
+							   *pixels,
+							   int pixels_sz,
+							   unsigned int width,
+							   unsigned int
+							   height,
+							   unsigned char
+							   sample_type,
+							   unsigned char
+							   num_bands,
+							   int big_endian);
 
     RL2_PRIVATE int rl2_build_shaded_relief_mask (sqlite3 * handle,
+						  int max_threads,
 						  rl2CoveragePtr cvg,
 						  double relief_factor,
 						  double scale_factor,
@@ -1302,21 +1942,183 @@ extern "C"
 					  const char *group_name);
 
     RL2_PRIVATE int rl2_rgba_raster_data (sqlite3 * handle,
-					  const char *coverage_name, void *ctx,
-					  int level, double minx, double miny,
-					  double maxx, double maxy,
-					  rl2PalettePtr palette,
+					  const char *coverage_name,
+					  void *ctx, int level, double minx,
+					  double miny, double maxx,
+					  double maxy, rl2PalettePtr palette,
 					  rl2PixelPtr no_data);
 
     RL2_PRIVATE int rl2_aux_render_image (struct aux_renderer *aux,
 					  unsigned char **ximage,
 					  int *ximage_size);
 
+    RL2_PRIVATE int rl2_aux_default_image (unsigned int width,
+					   unsigned int height,
+					   unsigned char red,
+					   unsigned char green,
+					   unsigned char blue, int format_id,
+					   int transparent, int quality,
+					   unsigned char **ximage,
+					   int *ximage_size);
+
     RL2_PRIVATE void rl2_aux_group_renderer (struct aux_group_renderer *auxgrp);
 
     RL2_PRIVATE double rl2_get_shaded_relief_scale_factor (sqlite3 * handle,
 							   const char
 							   *coverage);
+
+    RL2_PRIVATE void *rl2_CreateMD5Checksum (void);
+
+    RL2_PRIVATE void rl2_FreeMD5Checksum (void *p_md5);
+
+    RL2_PRIVATE void rl2_UpdateMD5Checksum (void *p_md5,
+					    const unsigned char *blob,
+					    int blob_len);
+
+    RL2_PRIVATE char *rl2_FinalizeMD5Checksum (void *p_md5);
+
+    RL2_PRIVATE int rl2_is_mixed_resolutions_coverage (sqlite3 * handle,
+						       const char *coverage);
+
+    RL2_PRIVATE int rl2_has_styled_rgb_colors (rl2RasterSymbolizerPtr style);
+
+    RL2_PRIVATE int rl2_get_raw_raster_data_common (sqlite3 * handle,
+						    int max_threads,
+						    rl2CoveragePtr cvg,
+						    int by_section,
+						    sqlite3_int64 section_id,
+						    unsigned int width,
+						    unsigned int height,
+						    double minx, double miny,
+						    double maxx, double maxy,
+						    double x_res,
+						    double y_res,
+						    unsigned char **buffer,
+						    int *buf_size,
+						    rl2PalettePtr * palette,
+						    unsigned char out_pixel,
+						    rl2PixelPtr bgcolor,
+						    rl2RasterSymbolizerPtr
+						    style,
+						    rl2RasterStatisticsPtr
+						    stats);
+
+    RL2_PRIVATE char *rl2_double_quoted_sql (const char *value);
+
+    RL2_PRIVATE int rl2_parse_point (sqlite3 * sqlite,
+				     const unsigned char *blob, int blob_sz,
+				     double *x, double *y);
+
+    RL2_PRIVATE int rl2_parse_point_generic (sqlite3 * sqlite,
+					     const unsigned char *blob,
+					     int blob_sz, double *x, double *y);
+
+    RL2_PRIVATE int rl2_parse_bbox_srid (sqlite3 * sqlite,
+					 const unsigned char *blob,
+					 int blob_sz, int *srid, double *minx,
+					 double *miny, double *maxx,
+					 double *maxy);
+
+    RL2_PRIVATE int rl2_parse_bbox (sqlite3 * sqlite,
+				    const unsigned char *blob, int blob_sz,
+				    double *minx, double *miny, double *maxx,
+				    double *maxy);
+
+    RL2_PRIVATE int rl2_build_bbox (sqlite3 * sqlite, int srid, double minx,
+				    double miny, double maxx, double maxy,
+				    unsigned char **blob, int *blob_sz);
+
+    RL2_PRIVATE int rl2_delta_encode (unsigned char *buffer, int size,
+				      int distance);
+
+    RL2_PRIVATE int rl2_delta_decode (unsigned char *buffer, int size,
+				      int distance);
+
+    RL2_PRIVATE rl2PrivVariantValuePtr rl2_create_variant_int (const char
+							       *name,
+							       sqlite3_int64
+							       value);
+
+    RL2_PRIVATE rl2PrivVariantValuePtr rl2_create_variant_double (const char
+								  *name,
+								  double value);
+
+    RL2_PRIVATE rl2PrivVariantValuePtr
+	rl2_create_variant_text (const char *name, const char *value,
+				 int bytes);
+
+    RL2_PRIVATE rl2PrivVariantValuePtr
+	rl2_create_variant_blob (const char *name, const unsigned char *value,
+				 int bytes);
+
+    RL2_PRIVATE rl2PrivVariantValuePtr rl2_create_variant_null (const char
+								*name);
+
+    RL2_PRIVATE void rl2_destroy_variant_value (rl2PrivVariantValuePtr value);
+
+    RL2_PRIVATE void rl2_draw_vector_feature (void *ctx, sqlite3 * handle,
+					      const void *priv_data,
+					      rl2VectorSymbolizerPtr
+					      symbolizer, int height,
+					      double minx, double miny,
+					      double maxx, double maxy,
+					      double x_res, double y_res,
+					      rl2GeometryPtr geom,
+					      rl2VariantArrayPtr variant);
+
+    RL2_PRIVATE rl2GeometryPtr
+	rl2_geometry_from_blob (const unsigned char *blob, int blob_sz);
+
+    RL2_PRIVATE rl2GeometryPtr
+	rl2_curve_from_XY (int points, double *x, double *y);
+
+    RL2_PRIVATE void rl2_destroy_geometry (rl2GeometryPtr geom);
+
+    RL2_PRIVATE int rl2_serialize_linestring (rl2LinestringPtr line,
+					      unsigned char **blob,
+					      int *blob_sz);
+
+    RL2_PRIVATE int rl2_serialize_ring (rl2RingPtr ring, unsigned char **blob,
+					int *blob_sz);
+
+    RL2_PRIVATE int rl2_serialize_ring_as_linestring (rl2RingPtr ring,
+						      unsigned char **blob,
+						      int *blob_sz);
+
+    RL2_PRIVATE double rl2_compute_curve_length (rl2GeometryPtr geom);
+
+    RL2_PRIVATE rl2GeometryPtr
+	rl2_curve_substring (sqlite3 * handle, rl2GeometryPtr geom,
+			     double from, double to);
+
+    RL2_PRIVATE rl2GeometryPtr rl2_clone_curve (rl2GeometryPtr in);
+
+    RL2_PRIVATE rl2GeometryPtr rl2_clone_linestring (rl2LinestringPtr in);
+
+    RL2_PRIVATE rl2GeometryPtr
+	rl2_build_circle (double x, double y, double radius);
+
+    RL2_PRIVATE int rl2_load_font_into_dbms (sqlite3 * handle,
+					     unsigned char *blob, int blob_sz);
+
+    RL2_PRIVATE int rl2_get_font_from_dbms (sqlite3 * handle,
+					    const char *facename,
+					    unsigned char **font, int *font_sz);
+
+    RL2_PRIVATE rl2LinestringPtr rl2_linestring_to_image (rl2LinestringPtr line,
+							  int height,
+							  double minx,
+							  double miny,
+							  double x_res,
+							  double y_res);
+
+    RL2_PRIVATE rl2RingPtr rl2_ring_to_image (rl2RingPtr ring, int height,
+					      double minx, double miny,
+					      double x_res, double y_res);
+
+    RL2_PRIVATE void rl2DestroyLinestring (rl2LinestringPtr ptr);
+
+    RL2_PRIVATE void rl2DestroyRing (rl2RingPtr ptr);
 
 #ifdef __cplusplus
 }

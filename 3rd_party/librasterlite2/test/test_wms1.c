@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -156,7 +156,7 @@ test_GetCapabilities_tuscany (rl2WmsCachePtr cache)
 	    }
       }
     count = get_wms_layer_crs_count (layer);
-    if (count != 5)
+    if (count != 8)
       {
 	  fprintf (stderr, "GetWmsLayerCrsCount: unexpected result %d\n",
 		   count);
@@ -222,7 +222,7 @@ test_GetCapabilities_tuscany (rl2WmsCachePtr cache)
 
 /* testing Child Layer */
     count = get_wms_layer_children_count (layer);
-    if (count != 12)
+    if (count != 13)
       {
 	  fprintf (stderr, "GetWmsLayerChildrenCount: unexpected result %d\n",
 		   count);
@@ -273,7 +273,7 @@ test_GetCapabilities_tuscany (rl2WmsCachePtr cache)
 	    }
       }
     count = get_wms_layer_crs_count (child);
-    if (count != 6)
+    if (count != 9)
       {
 	  fprintf (stderr,
 		   "GetWmsLayerCrsCount (Child): unexpected result %d\n",
@@ -281,9 +281,10 @@ test_GetCapabilities_tuscany (rl2WmsCachePtr cache)
 	  return -30;
       }
     str = get_wms_layer_crs (child, 3);
-    if (strcmp (str, "EPSG:4326") != 0)
+    if (strcmp (str, "EPSG:3003") != 0)
       {
-	  fprintf (stderr, "GetWmsLayerCRS (Child): unexpected result \"%s\"\n",
+	  fprintf (stderr,
+		   "GetWmsLayerCRS (Child) #1: unexpected result \"%s\"\n",
 		   str);
 	  return -31;
       }
@@ -712,7 +713,8 @@ test_GetCapabilities_arizona (rl2WmsCachePtr cache)
     str = get_wms_layer_crs (child, 3);
     if (strcmp (str, "EPSG:3857") != 0)
       {
-	  fprintf (stderr, "GetWmsLayerCRS (Child): unexpected result \"%s\"\n",
+	  fprintf (stderr,
+		   "GetWmsLayerCRS (Child) #2: unexpected result \"%s\"\n",
 		   str);
 	  return -131;
       }
@@ -1126,7 +1128,8 @@ test_GetCapabilities_rer (rl2WmsCachePtr cache)
     str = get_wms_layer_crs (child, 3);
     if (strcmp (str, "EPSG:3857") != 0)
       {
-	  fprintf (stderr, "GetWmsLayerCRS (Child): unexpected result \"%s\"\n",
+	  fprintf (stderr,
+		   "GetWmsLayerCRS (Child) #3: unexpected result \"%s\"\n",
 		   str);
 	  return -131;
       }
@@ -1353,6 +1356,8 @@ test_GetFeatureInfo_gml ()
     double my;
     double ratio;
     sqlite3 *sqlite;
+    const unsigned char *blob;
+    int blob_sz;
     gaiaGeomCollPtr geom;
     void *cache = spatialite_alloc_connection ();
 
@@ -1428,11 +1433,18 @@ test_GetFeatureInfo_gml ()
 		   count);
 	  return -206;
       }
-    geom = get_wms_feature_attribute_geometry (ftr, 0);
+    if (get_wms_feature_attribute_blob_geometry (ftr, 0, &blob, &blob_sz) !=
+	RL2_OK)
+      {
+	  fprintf (stderr,
+		   "GetFeatureAttributeValue (GML-Geom): unexpected failure\n");
+	  return -207;
+      }
+    geom = gaiaFromSpatiaLiteBlobWkb (blob, blob_sz);
     if (geom == NULL)
       {
 	  fprintf (stderr,
-		   "GetFeatureAttributeValue (GML-Geom): unexpected NULL\n");
+		   "GetFeatureAttributeValue (GML-Geom): unexpected failure\n");
 	  return -207;
       }
     else if (geom->Srid != 3003)
@@ -1442,6 +1454,7 @@ test_GetFeatureInfo_gml ()
 		   geom->Srid);
 	  return -208;
       }
+    gaiaFreeGeomColl (geom);
     str = get_wms_feature_attribute_name (ftr, 4);
     if (strcmp (str, "CODCOM") != 0)
       {
@@ -1458,8 +1471,8 @@ test_GetFeatureInfo_gml ()
 		   str);
 	  return -210;
       }
-    geom = get_wms_feature_attribute_geometry (ftr, 4);
-    if (geom != NULL)
+    if (get_wms_feature_attribute_blob_geometry (ftr, 4, &blob, &blob_sz) !=
+	RL2_ERROR)
       {
 	  fprintf (stderr,
 		   "GetFeatureAttributeValue (GML-Geom): unexpected result\n");
@@ -1497,7 +1510,8 @@ test_GetFeatureInfo_xml ()
     double my;
     double ratio;
     sqlite3 *sqlite;
-    gaiaGeomCollPtr geom;
+    const unsigned char *blob;
+    int blob_sz;
     void *cache = spatialite_alloc_connection ();
 
     ret =
@@ -1569,8 +1583,8 @@ test_GetFeatureInfo_xml ()
 		   str);
 	  return -306;
       }
-    geom = get_wms_feature_attribute_geometry (ftr, 0);
-    if (geom != NULL)
+    if (get_wms_feature_attribute_blob_geometry (ftr, 0, &blob, &blob_sz) !=
+	RL2_ERROR)
       {
 	  fprintf (stderr,
 		   "GetFeatureAttributeValue (XML-Geom): unexpected value\n");
@@ -1622,6 +1636,14 @@ main (int argc, char *argv[])
 
     if (argc > 1 || argv[0] == NULL)
 	argc = 1;		/* silencing stupid compiler warnings */
+
+    if (getenv ("ENABLE_RL2_WEB_TESTS") == NULL)
+      {
+	  fprintf (stderr, "this testcase has been skipped !!!\n\n"
+		   "you can enable all testcases requiring an Internet connection\n"
+		   "by setting the environment variable \"ENABLE_RL2_WEB_TESTS=1\"\n");
+	  return 0;
+      }
 
 /* creating a WMS-Cache */
     cache = create_wms_cache ();
@@ -1771,7 +1793,7 @@ main (int argc, char *argv[])
 	  return -91;
       }
     val = get_wms_cache_current_size (cache);
-    if (val != 4526)
+    if (val != 3395)
       {
 	  fprintf (stderr, "GetWmsCacheCurrentSize: unexpected result %d\n",
 		   val);
@@ -1797,7 +1819,7 @@ main (int argc, char *argv[])
 	  return -95;
       }
     dblval = get_wms_total_download_size (cache);
-    if (dblval != 50030.00)
+    if (dblval != 57552.00)
       {
 	  fprintf (stderr, "GetWmsTotalDownloadSize: unexpected result %1.2f\n",
 		   dblval);

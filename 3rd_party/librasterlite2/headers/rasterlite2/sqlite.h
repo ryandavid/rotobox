@@ -19,7 +19,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -50,6 +50,11 @@ the terms of any one of the MPL, the GPL or the LGPL.
 extern const sqlite3_api_routines *sqlite3_api;
 #else /* ordinary lib */
 #include <sqlite3.h>
+#endif
+
+#ifndef SQLITE_DETERMINISTIC
+/* probably SQLite < 3.8.3 - attempting to fix */
+#define SQLITE_DETERMINISTIC	SQLITE_UTF8
 #endif
 
 #endif

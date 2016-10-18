@@ -115,6 +115,9 @@ LIBARCHIVE_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/libarchive
 LIBARCHIVE_MAKEFILE=$(LIBARCHIVE_SUBDIR)/Makefile
 LIBARCHIVE_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libarchive.a
 
+FREETYPE_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/freetype
+FREETYPE_MAKEFILE=$(FREETYPE_SUBDIR)/Makefile
+FREETYPE_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libfreetype.a
 
 ########################################
 # TODO: Convert these to libs          #
@@ -155,11 +158,11 @@ clean:
 
 clean-deps: libgeos-clean librtlsdr-clean libusb-clean librasterlite2-clean spatialite-clean \
 			sqlite-clean proj4-clean gpsd-clean libmetar-clean giflib-clean pixman-clean libcairo-clean \
-			libgeotiff-clean libjpeg-clean libpng-clean libtiff-clean curl-clean xz-clean libxml2-clean
+			libgeotiff-clean libjpeg-clean libpng-clean libtiff-clean curl-clean xz-clean libxml2-clean freetype-clean
 
 reset: clean libgeos-reset librtlsdr-reset libusb-reset librasterlite2-reset spatialite-reset libarchive-reset \
 	   sqlite-reset proj4-reset gpsd-reset libmetar-reset giflib-reset pixman-reset libcairo-reset \
-	   libgeotiff-reset libjpeg-reset libpng-reset libtiff-reset curl-reset xz-reset libxml2-reset
+	   libgeotiff-reset libjpeg-reset libpng-reset libtiff-reset curl-reset xz-reset libxml2-reset freetype-reset
 	   rm -rf $(ROTOBOX_3RD_PARTY_BUILD_DIR)/*/
 
 
@@ -274,7 +277,7 @@ gpsd-reset: gpsd-clean
 ########################################
 # libcairo                             #
 ########################################
-libcairo: pixman $(LIBCAIRO_LIB)
+libcairo: pixman freetype $(LIBCAIRO_LIB)
 
 $(LIBCAIRO_LIB): $(LIBCAIRO_MAKEFILE)
 	$(MAKE) -C $(LIBCAIRO_SUBDIR) install
@@ -578,7 +581,7 @@ libmetar-reset: libmetar-clean
 # librasterlite2                       #
 ########################################
 librasterlite2: curl libxml2 spatialite proj4 libpng giflib libwebp \
-				libjpeg libgeotiff xz libcairo $(LIBRASTERLITE2_LIB)
+				libjpeg libgeotiff xz libcairo freetype $(LIBRASTERLITE2_LIB)
 
 $(LIBRASTERLITE2_LIB): $(LIBRASTERLITE2_MAKEFILE)
 	$(MAKE) -C $(LIBRASTERLITE2_SUBDIR) install
@@ -588,7 +591,7 @@ $(LIBRASTERLITE2_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --enable-openjpeg=no --enable-charls=no
 
 librasterlite2-clean:
 ifneq ("$(wildcard $(LIBRASTERLITE2_MAKEFILE))","")
@@ -728,5 +731,30 @@ libarchive-reset: libxml2-clean
 ifneq ("$(wildcard $(LIBARCHIVE_MAKEFILE))","")
 	rm $(LIBARCHIVE_MAKEFILE)
 endif
+
+########################################
+# freetype                             #
+########################################
+freetype: $(FREETYPE_LIB)
+
+$(FREETYPE_LIB): $(FREETYPE_MAKEFILE)
+	$(MAKE) -C $(FREETYPE_SUBDIR) install
+
+$(FREETYPE_MAKEFILE):
+	cd $(FREETYPE_SUBDIR) && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
+	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
+	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
+
+freetype-clean:
+ifneq ("$(wildcard $(FREETYPE_MAKEFILE))","")
+	$(MAKE) -C $(FREETYPE_SUBDIR) clean
+endif
+
+freetype-reset: freetype-clean
+#ifneq ("$(wildcard $(FREETYPE_MAKEFILE))","")
+#	rm $(FREETYPE_MAKEFILE)
+#endif
 
 

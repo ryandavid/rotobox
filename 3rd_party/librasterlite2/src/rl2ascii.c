@@ -20,7 +20,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -259,15 +259,15 @@ rl2_create_ascii_grid_origin (const char *path, int srid,
 {
 /* creating an ASCII Grid Origin */
     FILE *in;
-    unsigned int width;
-    unsigned int height;
-    double minx;
-    double miny;
-    double maxx;
-    double maxy;
-    double xres;
-    double yres;
-    double no_data;
+    unsigned int width = 0;
+    unsigned int height = 0;
+    double minx = 0.0;
+    double miny = 0.0;
+    double maxx = 0.0;
+    double maxy = 0.0;
+    double xres = 0.0;
+    double yres = 0.0;
+    double no_data = 0.0;
     char buf[1024];
     char *p_out = buf;
     unsigned int line_no = 0;
@@ -320,8 +320,8 @@ rl2_create_ascii_grid_origin (const char *path, int srid,
       }
 
     ascii =
-	alloc_ascii_origin (path, srid, sample_type, width, height, minx, miny,
-			    maxx, maxy, xres, yres, no_data);
+	alloc_ascii_origin (path, srid, sample_type, width, height, minx,
+			    miny, maxx, maxy, xres, yres, no_data);
     if (ascii == NULL)
 	goto error;
 
@@ -571,7 +571,8 @@ rl2_get_ascii_grid_origin_type (rl2AsciiGridOriginPtr ascii,
 
 RL2_DECLARE int
 rl2_eval_ascii_grid_origin_compatibility (rl2CoveragePtr cvg,
-					  rl2AsciiGridOriginPtr ascii)
+					  rl2AsciiGridOriginPtr ascii,
+					  int verbose)
 {
 /* testing if a Coverage and an ASCII Grid origin are mutually compatible */
     unsigned char sample_type;
@@ -590,28 +591,52 @@ rl2_eval_ascii_grid_origin_compatibility (rl2CoveragePtr cvg,
 	return RL2_ERROR;
 
     if (coverage->sampleType != sample_type)
-	return RL2_FALSE;
+      {
+	  if (verbose)
+	      fprintf (stderr, "Mismatching SampleType !!!\n");
+	  return RL2_FALSE;
+      }
     if (coverage->pixelType != pixel_type)
-	return RL2_FALSE;
+      {
+	  if (verbose)
+	      fprintf (stderr, "Mismatching PixelType !!!\n");
+	  return RL2_FALSE;
+      }
     if (coverage->nBands != num_bands)
-	return RL2_FALSE;
+      {
+	  if (verbose)
+	      fprintf (stderr, "Mismatching Number of Bands !!!\n");
+	  return RL2_FALSE;
+      }
 
 /* checking for resolution compatibility */
     if (rl2_get_ascii_grid_origin_srid (ascii, &srid) != RL2_OK)
 	return RL2_FALSE;
     if (coverage->Srid != srid)
-	return RL2_FALSE;
-    if (rl2_get_ascii_grid_origin_resolution (ascii, &hResolution, &vResolution)
-	!= RL2_OK)
+      {
+	  if (verbose)
+	      fprintf (stderr, "Mismatching SRID !!!\n");
+	  return RL2_FALSE;
+      }
+    if (rl2_get_ascii_grid_origin_resolution
+	(ascii, &hResolution, &vResolution) != RL2_OK)
 	return RL2_FALSE;
     confidence = coverage->hResolution / 100.0;
     if (hResolution < (coverage->hResolution - confidence)
 	|| hResolution > (coverage->hResolution + confidence))
-	return RL2_FALSE;
+      {
+	  if (verbose)
+	      fprintf (stderr, "Mismatching Horizontal Resolution !!!\n");
+	  return RL2_FALSE;
+      }
     confidence = coverage->vResolution / 100.0;
     if (vResolution < (coverage->vResolution - confidence)
 	|| vResolution > (coverage->vResolution + confidence))
-	return RL2_FALSE;
+      {
+	  if (verbose)
+	      fprintf (stderr, "Mismatching Vertical Resolution !!!\n");
+	  return RL2_FALSE;
+      }
     return RL2_TRUE;
 }
 
@@ -727,8 +752,8 @@ read_ascii_uint16 (rl2PrivAsciiOriginPtr origin, unsigned int width,
 	       x++, col++)
 	    {
 		unsigned short uint16;
-		if (fread (&uint16, sizeof (unsigned short), 1, origin->tmp) <=
-		    0)
+		if (fread (&uint16, sizeof (unsigned short), 1, origin->tmp)
+		    <= 0)
 		    return 0;
 		*p_out++ = uint16;
 	    }
@@ -976,7 +1001,7 @@ RL2_DECLARE rl2RasterPtr
 rl2_get_tile_from_ascii_grid_origin (rl2CoveragePtr cvg,
 				     rl2AsciiGridOriginPtr ascii,
 				     unsigned int startRow,
-				     unsigned int startCol)
+				     unsigned int startCol, int verbose)
 {
 /* attempting to create a Coverage-tile from an ASCII Grid origin */
     unsigned int x;
@@ -992,7 +1017,8 @@ rl2_get_tile_from_ascii_grid_origin (rl2CoveragePtr cvg,
 
     if (coverage == NULL || origin == NULL)
 	return NULL;
-    if (rl2_eval_ascii_grid_origin_compatibility (cvg, ascii) != RL2_TRUE)
+    if (rl2_eval_ascii_grid_origin_compatibility (cvg, ascii, verbose) !=
+	RL2_TRUE)
 	return NULL;
     if (origin->tmp == NULL)
 	return NULL;
@@ -1046,8 +1072,8 @@ rl2_get_tile_from_ascii_grid_origin (rl2CoveragePtr cvg,
       }
     raster =
 	rl2_create_raster (coverage->tileWidth, coverage->tileHeight,
-			   coverage->sampleType, RL2_PIXEL_DATAGRID, 1, pixels,
-			   pixels_sz, NULL, mask, mask_size, NULL);
+			   coverage->sampleType, RL2_PIXEL_DATAGRID, 1,
+			   pixels, pixels_sz, NULL, mask, mask_size, NULL);
     if (raster == NULL)
 	goto error;
     return raster;
@@ -1137,6 +1163,7 @@ rl2_create_ascii_grid_destination (const char *path, unsigned int width,
     if (pixels_size != (int) (width * height * pix_sz))
 	return NULL;
 
+/* creating the output File */
     out = fopen (path, "w");
     if (out == NULL)
       {
@@ -1150,10 +1177,6 @@ rl2_create_ascii_grid_destination (const char *path, unsigned int width,
     if (ascii == NULL)
 	goto error;
 
-/* creating the output File */
-    out = fopen (path, "wb");
-    if (out == NULL)
-	goto error;
     ascii->out = out;
     ascii->pixels = pixels;
     ascii->sampleType = sample_type;
@@ -1299,15 +1322,15 @@ rl2_write_ascii_grid_scanline (rl2AsciiGridDestinationPtr ascii,
 			       unsigned int *line_no)
 {
 /* attempting to write a scanline into an ASCII Grid */
-    char *p8;
-    unsigned char *pu8;
-    short *p16;
-    unsigned short *pu16;
-    int *p32;
-    unsigned int *pu32;
-    float *pflt;
-    double *pdbl;
-    double cell_value;
+    char *p8 = NULL;
+    unsigned char *pu8 = NULL;
+    short *p16 = NULL;
+    unsigned short *pu16 = NULL;
+    int *p32 = NULL;
+    unsigned int *pu32 = NULL;
+    float *pflt = NULL;
+    double *pdbl = NULL;
+    double cell_value = 0.0;
     char *pxl;
     unsigned int x;
     rl2PrivAsciiDestinationPtr dst = (rl2PrivAsciiDestinationPtr) ascii;
@@ -1395,4 +1418,144 @@ rl2_write_ascii_grid_scanline (rl2AsciiGridDestinationPtr ascii,
     dst->nextLineNo += 1;
     *line_no = dst->nextLineNo;
     return RL2_OK;
+}
+
+RL2_DECLARE char *
+rl2_build_ascii_xml_summary (rl2AsciiGridOriginPtr ascii)
+{
+/* attempting to build an XML Summary from an ASCII Grid */
+    char *xml;
+    char *prev;
+    int len;
+    rl2PrivAsciiOriginPtr org = (rl2PrivAsciiOriginPtr) ascii;
+    if (org == NULL)
+	return NULL;
+
+    xml = sqlite3_mprintf ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<ImportedRaster>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RasterFormat>ASCII Grid</RasterFormat>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RasterWidth>%u</RasterWidth>", prev, org->width);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf ("%s<RasterHeight>%u</RasterHeight>", prev,
+			 org->height);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RowsPerStrip>1</RowsPerStrip>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf ("%s<BitsPerSample>unspecified</BitsPerSample>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<SamplesPerPixel>1</SamplesPerPixel>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf
+	("%s<PhotometricInterpretation>min-is-black</PhotometricInterpretation>",
+	 prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<Compression>none</Compression>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<SampleFormat>unspecified</SampleFormat>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf
+	("%s<PlanarConfiguration>single Raster plane</PlanarConfiguration>",
+	 prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf ("%s<NoDataPixel>%1.8f</NoDataPixel>", prev,
+			 org->noData);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<GeoReferencing>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<SpatialReferenceSystem>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<SRID>unspecified</SRID>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<RefSysName>undeclared</RefSysName>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s</SpatialReferenceSystem>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<SpatialResolution>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf
+	("%s<HorizontalResolution>%1.10f</HorizontalResolution>", prev,
+	 org->hResolution);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf
+	("%s<VerticalResolution>%1.10f</VerticalResolution>", prev,
+	 org->vResolution);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s</SpatialResolution>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<BoundingBox>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<MinX>%1.10f</MinX>", prev, org->minX);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<MinY>%1.10f</MinY>", prev, org->minY);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<MaxX>%1.10f</MaxX>", prev, org->maxX);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<MaxY>%1.10f</MaxY>", prev, org->maxY);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s</BoundingBox>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s<Extent>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf ("%s<HorizontalExtent>%1.10f</HorizontalExtent>",
+			 prev, org->maxX - org->minX);
+    sqlite3_free (prev);
+    prev = xml;
+    xml =
+	sqlite3_mprintf ("%s<VerticalExtent>%1.10f</VerticalExtent>",
+			 prev, org->maxY - org->minY);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s</Extent>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s</GeoReferencing>", prev);
+    sqlite3_free (prev);
+    prev = xml;
+    xml = sqlite3_mprintf ("%s</ImportedRaster>", prev);
+    sqlite3_free (prev);
+    len = strlen (xml);
+    prev = xml;
+    xml = malloc (len + 1);
+    strcpy (xml, prev);
+    sqlite3_free (prev);
+    return xml;
 }

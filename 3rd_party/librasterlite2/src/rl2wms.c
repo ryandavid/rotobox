@@ -54,6 +54,7 @@ the terms of any one of the MPL, the GPL or the LGPL.
 
 #include "rasterlite2/rasterlite2.h"
 #include "rasterlite2/rl2wms.h"
+#include "rasterlite2_private.h"
 
 #define WMS_FORMAT_UNKNOWN	0
 #define WMS_FORMAT_GIF		1
@@ -278,7 +279,8 @@ typedef struct wmsFeatureAttributeStruct
 /* a struct wrapping a GML FeatureAtrribute */
     char *name;
     char *value;
-    gaiaGeomCollPtr geometry;
+    unsigned char *blob;
+    int blob_size;
     struct wmsFeatureAttributeStruct *next;
 } wmsFeatureAttribute;
 typedef wmsFeatureAttribute *wmsFeatureAttributePtr;
@@ -536,8 +538,8 @@ wmsCacheUpdate (wmsCachePtr cache)
 	  pos++;
 	  pI = pI->Next;
       }
-    qsort (cache->SortedByUrl, cache->NumCachedItems, sizeof (wmsCachedItemPtr),
-	   compare_url);
+    qsort (cache->SortedByUrl, cache->NumCachedItems,
+	   sizeof (wmsCachedItemPtr), compare_url);
 }
 
 static void
@@ -594,8 +596,8 @@ wmsAddCachedCapabilities (wmsCachePtr cache, const char *url,
 
 
 static void
-wmsAddCachedItem (wmsCachePtr cache, const char *url, const unsigned char *item,
-		  int size, const char *image_format)
+wmsAddCachedItem (wmsCachePtr cache, const char *url,
+		  const unsigned char *item, int size, const char *image_format)
 {
 /* adding a new WMS Cached Item */
     wmsCachedItemPtr ptr;
@@ -1101,8 +1103,8 @@ add_url_argument (wmsTilePatternPtr ptr, const char *pattern)
 }
 
 static void
-parse_pattern_bbox (const char *value, double *minx, double *miny, double *maxx,
-		    double *maxy)
+parse_pattern_bbox (const char *value, double *minx, double *miny,
+		    double *maxx, double *maxy)
 {
 /* parsing a BBOX arg [minx,miny,maxx,maxy] */
     int step = 0;
@@ -1462,7 +1464,8 @@ wmsAllocFeatureAttribute (const char *name, char *value)
     attr->name = malloc (len + 1);
     strcpy (attr->name, name);
     attr->value = value;
-    attr->geometry = NULL;
+    attr->blob = NULL;
+    attr->blob_size = 0;
     attr->next = NULL;
     return attr;
 }
@@ -1477,8 +1480,8 @@ wmsFreeFeatureAttribute (wmsFeatureAttributePtr attr)
 	free (attr->name);
     if (attr->value != NULL)
 	free (attr->value);
-    if (attr->geometry != NULL)
-	gaiaFreeGeomColl (attr->geometry);
+    if (attr->blob != NULL)
+	free (attr->blob);
     free (attr);
 }
 
@@ -2028,11 +2031,11 @@ clean_xml (wmsMemBuffer * in)
 	    {
 		/* masking XML special characters */
 		if (*(p_in + i) == '<')
-		    wmsMemBufferAppend (&outbuf, (const unsigned char *) "&lt;",
-					4);
+		    wmsMemBufferAppend (&outbuf,
+					(const unsigned char *) "&lt;", 4);
 		else if (*(p_in + i) == '>')
-		    wmsMemBufferAppend (&outbuf, (const unsigned char *) "&gt;",
-					4);
+		    wmsMemBufferAppend (&outbuf,
+					(const unsigned char *) "&gt;", 4);
 		else if (*(p_in + i) == '&')
 		    wmsMemBufferAppend (&outbuf,
 					(const unsigned char *) "&amp;", 5);
@@ -2120,11 +2123,11 @@ clean_xml_str (const char *p_in)
 	    {
 		/* masking XML special characters */
 		if (*(p_in + i) == '<')
-		    wmsMemBufferAppend (&outbuf, (const unsigned char *) "&lt;",
-					4);
+		    wmsMemBufferAppend (&outbuf,
+					(const unsigned char *) "&lt;", 4);
 		else if (*(p_in + i) == '>')
-		    wmsMemBufferAppend (&outbuf, (const unsigned char *) "&gt;",
-					4);
+		    wmsMemBufferAppend (&outbuf,
+					(const unsigned char *) "&gt;", 4);
 		else if (*(p_in + i) == '&')
 		    wmsMemBufferAppend (&outbuf,
 					(const unsigned char *) "&amp;", 5);
@@ -2706,8 +2709,8 @@ parse_wms_contact_person (xmlNodePtr node, const char **contact_person,
 				    (const char *) (child_node->content);
 			}
 		  }
-		if (strcmp ((const char *) (cur_node->name), "ContactPerson") ==
-		    0)
+		if (strcmp ((const char *) (cur_node->name), "ContactPerson")
+		    == 0)
 		  {
 		      child_node = cur_node->children;
 		      if (child_node != NULL)
@@ -2753,8 +2756,8 @@ parse_wms_contact_address (xmlNodePtr node, const char **postal_address,
 				*city = (const char *) (child_node->content);
 			}
 		  }
-		if (strcmp ((const char *) (cur_node->name), "StateOrProvince")
-		    == 0)
+		if (strcmp
+		    ((const char *) (cur_node->name), "StateOrProvince") == 0)
 		  {
 		      child_node = cur_node->children;
 		      if (child_node != NULL)
@@ -2806,8 +2809,8 @@ parse_wms_contact_information (xmlNodePtr node, const char **contact_person,
       {
 	  if (cur_node->type == XML_ELEMENT_NODE)
 	    {
-		if (strcmp ((const char *) (cur_node->name), "ContactPosition")
-		    == 0)
+		if (strcmp
+		    ((const char *) (cur_node->name), "ContactPosition") == 0)
 		  {
 		      child_node = cur_node->children;
 		      if (child_node != NULL)
@@ -2935,8 +2938,9 @@ parse_wms_service (xmlNodePtr node, wmsCapabilitiesPtr cap)
 						   &contact_organization,
 						   &contact_position,
 						   &postal_address, &city,
-						   &state_province, &post_code,
-						   &country, &voice_telephone,
+						   &state_province,
+						   &post_code, &country,
+						   &voice_telephone,
 						   &fax_telephone,
 						   &email_address);
 		if (strcmp ((const char *) (cur_node->name), "Fees") == 0)
@@ -3246,8 +3250,9 @@ parse_wms_GetTileService_HTTP_Get (xmlNodePtr node, wmsCapabilitiesPtr cap)
 					      len = strlen (p);
 					      cap->GetTileServiceURLGet =
 						  malloc (len + 1);
-					      strcpy (cap->GetTileServiceURLGet,
-						      p);
+					      strcpy
+						  (cap->GetTileServiceURLGet,
+						   p);
 					  }
 				    }
 			      }
@@ -3285,8 +3290,8 @@ parse_wms_GetTileService_HTTP_Post (xmlNodePtr node, wmsCapabilitiesPtr cap)
 					xmlNodePtr text = attr->children;
 					if (text->type == XML_TEXT_NODE)
 					  {
-					      if (cap->GetTileServiceURLPost !=
-						  NULL)
+					      if (cap->GetTileServiceURLPost
+						  != NULL)
 						{
 						    free (cap->
 							  GetTileServiceURLPost);
@@ -3350,8 +3355,9 @@ parse_wms_GetInfo_HTTP_Get (xmlNodePtr node, wmsCapabilitiesPtr cap)
 					      len = strlen (p);
 					      cap->GetFeatureInfoURLGet =
 						  malloc (len + 1);
-					      strcpy (cap->GetFeatureInfoURLGet,
-						      p);
+					      strcpy
+						  (cap->GetFeatureInfoURLGet,
+						   p);
 					  }
 				    }
 			      }
@@ -3389,8 +3395,8 @@ parse_wms_GetInfo_HTTP_Post (xmlNodePtr node, wmsCapabilitiesPtr cap)
 					xmlNodePtr text = attr->children;
 					if (text->type == XML_TEXT_NODE)
 					  {
-					      if (cap->GetFeatureInfoURLPost !=
-						  NULL)
+					      if (cap->GetFeatureInfoURLPost
+						  != NULL)
 						{
 						    free (cap->GetFeatureInfoURLPost);
 						    cap->GetFeatureInfoURLPost =
@@ -3583,8 +3589,8 @@ parse_wms_getInfo (xmlNodePtr node, wmsCapabilitiesPtr cap)
 					    ok = 1;
 					if (strcmp
 					    (format,
-					     "application/vnd.ogc.gml/3.1.1") ==
-					    0)
+					     "application/vnd.ogc.gml/3.1.1")
+					    == 0)
 					    ok = 1;
 					if (ok)
 					  {
@@ -4278,7 +4284,7 @@ parse_tile_service_info (xmlNodePtr node, wmsCapabilitiesPtr cap)
 	    {
 		int len;
 		xmlNodePtr child_node;
-		const char *value;
+		const char *value = NULL;
 		if (strcmp ((const char *) (cur_node->name), "Name") == 0)
 		  {
 		      if (cap->TileServiceName != NULL)
@@ -4378,8 +4384,8 @@ parse_tile_service (xmlNodePtr node, wmsCapabilitiesPtr cap)
 	    {
 		if (strcmp ((const char *) (cur_node->name), "Service") == 0)
 		    parse_tile_service_info (cur_node, cap);
-		if (strcmp ((const char *) (cur_node->name), "TiledPatterns") ==
-		    0)
+		if (strcmp ((const char *) (cur_node->name), "TiledPatterns")
+		    == 0)
 		    parse_tiled_patterns (cur_node, cap);
 	    }
       }
@@ -4760,8 +4766,8 @@ parse_feature_collection (xmlNodePtr node, wmsFeatureCollectionPtr coll)
       {
 	  if (cur_node->type == XML_ELEMENT_NODE)
 	    {
-		if (strcmp ((const char *) (cur_node->name), "featureMember") ==
-		    0)
+		if (strcmp ((const char *) (cur_node->name), "featureMember")
+		    == 0)
 		    parse_wms_feature_member (cur_node->children, coll);
 	    }
       }
@@ -4830,8 +4836,8 @@ parse_wms_feature_collection (const char *buf)
 }
 
 static int
-query_TileService (rl2WmsCachePtr cache_handle, wmsCapabilitiesPtr capabilities,
-		   const char *proxy)
+query_TileService (rl2WmsCachePtr cache_handle,
+		   wmsCapabilitiesPtr capabilities, const char *proxy)
 {
 /* attempting to get and parse a WMS GetTileService request */
     CURL *curl = NULL;
@@ -5942,6 +5948,8 @@ get_wms_tile_pattern_sample_url (rl2WmsTilePatternPtr handle)
 {
 /* return the sample URL for some TilePattern */
     char *url = NULL;
+    int len;
+    char *xurl;
     wmsUrlArgumentPtr arg;
     wmsTilePatternPtr ptr = (wmsTilePatternPtr) handle;
     if (ptr == NULL)
@@ -5972,7 +5980,11 @@ get_wms_tile_pattern_sample_url (rl2WmsTilePatternPtr handle)
 	    }
 	  arg = arg->next;
       }
-    return url;
+    len = strlen (url);
+    xurl = malloc (len + 1);
+    strcpy (xurl, url);
+    sqlite3_free (url);
+    return xurl;
 }
 
 RL2_DECLARE char *
@@ -6512,70 +6524,18 @@ destroy_wms_feature_collection (rl2WmsFeatureCollectionPtr handle)
 }
 
 static int
-check_swap (gaiaGeomCollPtr geom, double point_x, double point_y)
+check_swap (sqlite3 * sqlite, const unsigned char *blob, int blob_sz,
+	    double point_x, double point_y)
 {
 /* checking if X and Y axes should be flipped */
     double x;
     double y;
-    double z;
-    double m;
     double dist;
     double dist_flip;
-    gaiaPointPtr pt;
-    gaiaLinestringPtr ln;
-    gaiaPolygonPtr pg;
-    pt = geom->FirstPoint;
-    if (pt != NULL)
-      {
-	  x = pt->X;
-	  y = pt->Y;
-	  goto eval;
-      }
-    ln = geom->FirstLinestring;
-    if (ln != NULL)
-      {
-	  if (ln->DimensionModel == GAIA_XY_Z)
-	    {
-		gaiaGetPointXYZ (ln->Coords, 0, &x, &y, &z);
-	    }
-	  else if (ln->DimensionModel == GAIA_XY_M)
-	    {
-		gaiaGetPointXYM (ln->Coords, 0, &x, &y, &m);
-	    }
-	  else if (ln->DimensionModel == GAIA_XY_Z_M)
-	    {
-		gaiaGetPointXYZM (ln->Coords, 0, &x, &y, &z, &m);
-	    }
-	  else
-	    {
-		gaiaGetPoint (ln->Coords, 0, &x, &y);
-	    }
-	  goto eval;
-      }
-    pg = geom->FirstPolygon;
-    if (pg != NULL)
-      {
-	  gaiaRingPtr ring = pg->Exterior;
-	  if (ring->DimensionModel == GAIA_XY_Z)
-	    {
-		gaiaGetPointXYZ (ring->Coords, 0, &x, &y, &z);
-	    }
-	  else if (ring->DimensionModel == GAIA_XY_M)
-	    {
-		gaiaGetPointXYM (ring->Coords, 0, &x, &y, &m);
-	    }
-	  else if (ring->DimensionModel == GAIA_XY_Z_M)
-	    {
-		gaiaGetPointXYZM (ring->Coords, 0, &x, &y, &z, &m);
-	    }
-	  else
-	    {
-		gaiaGetPoint (ring->Coords, 0, &x, &y);
-	    }
-	  goto eval;
-      }
-    return 0;
-  eval:
+
+    if (rl2_parse_point_generic (sqlite, blob, blob_sz, &x, &y) != RL2_OK)
+	return 0;
+
     dist =
 	sqrt (((x - point_x) * (x - point_x)) +
 	      ((y - point_y) * (y - point_y)));
@@ -6587,64 +6547,243 @@ check_swap (gaiaGeomCollPtr geom, double point_x, double point_y)
     return 0;
 }
 
-static void
-getProjParams (void *p_sqlite, int srid, char **proj_params)
-{
-/* retrieves the PROJ params from SPATIAL_SYS_REF table, if possible */
-    sqlite3 *sqlite = (sqlite3 *) p_sqlite;
-    char *sql;
-    char **results;
-    int rows;
-    int columns;
-    int i;
-    int ret;
-    int len;
-    const char *proj4text;
-    char *errMsg = NULL;
-    *proj_params = NULL;
-    sql = sqlite3_mprintf
-	("SELECT proj4text FROM spatial_ref_sys WHERE srid = %d", srid);
-    ret = sqlite3_get_table (sqlite, sql, &results, &rows, &columns, &errMsg);
-    sqlite3_free (sql);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "unknown SRID: %d\t<%s>\n", srid, errMsg);
-	  sqlite3_free (errMsg);
-	  return;
-      }
-    for (i = 1; i <= rows; i++)
-      {
-	  proj4text = results[(i * columns)];
-	  if (proj4text != NULL)
-	    {
-		len = strlen (proj4text);
-		*proj_params = malloc (len + 1);
-		strcpy (*proj_params, proj4text);
-	    }
-      }
-    if (*proj_params == NULL)
-	fprintf (stderr, "unknown SRID: %d\n", srid);
-    sqlite3_free_table (results);
-}
-
-static gaiaGeomCollPtr
-reproject (gaiaGeomCollPtr geom, int srid, sqlite3 * sqlite)
+static int
+reproject (sqlite3 * handle, const unsigned char *blob_in, int blob_in_sz,
+	   int srid, unsigned char **blob_out, int *blob_out_sz)
 {
 /* attempting to reproject into a different CRS */
-    char *proj_from;
-    char *proj_to;
-    gaiaGeomCollPtr g2 = NULL;
-    getProjParams (sqlite, geom->Srid, &proj_from);
-    getProjParams (sqlite, srid, &proj_to);
-    if (proj_to == NULL || proj_from == NULL)
-	;
+    int ret;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql;
+    const unsigned char *x_blob;
+    unsigned char *p_blob;
+    int p_blob_sz;
+    int count = 0;
+
+    sql = "SELECT ST_Transform(?, ?)";
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  printf ("SELECT wms_reproject SQL error: %s\n",
+		  sqlite3_errmsg (handle));
+	  goto error;
+      }
+
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
+    sqlite3_bind_blob (stmt, 1, blob_in, blob_in_sz, SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 2, srid);
+    while (1)
+      {
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	    {
+		if (sqlite3_column_type (stmt, 0) == SQLITE_BLOB)
+		  {
+		      x_blob = sqlite3_column_blob (stmt, 0);
+		      p_blob_sz = sqlite3_column_bytes (stmt, 0);
+		      p_blob = malloc (p_blob_sz);
+		      memcpy (p_blob, x_blob, p_blob_sz);
+		      count++;
+		  }
+	    }
+	  else
+	    {
+		fprintf (stderr,
+			 "SELECT wms_reproject; sqlite3_step() error: %s\n",
+			 sqlite3_errmsg (handle));
+		goto error;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    if (count != 1)
+	return RL2_ERROR;
+    *blob_out = p_blob;
+    *blob_out_sz = p_blob_sz;
+    return RL2_OK;
+
+  error:
+    if (stmt != NULL)
+	sqlite3_finalize (stmt);
+    return RL2_ERROR;
+}
+
+static int
+parse_gml (sqlite3 * handle, const char *gml, unsigned char **blob_out,
+	   int *blob_out_sz)
+{
+/* attempring to parse a GML expression */
+    int ret;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql;
+    const unsigned char *x_blob;
+    unsigned char *p_blob;
+    int p_blob_sz;
+    int count = 0;
+
+    sql = "SELECT GeomFromGML(?)";
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  printf ("SELECT wms_parse_gml SQL error: %s\n",
+		  sqlite3_errmsg (handle));
+	  goto error;
+      }
+
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
+    sqlite3_bind_text (stmt, 1, gml, strlen (gml), SQLITE_STATIC);
+    while (1)
+      {
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	    {
+		if (sqlite3_column_type (stmt, 0) == SQLITE_BLOB)
+		  {
+		      x_blob = sqlite3_column_blob (stmt, 0);
+		      p_blob_sz = sqlite3_column_bytes (stmt, 0);
+		      p_blob = malloc (p_blob_sz);
+		      memcpy (p_blob, x_blob, p_blob_sz);
+		      count++;
+		  }
+	    }
+	  else
+	    {
+		fprintf (stderr,
+			 "SELECT wms_parse_gml; sqlite3_step() error: %s\n",
+			 sqlite3_errmsg (handle));
+		goto error;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    if (count != 1)
+	return RL2_ERROR;
+    *blob_out = p_blob;
+    *blob_out_sz = p_blob_sz;
+    return RL2_OK;
+
+  error:
+    if (stmt != NULL)
+	sqlite3_finalize (stmt);
+    return RL2_ERROR;
+}
+
+RL2_PRIVATE int
+get_srid_from_blob (sqlite3 * handle, const unsigned char *blob, int blob_sz)
+{
+/* attempts to retrieve the SRID from a Geometry */
+    int ret;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql;
+    int srid = -1;
+
+    sql = "SELECT ST_Srid(?)";
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  printf ("SELECT wms_srid_from_blob SQL error: %s\n",
+		  sqlite3_errmsg (handle));
+	  goto error;
+      }
+
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
+    sqlite3_bind_blob (stmt, 1, blob, blob_sz, SQLITE_STATIC);
+    while (1)
+      {
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	      srid = sqlite3_column_int (stmt, 0);
+	  else
+	    {
+		fprintf (stderr,
+			 "SELECT wms_srid_from_blob; sqlite3_step() error: %s\n",
+			 sqlite3_errmsg (handle));
+		goto error;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    return srid;
+
+  error:
+    if (stmt != NULL)
+	sqlite3_finalize (stmt);
+    return srid;
+}
+
+static void
+swap_coords (sqlite3 * handle, const unsigned char *blob_in, int blob_in_sz,
+	     unsigned char **blob_out, int *blob_out_sz)
+{
+/* attempting to swap the X,Y coordinates */
+    int ret;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql;
+    const unsigned char *x_blob;
+    unsigned char *p_blob;
+    int p_blob_sz;
+    int count = 0;
+
+    sql = "SELECT SwaoCoords(?)";
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  printf ("SELECT wms_swap_coords SQL error: %s\n",
+		  sqlite3_errmsg (handle));
+	  goto error;
+      }
+
+    sqlite3_reset (stmt);
+    sqlite3_clear_bindings (stmt);
+    sqlite3_bind_blob (stmt, 1, blob_in, blob_in_sz, SQLITE_STATIC);
+    while (1)
+      {
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	    {
+		if (sqlite3_column_type (stmt, 0) == SQLITE_BLOB)
+		  {
+		      x_blob = sqlite3_column_blob (stmt, 0);
+		      p_blob_sz = sqlite3_column_bytes (stmt, 0);
+		      p_blob = malloc (p_blob_sz);
+		      memcpy (p_blob, x_blob, p_blob_sz);
+		      count++;
+		  }
+	    }
+	  else
+	    {
+		fprintf (stderr,
+			 "SELECT wms_swap_coords; sqlite3_step() error: %s\n",
+			 sqlite3_errmsg (handle));
+		goto error;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    if (count != 1)
+      {
+	  *blob_out = NULL;
+	  *blob_out_sz = 0;
+      }
     else
-	g2 = gaiaTransform (geom, proj_from, proj_to);
-    if (proj_from)
-	free (proj_from);
-    if (proj_to)
-	free (proj_to);
-    return g2;
+      {
+	  *blob_out = p_blob;
+	  *blob_out_sz = p_blob_sz;
+      }
+    return;
+
+  error:
+    if (stmt != NULL)
+	sqlite3_finalize (stmt);
+    *blob_out = NULL;
+    *blob_out_sz = 0;
 }
 
 RL2_DECLARE void
@@ -6670,40 +6809,58 @@ wms_feature_collection_parse_geometries (rl2WmsFeatureCollectionPtr
 		if (attr->value != NULL)
 		  {
 		      /* attempting to parse a possible GML Geometry */
-		      gaiaGeomCollPtr geom =
-			  gaiaParseGml ((const unsigned char *) (attr->value),
-					sqlite);
-		      if (geom != NULL)
+		      unsigned char *blob;
+		      int blob_sz;
+		      if (parse_gml (sqlite, attr->value, &blob, &blob_sz) ==
+			  RL2_OK)
 			{
-			    if (geom->Srid > 0 && srid > 0
-				&& geom->Srid != srid)
+			    unsigned char *blob_out;
+			    int blob_out_sz;
+			    int srid2 =
+				get_srid_from_blob (sqlite, blob, blob_sz);
+			    if (srid2 > 0 && srid > 0 && srid2 != srid)
 			      {
 				  /* attempting to reproject into the Map CRS */
-				  gaiaGeomCollPtr g2 =
-				      reproject (geom, srid, sqlite);
-				  if (g2 != NULL)
+				  if (reproject
+				      (sqlite, blob, blob_sz, srid, &blob_out,
+				       &blob_out_sz) == RL2_OK)
 				    {
-					if (check_swap (g2, point_x, point_y))
+					free (blob);
+					if (check_swap
+					    (sqlite, blob_out, blob_out_sz,
+					     point_x, point_y))
 					  {
-					      gaiaFreeGeomColl (g2);
-					      gaiaSwapCoords (geom);
-					      g2 = reproject (geom, srid,
-							      sqlite);
-					      attr->geometry = g2;
-					      gaiaFreeGeomColl (geom);
+					      swap_coords (sqlite, blob_out,
+							   blob_out_sz, &blob,
+							   &blob_sz);
+					      attr->blob = blob;
+					      attr->blob_size = blob_sz;
+					      free (blob_out);
 					  }
 					else
 					  {
-					      attr->geometry = g2;
-					      gaiaFreeGeomColl (geom);
+					      attr->blob = blob_out;
+					      attr->blob_size = blob_out_sz;
+					      free (blob);
 					  }
 				    }
 			      }
 			    else
 			      {
-				  if (check_swap (geom, point_x, point_y))
-				      gaiaSwapCoords (geom);
-				  attr->geometry = geom;
+				  if (check_swap
+				      (sqlite, blob, blob_sz, point_x, point_y))
+				    {
+					swap_coords (sqlite, blob, blob_sz,
+						     &blob_out, &blob_out_sz);
+					attr->blob = blob_out;
+					attr->blob_size = blob_out_sz;
+					free (blob);
+				    }
+				  else
+				    {
+					attr->blob = blob;
+					attr->blob_size = blob_sz;
+				    }
 			      }
 			}
 		  }
@@ -6793,25 +6950,34 @@ get_wms_feature_attribute_name (rl2WmsFeatureMemberPtr handle, int index)
     return NULL;
 }
 
-RL2_DECLARE gaiaGeomCollPtr
-get_wms_feature_attribute_geometry (rl2WmsFeatureMemberPtr handle, int index)
+RL2_DECLARE int
+get_wms_feature_attribute_blob_geometry (rl2WmsFeatureMemberPtr handle,
+					 int index,
+					 const unsigned char **blob,
+					 int *blob_size)
 {
 /* attempting to get the Nth FeatureAttribute (Geometry) from some WMS-FeatureMember object */
     int count = 0;
     wmsFeatureAttributePtr attr;
     wmsFeatureMemberPtr ptr = (wmsFeatureMemberPtr) handle;
     if (ptr == NULL)
-	return NULL;
+	return RL2_ERROR;
 
     attr = ptr->first;
     while (attr != NULL)
       {
 	  if (count == index)
-	      return attr->geometry;
+	    {
+		if (attr->blob == NULL || attr->blob_size == 0)
+		    return RL2_ERROR;
+		*blob = attr->blob;
+		*blob_size = attr->blob_size;
+		return RL2_OK;
+	    }
 	  count++;
 	  attr = attr->next;
       }
-    return NULL;
+    return RL2_ERROR;
 }
 
 RL2_DECLARE const char *
@@ -6905,18 +7071,18 @@ do_wms_GetMap_get (rl2WmsCachePtr cache_handle, const char *url,
 				   "&LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 				   "&WIDTH=%d&HEIGHT=%d&STYLES=%s&FORMAT=%s"
 				   "&TRANSPARENT=%s&BGCOLOR=0xFFFFFF", url,
-				   version, layer, crs_prefix, crs, miny, minx,
-				   maxy, maxx, width, height, style, format,
-				   (opaque == 0) ? "TRUE" : "FALSE");
+				   version, layer, crs_prefix, crs, miny,
+				   minx, maxy, maxx, width, height, style,
+				   format, (opaque == 0) ? "TRUE" : "FALSE");
 	  else
 	      request =
 		  sqlite3_mprintf ("%s?SERVICE=WMS&REQUEST=GetMap&VERSION=%s"
 				   "&LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 				   "&WIDTH=%d&HEIGHT=%d&STYLES=%s&FORMAT=%s"
 				   "&TRANSPARENT=%s&BGCOLOR=0xFFFFFF", url,
-				   version, layer, crs_prefix, crs, minx, miny,
-				   maxx, maxy, width, height, style, format,
-				   (opaque == 0) ? "TRUE" : "FALSE");
+				   version, layer, crs_prefix, crs, minx,
+				   miny, maxx, maxy, width, height, style,
+				   format, (opaque == 0) ? "TRUE" : "FALSE");
       }
     else
       {
@@ -6927,18 +7093,18 @@ do_wms_GetMap_get (rl2WmsCachePtr cache_handle, const char *url,
 				   "&LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 				   "&WIDTH=%d&HEIGHT=%d&STYLES=%s&FORMAT=%s"
 				   "&TRANSPARENT=%s&BGCOLOR=0xFFFFFF", url,
-				   version, layer, crs_prefix, crs, miny, minx,
-				   maxy, maxx, width, height, style, format,
-				   (opaque == 0) ? "TRUE" : "FALSE");
+				   version, layer, crs_prefix, crs, miny,
+				   minx, maxy, maxx, width, height, style,
+				   format, (opaque == 0) ? "TRUE" : "FALSE");
 	  else
 	      request =
 		  sqlite3_mprintf ("%sSERVICE=WMS&REQUEST=GetMap&VERSION=%s"
 				   "&LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 				   "&WIDTH=%d&HEIGHT=%d&STYLES=%s&FORMAT=%s"
 				   "&TRANSPARENT=%s&BGCOLOR=0xFFFFFF", url,
-				   version, layer, crs_prefix, crs, minx, miny,
-				   maxx, maxy, width, height, style, format,
-				   (opaque == 0) ? "TRUE" : "FALSE");
+				   version, layer, crs_prefix, crs, minx,
+				   miny, maxx, maxy, width, height, style,
+				   format, (opaque == 0) ? "TRUE" : "FALSE");
       }
 
     if (cache != NULL)
@@ -6959,7 +7125,7 @@ do_wms_GetMap_get (rl2WmsCachePtr cache_handle, const char *url,
 		if (cachedItem->ImageFormat == WMS_FORMAT_PNG)
 		    raster =
 			rl2_raster_from_png (cachedItem->Item,
-					     cachedItem->Size);
+					     cachedItem->Size, 1);
 		if (cachedItem->ImageFormat == WMS_FORMAT_JPEG)
 		    raster =
 			rl2_raster_from_jpeg (cachedItem->Item,
@@ -7060,7 +7226,7 @@ do_wms_GetMap_get (rl2WmsCachePtr cache_handle, const char *url,
 		  rl2_raster_from_gif (bodyBuf.Buffer, bodyBuf.WriteOffset);
 	  if (strcmp (image_format, "image/png") == 0)
 	      raster =
-		  rl2_raster_from_png (bodyBuf.Buffer, bodyBuf.WriteOffset);
+		  rl2_raster_from_png (bodyBuf.Buffer, bodyBuf.WriteOffset, 1);
 	  if (strcmp (image_format, "image/jpeg") == 0)
 	      raster =
 		  rl2_raster_from_jpeg (bodyBuf.Buffer, bodyBuf.WriteOffset);
@@ -7113,11 +7279,11 @@ do_wms_GetMap_post (rl2WmsCachePtr cache_handle, const char *url,
 /* attempting to execute a WMS GepMap request [method POST] */
 
 /* not yet implemented: just a stupid placeholder always returning NULL */
-    if (cache_handle == NULL || url == NULL || proxy == NULL || version == NULL
-	|| layer == NULL || crs == NULL)
+    if (cache_handle == NULL || url == NULL || proxy == NULL
+	|| version == NULL || layer == NULL || crs == NULL)
 	return NULL;
-    if (minx == miny || maxx == maxy || width == height || opaque == from_cache
-	|| width == swap_xy)
+    if (minx == miny || maxx == maxy || width == height
+	|| opaque == from_cache || width == swap_xy)
 	return NULL;
     if (style == NULL || format == NULL || err_msg == NULL)
 	return NULL;
@@ -7167,7 +7333,7 @@ do_wms_GetMap_TileService_get (rl2WmsCachePtr cache_handle, const char *url,
 		if (cachedItem->ImageFormat == WMS_FORMAT_PNG)
 		    raster =
 			rl2_raster_from_png (cachedItem->Item,
-					     cachedItem->Size);
+					     cachedItem->Size, 1);
 		if (cachedItem->ImageFormat == WMS_FORMAT_JPEG)
 		    raster =
 			rl2_raster_from_jpeg (cachedItem->Item,
@@ -7265,7 +7431,7 @@ do_wms_GetMap_TileService_get (rl2WmsCachePtr cache_handle, const char *url,
 		  rl2_raster_from_gif (bodyBuf.Buffer, bodyBuf.WriteOffset);
 	  if (strcmp (image_format, "image/png") == 0)
 	      raster =
-		  rl2_raster_from_png (bodyBuf.Buffer, bodyBuf.WriteOffset);
+		  rl2_raster_from_png (bodyBuf.Buffer, bodyBuf.WriteOffset, 1);
 	  if (strcmp (image_format, "image/jpeg") == 0)
 	      raster =
 		  rl2_raster_from_jpeg (bodyBuf.Buffer, bodyBuf.WriteOffset);
@@ -7371,18 +7537,18 @@ do_wms_GetFeatureInfo_get (const char *url, const char *proxy,
 		  ("%s?SERVICE=WMS&REQUEST=GetFeatureInfo&VERSION=%s&LAYERS=%s"
 		   "&QUERY_LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 		   "&WIDTH=%d&HEIGHT=%d&X=%d&Y=%d&INFO_FORMAT=%s"
-		   "&FEATURE_COUNT=50", url, version, layer, layer, crs_prefix,
-		   crs, miny, minx, maxy, maxx, width, height, mouse_x,
-		   mouse_y, format);
+		   "&FEATURE_COUNT=50", url, version, layer, layer,
+		   crs_prefix, crs, miny, minx, maxy, maxx, width, height,
+		   mouse_x, mouse_y, format);
 	  else
 	      request =
 		  sqlite3_mprintf
 		  ("%s?SERVICE=WMS&REQUEST=GetFeatureInfo&VERSION=%s&LAYERS=%s"
 		   "&QUERY_LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 		   "&WIDTH=%d&HEIGHT=%d&X=%d&Y=%d&INFO_FORMAT=%s"
-		   "&FEATURE_COUNT=50", url, version, layer, layer, crs_prefix,
-		   crs, minx, miny, maxx, maxy, width, height, mouse_x,
-		   mouse_y, format);
+		   "&FEATURE_COUNT=50", url, version, layer, layer,
+		   crs_prefix, crs, minx, miny, maxx, maxy, width, height,
+		   mouse_x, mouse_y, format);
       }
     else
       {
@@ -7392,18 +7558,18 @@ do_wms_GetFeatureInfo_get (const char *url, const char *proxy,
 		  ("%sSERVICE=WMS&REQUEST=GetFeatureInfo&VERSION=%s&LAYERS=%s"
 		   "&QUERY_LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 		   "&WIDTH=%d&HEIGHT=%d&X=%d&Y=%d&INFO_FORMAT=%s"
-		   "&FEATURE_COUNT=50", url, version, layer, layer, crs_prefix,
-		   crs, miny, minx, maxy, maxx, width, height, mouse_x,
-		   mouse_y, format);
+		   "&FEATURE_COUNT=50", url, version, layer, layer,
+		   crs_prefix, crs, miny, minx, maxy, maxx, width, height,
+		   mouse_x, mouse_y, format);
 	  else
 	      request =
 		  sqlite3_mprintf
 		  ("%sSERVICE=WMS&REQUEST=GetFeatureInfo&VERSION=%s&LAYERS=%s"
 		   "&QUERY_LAYERS=%s&%s=%s&BBOX=%1.6f,%1.6f,%1.6f,%1.6f"
 		   "&WIDTH=%d&HEIGHT=%d&X=%d&Y=%d&INFO_FORMAT=%s"
-		   "&FEATURE_COUNT=50", url, version, layer, layer, crs_prefix,
-		   crs, minx, miny, maxx, maxy, width, height, mouse_x,
-		   mouse_y, format);
+		   "&FEATURE_COUNT=50", url, version, layer, layer,
+		   crs_prefix, crs, minx, miny, maxx, maxy, width, height,
+		   mouse_x, mouse_y, format);
       }
 
     curl = curl_easy_init ();
@@ -7541,9 +7707,9 @@ RL2_DECLARE rl2WmsFeatureCollectionPtr
 do_wms_GetFeatureInfo_post (const char *url, const char *proxy,
 			    const char *version, const char *format,
 			    const char *layer, const char *crs, int swap_xy,
-			    double minx, double miny, double maxx, double maxy,
-			    int width, int height, int mouse_x, int mouse_y,
-			    char **err_msg)
+			    double minx, double miny, double maxx,
+			    double maxy, int width, int height, int mouse_x,
+			    int mouse_y, char **err_msg)
 {
 /* attempting to execute a WMS GepFeatureInfo request [method POST] */
 

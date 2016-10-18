@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -1567,7 +1567,8 @@ check_origin (const char *path, const char *tfw_path, int srid, double minx,
 	    {
 		fprintf (stderr, "ERROR: unable to create a Pixel\n");
 	    }
-	  raster = rl2_get_tile_from_tiff_origin (coverage, origin, 0, 0, -1);
+	  raster =
+	      rl2_get_tile_from_tiff_origin (coverage, origin, 0, 0, -1, 0);
 	  if (raster == NULL)
 	    {
 		fprintf (stderr, "ERROR: unable to retrieve a TIFF tile (1)\n");
@@ -1706,7 +1707,7 @@ check_origin (const char *path, const char *tfw_path, int srid, double minx,
 	    };
 	  rl2_destroy_raster (raster);
 	  raster =
-	      rl2_get_tile_from_tiff_origin (coverage, origin, 512, 512, -1);
+	      rl2_get_tile_from_tiff_origin (coverage, origin, 512, 512, -1, 0);
 	  if (raster == NULL)
 	    {
 		fprintf (stderr, "ERROR: unable to retrieve a TIFF tile (2)\n");
@@ -4627,7 +4628,7 @@ do_one_grid_double_test (const unsigned char *rgb, sqlite3 * handle,
     rl2RasterPtr raster;
     int tile_size = 128;
     const char *tfw_path;
-    char *tfw;
+    char *tfw = NULL;
     unsigned char xsample_type;
     unsigned char xpixel_type;
     unsigned char alias_pixel_type;

@@ -20,7 +20,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -66,9 +66,9 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include "rasterlite2/rasterlite2.h"
 #include "rasterlite2_private.h"
 
-#include <spatialite/gaiaaux.h>
-
 #define RL2_UNUSED() if (argc || argv) argc = argc;
+
+static void parse_graphic (xmlNodePtr node, rl2PrivGraphicPtr graphic);
 
 static void
 dummySilentError (void *ctx, const char *msg, ...)
@@ -81,7 +81,59 @@ dummySilentError (void *ctx, const char *msg, ...)
 }
 
 static void
-parse_sld_se_opacity (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_min_scale_denominator (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule MinScaleDenominator */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "MinScaleDenominator") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				rule->min_scale =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_sld_se_max_scale_denominator (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule MaxScaleDenominator */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "MaxScaleDenominator") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				rule->max_scale =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_sld_se_opacity (xmlNodePtr node, rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer Opacity */
     while (node)
@@ -265,7 +317,7 @@ parse_sld_se_contrast_enhancement (xmlNodePtr node, unsigned char *mode,
 }
 
 static int
-parse_sld_se_channels (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_channels (xmlNodePtr node, rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer Channels */
     int has_red = 0;
@@ -492,8 +544,8 @@ parse_hex (unsigned char hi, unsigned char lo, unsigned char *val)
 }
 
 static int
-parse_sld_se_color (const char *color, unsigned char *red, unsigned char *green,
-		    unsigned char *blue)
+parse_sld_se_color (const char *color, unsigned char *red,
+		    unsigned char *green, unsigned char *blue)
 {
 /* attempting to parse a #RRGGBB hexadecimal color */
     unsigned char r;
@@ -516,7 +568,8 @@ parse_sld_se_color (const char *color, unsigned char *red, unsigned char *green,
 }
 
 static int
-parse_sld_se_channel_selection (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_channel_selection (xmlNodePtr node,
+				rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer ChannelSelection */
     while (node)
@@ -538,7 +591,7 @@ parse_sld_se_channel_selection (xmlNodePtr node, rl2PrivRasterStylePtr style)
 }
 
 static int
-parse_sld_se_categorize (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_categorize (xmlNodePtr node, rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer ColorMap Categorize */
     struct _xmlAttr *attr;
@@ -611,9 +664,8 @@ parse_sld_se_categorize (xmlNodePtr node, rl2PrivRasterStylePtr style)
 						{
 						    style->categorize->baseRed =
 							red;
-						    style->
-							categorize->baseGreen =
-							green;
+						    style->categorize->baseGreen
+							= green;
 						    style->
 							categorize->baseBlue =
 							blue;
@@ -721,13 +773,14 @@ parse_sld_se_interpolation_point_value (xmlNodePtr node, unsigned char *red,
 }
 
 static int
-parse_sld_se_interpolation_point (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_interpolation_point (xmlNodePtr node,
+				  rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer ColorMap InterpolationPoint */
-    double value;
-    unsigned char red;
-    unsigned char green;
-    unsigned char blue;
+    double value = 0.0;
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
     int has_data = 0;
     int has_value = 0;
 
@@ -773,7 +826,7 @@ parse_sld_se_interpolation_point (xmlNodePtr node, rl2PrivRasterStylePtr style)
 }
 
 static int
-parse_sld_se_interpolate (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_interpolate (xmlNodePtr node, rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer ColorMap Interpolate */
     struct _xmlAttr *attr;
@@ -836,7 +889,7 @@ parse_sld_se_interpolate (xmlNodePtr node, rl2PrivRasterStylePtr style)
 }
 
 static int
-parse_sld_se_color_map (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_color_map (xmlNodePtr node, rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer ColorMap */
     while (node)
@@ -896,7 +949,7 @@ parse_sld_se_color_map (xmlNodePtr node, rl2PrivRasterStylePtr style)
 }
 
 static void
-parse_sld_se_shaded_relief (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_sld_se_shaded_relief (xmlNodePtr node, rl2PrivRasterSymbolizerPtr style)
 {
 /* parsing RasterSymbolizer ShadedRelief */
     xmlNodePtr text;
@@ -926,8 +979,8 @@ parse_sld_se_shaded_relief (xmlNodePtr node, rl2PrivRasterStylePtr style)
 							(const char
 							 *) (text->content);
 						    if (value != NULL)
-							style->brightnessOnly =
-							    atoi (value);
+							style->brightnessOnly
+							    = atoi (value);
 						}
 					      text = text->next;
 					  }
@@ -960,7 +1013,7 @@ parse_sld_se_shaded_relief (xmlNodePtr node, rl2PrivRasterStylePtr style)
 }
 
 static int
-parse_raster_symbolizer (xmlNodePtr node, rl2PrivRasterStylePtr style)
+parse_raster_symbolizer (xmlNodePtr node, rl2PrivRasterSymbolizerPtr style)
 {
 /* attempting to parse an SLD/SE RasterSymbolizer */
     parse_sld_se_opacity (node->children, style);
@@ -975,10 +1028,86 @@ parse_raster_symbolizer (xmlNodePtr node, rl2PrivRasterStylePtr style)
     return 1;
 }
 
-static int
-find_raster_symbolizer (xmlNodePtr node, rl2PrivRasterStylePtr style, int *loop)
+static void
+parse_raster_style_rule (xmlNodePtr node, rl2PrivStyleRulePtr rule)
 {
-/* recursively searching an SLD/SE RasterSymbolizer */
+/* attempting to parse an SLD/SE Style Rule (raster type) */
+    parse_sld_se_min_scale_denominator (node->children, rule);
+    parse_sld_se_max_scale_denominator (node->children, rule);
+}
+
+static int
+parse_coverage_style (xmlNodePtr node, rl2PrivCoverageStylePtr style)
+{
+/* attempting to parse an SLD/SE CoverageStyle */
+    int count = 0;
+    int ret;
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Rule") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "RasterSymbolizer") == 0)
+				    {
+					rl2PrivStyleRulePtr rule =
+					    rl2_create_default_style_rule ();
+					rl2PrivRasterSymbolizerPtr symbolizer
+					    =
+					    rl2_create_default_raster_symbolizer
+					    ();
+					if (symbolizer == NULL || rule == NULL)
+					  {
+					      if (symbolizer != NULL)
+						  rl2_destroy_raster_symbolizer
+						      (symbolizer);
+					      if (rule != NULL)
+						  rl2_destroy_style_rule (rule);
+					      return 0;
+					  }
+					rule->style_type = RL2_RASTER_STYLE;
+					rule->style = symbolizer;
+					parse_raster_style_rule (node, rule);
+					ret =
+					    parse_raster_symbolizer (child,
+								     symbolizer);
+					if (ret == 0)
+					  {
+					      rl2_destroy_style_rule (rule);
+					      return 0;
+					  }
+					/* updating the linked list of rules */
+					if (style->first_rule == NULL)
+					    style->first_rule = rule;
+					if (style->last_rule != NULL)
+					    style->last_rule->next = rule;
+					style->last_rule = rule;
+					count++;
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    if (count > 0)
+	return 1;
+    return 0;
+}
+
+static int
+find_coverage_style (xmlNodePtr node, rl2PrivCoverageStylePtr style, int *loop)
+{
+/* recursively searching an SLD/SE CoverageStyle */
+    int ret;
     while (node)
       {
 	  if (node->type == XML_ELEMENT_NODE)
@@ -986,17 +1115,31 @@ find_raster_symbolizer (xmlNodePtr node, rl2PrivRasterStylePtr style, int *loop)
 		const char *name = (const char *) (node->name);
 		if (strcmp (name, "RasterSymbolizer") == 0)
 		  {
-		      int ret = parse_raster_symbolizer (node, style);
+		      rl2PrivStyleRulePtr rule =
+			  rl2_create_default_style_rule ();
+		      rl2PrivRasterSymbolizerPtr symbolizer =
+			  rl2_create_default_raster_symbolizer ();
+		      if (symbolizer == NULL || rule == NULL)
+			{
+			    if (symbolizer != NULL)
+				rl2_destroy_raster_symbolizer (symbolizer);
+			    if (rule != NULL)
+				rl2_destroy_style_rule (rule);
+			    return 0;
+			}
+		      rule->style_type = RL2_RASTER_STYLE;
+		      rule->style = symbolizer;
+		      style->first_rule = rule;
+		      style->last_rule = rule;
+		      ret = parse_raster_symbolizer (node, symbolizer);
 		      *loop = 0;
 		      return ret;
 		  }
-		if (strcmp (name, "CoverageStyle") == 0 ||
-		    strcmp (name, "Rule") == 0)
+		if (strcmp (name, "CoverageStyle") == 0)
 		  {
-		      int ret =
-			  find_raster_symbolizer (node->children, style, loop);
-		      if (*loop == 0)
-			  return ret;
+		      ret = parse_coverage_style (node->children, style);
+		      *loop = 0;
+		      return ret;
 		  }
 	    }
 	  node = node->next;
@@ -1004,32 +1147,20 @@ find_raster_symbolizer (xmlNodePtr node, rl2PrivRasterStylePtr style, int *loop)
     return 0;
 }
 
-RL2_PRIVATE rl2RasterStylePtr
-raster_style_from_sld_se_xml (char *name, char *title, char *abstract,
-			      unsigned char *xml)
+RL2_PRIVATE rl2CoverageStylePtr
+coverage_style_from_xml (char *name, unsigned char *xml)
 {
-/* attempting to build a RasterStyle object from an SLD/SE XML style */
-    rl2PrivRasterStylePtr style = NULL;
+/* attempting to build a Coverage Style object from an SLD/SE XML style */
+    rl2PrivCoverageStylePtr style = NULL;
     xmlDocPtr xml_doc = NULL;
     xmlNodePtr root;
     int loop = 1;
     xmlGenericErrorFunc silentError = (xmlGenericErrorFunc) dummySilentError;
 
-    style = malloc (sizeof (rl2PrivRasterStyle));
+    style = rl2_create_default_coverage_style ();
     if (style == NULL)
 	return NULL;
     style->name = name;
-    style->title = title;
-    style->abstract = abstract;
-    style->opacity = 1.0;
-    style->bandSelection = NULL;
-    style->categorize = NULL;
-    style->interpolate = NULL;
-    style->contrastEnhancement = RL2_CONTRAST_ENHANCEMENT_NONE;
-    style->gammaValue = 1.0;
-    style->shadedRelief = 0;
-    style->brightnessOnly = 0;
-    style->reliefFactor = 55.0;
 
 /* parsing the XML document */
     xmlSetGenericErrorFunc (NULL, silentError);
@@ -1044,7 +1175,7 @@ raster_style_from_sld_se_xml (char *name, char *title, char *abstract,
     root = xmlDocGetRootElement (xml_doc);
     if (root == NULL)
 	goto error;
-    if (!find_raster_symbolizer (root, style, &loop))
+    if (!find_coverage_style (root, style, &loop))
 	goto error;
     xmlFreeDoc (xml_doc);
     free (xml);
@@ -1053,7 +1184,7 @@ raster_style_from_sld_se_xml (char *name, char *title, char *abstract,
     if (style->name == NULL)
 	goto error;
 
-    return (rl2RasterStylePtr) style;
+    return (rl2CoverageStylePtr) style;
 
   error:
     if (xml != NULL)
@@ -1061,528 +1192,3031 @@ raster_style_from_sld_se_xml (char *name, char *title, char *abstract,
     if (xml_doc != NULL)
 	xmlFreeDoc (xml_doc);
     if (style != NULL)
-	rl2_destroy_raster_style ((rl2RasterStylePtr) style);
+	rl2_destroy_coverage_style ((rl2CoverageStylePtr) style);
     return NULL;
 }
 
-RL2_DECLARE void
-rl2_destroy_raster_style (rl2RasterStylePtr style)
+static int
+svg_parameter_name (xmlNodePtr node, const char **name, const char **value)
 {
-/* destroying a RasterStyle object */
-    rl2PrivColorMapPointPtr pC;
-    rl2PrivColorMapPointPtr pCn;
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
+/* return the Name and Value from a <SvgParameter> */
+    struct _xmlAttr *attr;
+
+    *name = NULL;
+    *value = NULL;
+    attr = node->properties;
+    while (attr != NULL)
+      {
+	  /* attributes */
+	  if (attr->type == XML_ATTRIBUTE_NODE)
+	    {
+		const char *nm = (const char *) (attr->name);
+		if (strcmp (nm, "name") == 0)
+		  {
+		      xmlNode *text = attr->children;
+		      if (text != NULL)
+			{
+			    if (text->type == XML_TEXT_NODE)
+				*name = (const char *) (text->content);
+			}
+		  }
+	    }
+	  attr = attr->next;
+      }
+    if (name != NULL)
+      {
+	  xmlNodePtr child = node->children;
+	  while (child)
+	    {
+		if (child->type == XML_TEXT_NODE && child->content != NULL)
+		  {
+		      *value = (const char *) (child->content);
+		      return 1;
+		  }
+		child = child->next;
+	    }
+      }
+    return 0;
+}
+
+static int
+parse_sld_se_stroke_dasharray (const char *value, int *count, double **list)
+{
+/* parsing a Stroke Dasharray */
+    const char *in = value;
+    const char *start;
+    const char *end;
+    double dblarray[128];
+    int cnt = 0;
+    int len;
+    char *buf;
+    if (value == NULL)
+	return 0;
+    while (*in != '\0')
+      {
+	  start = in;
+	  end = in;
+	  while (1)
+	    {
+		if (*end == ' ' || *end == ',' || *end == '\0')
+		  {
+		      /* found an item delimiter */
+		      break;
+		  }
+		end++;
+	    }
+	  len = end - start;
+	  if (len > 0)
+	    {
+		buf = malloc (len + 1);
+		memcpy (buf, start, len);
+		*(buf + len) = '\0';
+		dblarray[cnt++] = atof (buf);
+		free (buf);
+		in = end;
+	    }
+	  else
+	      in++;
+      }
+    if (cnt <= 0)
+	return 0;
+/* allocating the Dash list */
+    *count = cnt;
+    *list = malloc (sizeof (double) * cnt);
+    for (len = 0; len < cnt; len++)
+	*(*list + len) = dblarray[len];
+    return 1;
+}
+
+static char *
+parse_graphic_online_resource (xmlNodePtr node)
+{
+/* parsing OnlineResource xlink_href */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "OnlineResource") == 0)
+		  {
+		      struct _xmlAttr *attr;
+		      attr = node->properties;
+		      while (attr != NULL)
+			{
+			    /* attributes */
+			    if (attr->type == XML_ATTRIBUTE_NODE)
+			      {
+				  xmlNode *text;
+				  name = (const char *) (attr->name);
+				  if (strcmp (name, "href") == 0)
+				    {
+					text = attr->children;
+					if (text != NULL)
+					  {
+					      if (text->type == XML_TEXT_NODE)
+						{
+						    int len;
+						    char *xlink_href;
+						    const char *href =
+							(const char
+							 *) (text->content);
+						    if (href == NULL)
+							return NULL;
+						    len = strlen (href);
+						    xlink_href =
+							malloc (len + 1);
+						    strcpy (xlink_href, href);
+						    return xlink_href;
+						}
+					  }
+				    }
+			      }
+			    attr = attr->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    return NULL;
+}
+
+static int
+parse_graphic_map_item (xmlNodePtr node, rl2PrivColorReplacementPtr repl)
+{
+/* parsing MapItem (ColorReplacemente/Recode) */
+    int ok_data = 0;
+    int ok_value = 0;
+    xmlNodePtr child;
+    while (node)
+      {
+	  const char *name = (const char *) (node->name);
+	  if (strcmp (name, "Data") == 0)
+	    {
+		child = node->children;
+		while (child)
+		  {
+		      if (child->type == XML_TEXT_NODE
+			  && child->content != NULL)
+			{
+			    repl->index = atoi ((const char *) child->content);
+			    ok_data = 1;
+			}
+		      child = child->next;
+		  }
+	    }
+	  if (strcmp (name, "Value") == 0)
+	    {
+		child = node->children;
+		while (child)
+		  {
+		      if (child->type == XML_TEXT_NODE
+			  && child->content != NULL)
+			{
+			    unsigned char red;
+			    unsigned char green;
+			    unsigned char blue;
+			    if (parse_sld_se_color
+				((const char *) (child->content), &red,
+				 &green, &blue))
+			      {
+				  repl->red = red;
+				  repl->green = green;
+				  repl->blue = blue;
+			      }
+			    ok_value = 1;
+			}
+		      child = child->next;
+		  }
+	    }
+	  node = node->next;
+      }
+    if (ok_data && ok_value)
+	return 1;
+    return 0;
+}
+
+static void
+parse_graphic_color_replacement (xmlNodePtr node, rl2PrivExternalGraphicPtr ext)
+{
+/* parsing ColorReplacement (Graphic) */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Recode") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    name = (const char *) (child->name);
+			    if (strcmp (name, "MapItem") == 0)
+			      {
+				  rl2PrivColorReplacementPtr repl =
+				      rl2_create_default_color_replacement ();
+				  if (repl == NULL)
+				      return;
+				  if (!parse_graphic_map_item
+				      (child->children, repl))
+				    {
+					rl2_destroy_color_replacement (repl);
+					return;
+				    }
+				  if (ext->first == NULL)
+				      ext->first = repl;
+				  if (ext->last != NULL)
+				      ext->last->next = repl;
+				  ext->last = repl;
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static int
+parse_mark_well_known_type (xmlNodePtr node)
+{
+/* parsing Mark WellKnownName */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "WellKnownName") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+			      {
+
+				  const char *type =
+				      (const char *) (child->content);
+				  if (strcasecmp (type, "square") == 0)
+				      return RL2_GRAPHIC_MARK_SQUARE;
+				  if (strcasecmp (type, "circle") == 0)
+				      return RL2_GRAPHIC_MARK_CIRCLE;
+				  if (strcasecmp (type, "triangle") == 0)
+				      return RL2_GRAPHIC_MARK_TRIANGLE;
+				  if (strcasecmp (type, "star") == 0)
+				      return RL2_GRAPHIC_MARK_STAR;
+				  if (strcasecmp (type, "cross") == 0)
+				      return RL2_GRAPHIC_MARK_CROSS;
+				  if (strcasecmp (type, "x") == 0)
+				      return RL2_GRAPHIC_MARK_X;
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    return RL2_GRAPHIC_MARK_UNKNOWN;
+}
+
+static void
+parse_mark_stroke (xmlNodePtr node, rl2PrivMarkPtr mark)
+{
+/* parsing Mark Stroke */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Stroke") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      mark->stroke = rl2_create_default_stroke ();
+		      if (mark->stroke == NULL)
+			  return;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "GraphicStroke") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      name =
+						  (const char
+						   *) (grandchild->name);
+					      if (strcmp (name, "Graphic") == 0)
+						{
+						    if (mark->stroke->graphic !=
+							NULL)
+							rl2_destroy_graphic
+							    (mark->
+							     stroke->graphic);
+						    mark->stroke->graphic =
+							rl2_create_default_graphic
+							();
+						    if (mark->stroke->graphic !=
+							NULL)
+							parse_graphic
+							    (grandchild->children,
+							     mark->
+							     stroke->graphic);
+						}
+					      grandchild = grandchild->next;
+					  }
+				    }
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "stroke") == 0)
+					  {
+					      unsigned char red;
+					      unsigned char green;
+					      unsigned char blue;
+					      if (parse_sld_se_color
+						  (svg_value, &red, &green,
+						   &blue))
+						{
+						    mark->stroke->red = red;
+						    mark->stroke->green = green;
+						    mark->stroke->blue = blue;
+						}
+					  }
+					if (strcmp (svg_name, "stroke-width")
+					    == 0)
+					    mark->stroke->width =
+						atof ((const char *) svg_value);
+					if (strcmp
+					    (svg_name, "stroke-linejoin") == 0)
+					  {
+					      if (strcmp (svg_value, "mitre")
+						  == 0)
+						  mark->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_MITRE;
+					      if (strcmp (svg_value, "round")
+						  == 0)
+						  mark->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_ROUND;
+					      if (strcmp (svg_value, "bevel")
+						  == 0)
+						  mark->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_BEVEL;
+					  }
+					if (strcmp
+					    (svg_name, "stroke-linecap") == 0)
+					  {
+					      if (strcmp (svg_value, "butt")
+						  == 0)
+						  mark->stroke->linecap =
+						      RL2_STROKE_LINECAP_BUTT;
+					      if (strcmp (svg_value, "round")
+						  == 0)
+						  mark->stroke->linecap =
+						      RL2_STROKE_LINECAP_ROUND;
+					      if (strcmp (svg_value, "square")
+						  == 0)
+						  mark->stroke->linecap =
+						      RL2_STROKE_LINECAP_SQUARE;
+					  }
+					if (strcmp
+					    (svg_name, "stroke-dasharray") == 0)
+					  {
+					      int dash_count;
+					      double *dash_list = NULL;
+					      if (parse_sld_se_stroke_dasharray
+						  (svg_value, &dash_count,
+						   &dash_list))
+						{
+						    mark->stroke->dash_count =
+							dash_count;
+						    mark->stroke->dash_list =
+							dash_list;
+						}
+					  }
+					if (strcmp
+					    (svg_name,
+					     "stroke-dashoffset") == 0)
+					    mark->stroke->dash_offset =
+						atof ((const char *) svg_value);
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_mark_fill (xmlNodePtr node, rl2PrivMarkPtr mark)
+{
+/* parsing Mark Fill */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Fill") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      mark->fill = rl2_create_default_fill ();
+		      if (mark->fill == NULL)
+			  return;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "GraphicFill") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      name =
+						  (const char
+						   *) (grandchild->name);
+					      if (strcmp (name, "Graphic") == 0)
+						{
+						    if (mark->fill->graphic !=
+							NULL)
+							rl2_destroy_graphic
+							    (mark->
+							     fill->graphic);
+						    mark->fill->graphic =
+							rl2_create_default_graphic
+							();
+						    if (mark->fill->graphic !=
+							NULL)
+							parse_graphic
+							    (grandchild->children,
+							     mark->
+							     fill->graphic);
+						}
+					      grandchild = grandchild->next;
+					  }
+				    }
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "fill") == 0)
+					  {
+					      unsigned char red;
+					      unsigned char green;
+					      unsigned char blue;
+					      if (parse_sld_se_color
+						  (svg_value, &red, &green,
+						   &blue))
+						{
+						    mark->fill->red = red;
+						    mark->fill->green = green;
+						    mark->fill->blue = blue;
+						}
+					  }
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_graphic (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Graphic */
+    while (node)
+      {
+	  const char *name = (const char *) (node->name);
+	  if (strcmp (name, "ExternalGraphic") == 0)
+	    {
+		xmlNodePtr child = node->children;
+		rl2PrivExternalGraphicPtr ext;
+		rl2PrivGraphicItemPtr item =
+		    rl2_create_default_external_graphic ();
+		if (item == NULL)
+		    return;
+		ext = (rl2PrivExternalGraphicPtr) (item->item);
+		ext->xlink_href =
+		    parse_graphic_online_resource (node->children);
+		if (ext->xlink_href == NULL)
+		  {
+		      rl2_destroy_graphic_item (item);
+		      return;
+		  }
+		while (child)
+		  {
+		      name = (const char *) (child->name);
+		      if (strcmp (name, "ColorReplacement") == 0)
+			  parse_graphic_color_replacement (child->children,
+							   ext);
+		      child = child->next;
+		  }
+		if (graphic->first == NULL)
+		    graphic->first = item;
+		if (graphic->last != NULL)
+		    graphic->last->next = item;
+		graphic->last = item;
+	    }
+	  if (strcmp (name, "Mark") == 0)
+	    {
+		rl2PrivMarkPtr mark;
+		rl2PrivGraphicItemPtr item = rl2_create_default_mark ();
+		if (item == NULL)
+		    return;
+		mark = (rl2PrivMarkPtr) (item->item);
+		mark->well_known_type =
+		    parse_mark_well_known_type (node->children);
+		parse_mark_fill (node->children, mark);
+		parse_mark_stroke (node->children, mark);
+		if (graphic->first == NULL)
+		    graphic->first = item;
+		if (graphic->last != NULL)
+		    graphic->last->next = item;
+		graphic->last = item;
+	    }
+
+	  node = node->next;
+      }
+}
+
+static void
+parse_line_stroke (xmlNodePtr node, rl2PrivLineSymbolizerPtr sym)
+{
+/* parsing LineSymbolizer Stroke */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Stroke") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      sym->stroke = rl2_create_default_stroke ();
+		      if (sym->stroke == NULL)
+			  return;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "GraphicStroke") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      name =
+						  (const char
+						   *) (grandchild->name);
+					      if (strcmp (name, "Graphic") == 0)
+						{
+						    if (sym->stroke->graphic !=
+							NULL)
+							rl2_destroy_graphic
+							    (sym->
+							     stroke->graphic);
+						    sym->stroke->graphic =
+							rl2_create_default_graphic
+							();
+						    if (sym->stroke->graphic !=
+							NULL)
+							parse_graphic
+							    (grandchild->children,
+							     sym->
+							     stroke->graphic);
+						}
+					      grandchild = grandchild->next;
+					  }
+				    }
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "stroke") == 0)
+					  {
+					      unsigned char red;
+					      unsigned char green;
+					      unsigned char blue;
+					      if (parse_sld_se_color
+						  (svg_value, &red, &green,
+						   &blue))
+						{
+						    sym->stroke->red = red;
+						    sym->stroke->green = green;
+						    sym->stroke->blue = blue;
+						}
+					  }
+					if (strcmp
+					    (svg_name, "stroke-opacity") == 0)
+					    sym->stroke->opacity =
+						atof ((const char *) svg_value);
+					if (strcmp (svg_name, "stroke-width")
+					    == 0)
+					    sym->stroke->width =
+						atof ((const char *) svg_value);
+					if (strcmp
+					    (svg_name, "stroke-linejoin") == 0)
+					  {
+					      if (strcmp (svg_value, "mitre")
+						  == 0)
+						  sym->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_MITRE;
+					      if (strcmp (svg_value, "round")
+						  == 0)
+						  sym->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_ROUND;
+					      if (strcmp (svg_value, "bevel")
+						  == 0)
+						  sym->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_BEVEL;
+					  }
+					if (strcmp
+					    (svg_name, "stroke-linecap") == 0)
+					  {
+					      if (strcmp (svg_value, "butt")
+						  == 0)
+						  sym->stroke->linecap =
+						      RL2_STROKE_LINECAP_BUTT;
+					      if (strcmp (svg_value, "round")
+						  == 0)
+						  sym->stroke->linecap =
+						      RL2_STROKE_LINECAP_ROUND;
+					      if (strcmp (svg_value, "square")
+						  == 0)
+						  sym->stroke->linecap =
+						      RL2_STROKE_LINECAP_SQUARE;
+					  }
+					if (strcmp
+					    (svg_name, "stroke-dasharray") == 0)
+					  {
+					      int dash_count;
+					      double *dash_list = NULL;
+					      if (parse_sld_se_stroke_dasharray
+						  (svg_value, &dash_count,
+						   &dash_list))
+						{
+						    sym->stroke->dash_count =
+							dash_count;
+						    sym->stroke->dash_list =
+							dash_list;
+						}
+					  }
+					if (strcmp
+					    (svg_name,
+					     "stroke-dashoffset") == 0)
+					    sym->stroke->dash_offset =
+						atof ((const char *) svg_value);
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_line_offset (xmlNodePtr node, rl2PrivLineSymbolizerPtr sym)
+{
+/* parsing LineSymbolizer PerpendicularOffset */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "PerpendicularOffset") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				sym->perpendicular_offset =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static int
+parse_line_symbolizer (xmlNodePtr node, rl2PrivVectorSymbolizerPtr symbolizer)
+{
+/* attempting to parse an SLD/SE LineSymbolizer */
+    rl2PrivVectorSymbolizerItemPtr item;
+    rl2PrivLineSymbolizerPtr sym;
+    if (symbolizer == NULL)
+	return 0;
+
+/* allocating a default Line Symbolizer */
+    item = rl2_create_default_line_symbolizer ();
+    if (item == NULL)
+	return 0;
+    if (item->symbolizer_type != RL2_LINE_SYMBOLIZER
+	|| item->symbolizer == NULL)
+      {
+	  rl2_destroy_vector_symbolizer_item (item);
+	  return 0;
+      }
+    sym = (rl2PrivLineSymbolizerPtr) (item->symbolizer);
+    if (symbolizer->first == NULL)
+	symbolizer->first = item;
+    if (symbolizer->last != NULL)
+	symbolizer->last->next = item;
+    symbolizer->last = item;
+
+    parse_line_stroke (node->children, sym);
+    parse_line_offset (node->children, sym);
+    return 1;
+}
+
+static void
+parse_polygon_stroke (xmlNodePtr node, rl2PrivPolygonSymbolizerPtr sym)
+{
+/* parsing PolygonSymbolizer Stroke */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Stroke") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      sym->stroke = rl2_create_default_stroke ();
+		      if (sym->stroke == NULL)
+			  return;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "GraphicStroke") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      name =
+						  (const char
+						   *) (grandchild->name);
+					      if (strcmp (name, "Graphic") == 0)
+						{
+						    if (sym->stroke->graphic !=
+							NULL)
+							rl2_destroy_graphic
+							    (sym->
+							     stroke->graphic);
+						    sym->stroke->graphic =
+							rl2_create_default_graphic
+							();
+						    if (sym->stroke->graphic !=
+							NULL)
+							parse_graphic
+							    (grandchild->children,
+							     sym->
+							     stroke->graphic);
+						}
+					      grandchild = grandchild->next;
+					  }
+				    }
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "stroke") == 0)
+					  {
+					      unsigned char red;
+					      unsigned char green;
+					      unsigned char blue;
+					      if (parse_sld_se_color
+						  (svg_value, &red, &green,
+						   &blue))
+						{
+						    sym->stroke->red = red;
+						    sym->stroke->green = green;
+						    sym->stroke->blue = blue;
+						}
+					  }
+					if (strcmp
+					    (svg_name, "stroke-opacity") == 0)
+					    sym->stroke->opacity =
+						atof ((const char *) svg_value);
+					if (strcmp (svg_name, "stroke-width")
+					    == 0)
+					    sym->stroke->width =
+						atof ((const char *) svg_value);
+					if (strcmp
+					    (svg_name, "stroke-linejoin") == 0)
+					  {
+					      if (strcmp (svg_value, "mitre")
+						  == 0)
+						  sym->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_MITRE;
+					      if (strcmp (svg_value, "round")
+						  == 0)
+						  sym->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_ROUND;
+					      if (strcmp (svg_value, "bevel")
+						  == 0)
+						  sym->stroke->linejoin =
+						      RL2_STROKE_LINEJOIN_BEVEL;
+					  }
+					if (strcmp
+					    (svg_name, "stroke-linecap") == 0)
+					  {
+					      if (strcmp (svg_value, "butt")
+						  == 0)
+						  sym->stroke->linecap =
+						      RL2_STROKE_LINECAP_BUTT;
+					      if (strcmp (svg_value, "round")
+						  == 0)
+						  sym->stroke->linecap =
+						      RL2_STROKE_LINECAP_ROUND;
+					      if (strcmp (svg_value, "square")
+						  == 0)
+						  sym->stroke->linecap =
+						      RL2_STROKE_LINECAP_SQUARE;
+					  }
+					if (strcmp
+					    (svg_name, "stroke-dasharray") == 0)
+					  {
+					      int dash_count;
+					      double *dash_list = NULL;
+					      if (parse_sld_se_stroke_dasharray
+						  (svg_value, &dash_count,
+						   &dash_list))
+						{
+						    sym->stroke->dash_count =
+							dash_count;
+						    sym->stroke->dash_list =
+							dash_list;
+						}
+					  }
+					if (strcmp
+					    (svg_name,
+					     "stroke-dashoffset") == 0)
+					    sym->stroke->dash_offset =
+						atof ((const char *) svg_value);
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_polygon_fill (xmlNodePtr node, rl2PrivPolygonSymbolizerPtr sym)
+{
+/* parsing PolygonSymbolizer Fill */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Fill") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      sym->fill = rl2_create_default_fill ();
+		      if (sym->fill == NULL)
+			  return;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "GraphicFill") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      name =
+						  (const char
+						   *) (grandchild->name);
+					      if (strcmp (name, "Graphic") == 0)
+						{
+						    if (sym->fill->graphic !=
+							NULL)
+							rl2_destroy_graphic
+							    (sym->
+							     fill->graphic);
+						    sym->fill->graphic =
+							rl2_create_default_graphic
+							();
+						    if (sym->fill->graphic !=
+							NULL)
+							parse_graphic
+							    (grandchild->children,
+							     sym->
+							     fill->graphic);
+						}
+					      grandchild = grandchild->next;
+					  }
+				    }
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "fill") == 0)
+					  {
+					      unsigned char red;
+					      unsigned char green;
+					      unsigned char blue;
+					      if (parse_sld_se_color
+						  (svg_value, &red, &green,
+						   &blue))
+						{
+						    sym->fill->red = red;
+						    sym->fill->green = green;
+						    sym->fill->blue = blue;
+						}
+					  }
+					if (strcmp (svg_name, "fill-opacity")
+					    == 0)
+					    sym->fill->opacity =
+						atof (svg_value);
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_polygon_offset (xmlNodePtr node, rl2PrivPolygonSymbolizerPtr sym)
+{
+/* parsing PolygonSymbolizer PerpendicularOffset */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "PerpendicularOffset") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				sym->perpendicular_offset =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_polygon_displacement_xy (xmlNodePtr node, rl2PrivPolygonSymbolizerPtr sym)
+{
+/* parsing PolygonSymbolizer Displacement */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "DisplacementX") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				sym->displacement_x =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (name, "DisplacementY") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				sym->displacement_y =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_polygon_displacement (xmlNodePtr node, rl2PrivPolygonSymbolizerPtr sym)
+{
+/* parsing PolygonSymbolizer Displacement */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Displacement") == 0)
+		    parse_polygon_displacement_xy (node->children, sym);
+	    }
+	  node = node->next;
+      }
+}
+
+static int
+parse_polygon_symbolizer (xmlNodePtr node,
+			  rl2PrivVectorSymbolizerPtr symbolizer)
+{
+/* attempting to parse an SLD/SE PolygonSymbolizer */
+    rl2PrivVectorSymbolizerItemPtr item;
+    rl2PrivPolygonSymbolizerPtr sym;
+    if (symbolizer == NULL)
+	return 0;
+
+/* allocating a default Polygon Symbolizer */
+    item = rl2_create_default_polygon_symbolizer ();
+    if (item == NULL)
+	return 0;
+    if (item->symbolizer_type != RL2_POLYGON_SYMBOLIZER
+	|| item->symbolizer == NULL)
+      {
+	  rl2_destroy_vector_symbolizer_item (item);
+	  return 0;
+      }
+    sym = (rl2PrivPolygonSymbolizerPtr) (item->symbolizer);
+    if (symbolizer->first == NULL)
+	symbolizer->first = item;
+    if (symbolizer->last != NULL)
+	symbolizer->last->next = item;
+    symbolizer->last = item;
+
+    parse_polygon_stroke (node->children, sym);
+    parse_polygon_fill (node->children, sym);
+    parse_polygon_offset (node->children, sym);
+    parse_polygon_displacement (node->children, sym);
+    return 1;
+}
+
+static void
+parse_point_opacity (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Point Symbolizer Graphic Opacity */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Opacity") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				graphic->opacity =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_size (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Point Symbolizer Graphic Size */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Size") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				graphic->size =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_rotation (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Point Symbolizer Graphic Rotation */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Rotation") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				graphic->rotation =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_anchor_point_xy (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Point Symbolizer Graphic AnchorPoint XY */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "AnchorPointX") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				graphic->anchor_point_x =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (name, "AnchorPointY") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				graphic->anchor_point_y =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_anchor_point (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Point Symbolizer Graphic AnchorPoint */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "AnchorPoint") == 0)
+		    parse_point_anchor_point_xy (node->children, graphic);
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_displacement_xy (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Point Symbolizer Graphic Displacement */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "DisplacementX") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				graphic->displacement_x =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (name, "DisplacementY") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				graphic->displacement_y =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_displacement (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* parsing Point Symbolizer Graphic Displacement */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Displacement") == 0)
+		    parse_point_displacement_xy (node->children, graphic);
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_graphic (xmlNodePtr node, rl2PrivGraphicPtr graphic)
+{
+/* finding the Graphic tag within a PointSymbolizer */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Graphic") == 0)
+		  {
+		      parse_graphic (node->children, graphic);
+		      parse_point_opacity (node->children, graphic);
+		      parse_point_size (node->children, graphic);
+		      parse_point_rotation (node->children, graphic);
+		      parse_point_anchor_point (node->children, graphic);
+		      parse_point_displacement (node->children, graphic);
+		      return;
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static int
+parse_point_symbolizer (xmlNodePtr node, rl2PrivVectorSymbolizerPtr symbolizer)
+{
+/* attempting to parse an SLD/SE PointSymbolizer */
+    rl2PrivVectorSymbolizerItemPtr item;
+    rl2PrivPointSymbolizerPtr sym;
+    if (symbolizer == NULL)
+	return 0;
+
+/* allocating a default Point Symbolizer */
+    item = rl2_create_default_point_symbolizer ();
+    if (item == NULL)
+	return 0;
+    if (item->symbolizer_type != RL2_POINT_SYMBOLIZER
+	|| item->symbolizer == NULL)
+      {
+	  rl2_destroy_vector_symbolizer_item (item);
+	  return 0;
+      }
+    sym = (rl2PrivPointSymbolizerPtr) (item->symbolizer);
+    if (symbolizer->first == NULL)
+	symbolizer->first = item;
+    if (symbolizer->last != NULL)
+	symbolizer->last->next = item;
+    symbolizer->last = item;
+
+    if (sym->graphic != NULL)
+	rl2_destroy_graphic (sym->graphic);
+    sym->graphic = rl2_create_default_graphic ();
+    if (sym->graphic != NULL)
+	parse_point_graphic (node->children, sym->graphic);
+    return 1;
+}
+
+static void
+parse_text_label (xmlNodePtr node, rl2PrivTextSymbolizerPtr text)
+{
+/* parsing Text Symbolizer Label */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Label") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+			      {
+				  int len;
+				  const char *label =
+				      (const char *) (child->content);
+				  if (text->label != NULL)
+				      free (text->label);
+				  if (label == NULL)
+				    {
+					text->label = NULL;
+					return;
+				    }
+				  len = strlen (label);
+				  text->label = malloc (len + 1);
+				  strcpy (text->label, label);
+				  return;
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_text_font (xmlNodePtr node, rl2PrivTextSymbolizerPtr sym)
+{
+/* parsing TextSymbolizer Font */
+    int i;
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Font") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      for (i = 0; i < RL2_MAX_FONT_FAMILIES; i++)
+			{
+			    if (*(sym->font_families + i) != NULL)
+				free (*(sym->font_families + i));
+			}
+		      sym->font_families_count = 0;
+		      for (i = 0; i < RL2_MAX_FONT_FAMILIES; i++)
+			  *(sym->font_families + i) = NULL;
+		      sym->font_style = RL2_FONT_STYLE_NORMAL;
+		      sym->font_weight = RL2_FONT_WEIGHT_NORMAL;
+		      sym->font_size = 10.0;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "font-family")
+					    == 0)
+					  {
+					      if (sym->font_families_count <
+						  RL2_MAX_FONT_FAMILIES)
+						{
+						    int idx =
+							sym->font_families_count++;
+						    int len =
+							strlen (svg_value);
+						    *(sym->font_families +
+						      idx) = malloc (len + 1);
+						    strcpy (*
+							    (sym->font_families
+							     + idx), svg_value);
+						}
+					  }
+					if (strcmp (svg_name, "font-style") ==
+					    0)
+					  {
+					      if (strcasecmp
+						  (svg_value, "normal") == 0)
+						  sym->font_style =
+						      RL2_FONT_STYLE_NORMAL;
+					      if (strcasecmp
+						  (svg_value, "italic") == 0)
+						  sym->font_style =
+						      RL2_FONT_STYLE_ITALIC;
+					      if (strcasecmp
+						  (svg_value, "oblique") == 0)
+						  sym->font_style =
+						      RL2_FONT_STYLE_OBLIQUE;
+					  }
+					if (strcmp (svg_name, "font-weight")
+					    == 0)
+					  {
+					      if (strcasecmp
+						  (svg_value, "normal") == 0)
+						  sym->font_weight =
+						      RL2_FONT_WEIGHT_NORMAL;
+					      if (strcasecmp
+						  (svg_value, "bold") == 0)
+						  sym->font_weight =
+						      RL2_FONT_WEIGHT_BOLD;
+					  }
+					if (strcmp (svg_name, "font-size") == 0)
+					    sym->font_size = atof (svg_value);
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_anchor_point_xy (xmlNodePtr node, rl2PrivPointPlacementPtr place)
+{
+/* parsing TextSymbolizer label AnchorPoint XY */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "AnchorPointX") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->anchor_point_x =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (name, "AnchorPointY") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->anchor_point_y =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_anchor_point (xmlNodePtr node, rl2PrivPointPlacementPtr place)
+{
+/* parsing TextSymbolizer label AnchorPoint */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "AnchorPoint") == 0)
+		    parse_label_anchor_point_xy (node->children, place);
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_displacement_xy (xmlNodePtr node, rl2PrivPointPlacementPtr place)
+{
+/* parsing TextSymbolizer label Displacement */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "DisplacementX") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->displacement_x =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (name, "DisplacementY") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->displacement_y =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_displacement (xmlNodePtr node, rl2PrivPointPlacementPtr place)
+{
+/* parsing TextSymbolizer label Displacement */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Displacement") == 0)
+		    parse_label_displacement_xy (node->children, place);
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_rotation (xmlNodePtr node, rl2PrivPointPlacementPtr place)
+{
+/* parsing TextSymbolizer label Rotation */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Rotation") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->rotation =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_point_placement (xmlNodePtr node, rl2PrivPointPlacementPtr place)
+{
+/* parsing Point Placement (TextSymbolizer) */
+    parse_label_anchor_point (node->children, place);
+    parse_label_displacement (node->children, place);
+    parse_label_rotation (node->children, place);
+}
+
+static void
+parse_label_perpendicular_offset (xmlNodePtr node,
+				  rl2PrivLinePlacementPtr place)
+{
+/* parsing TextSymbolizer label PerpendicularOffset */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "PerpendicularOffset") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->perpendicular_offset =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_initial_gap (xmlNodePtr node, rl2PrivLinePlacementPtr place)
+{
+/* parsing TextSymbolizer label InitialGap */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "InitialGap") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->initial_gap =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_gap (xmlNodePtr node, rl2PrivLinePlacementPtr place)
+{
+/* parsing TextSymbolizer label Gap */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Gap") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				place->gap =
+				    atof ((const char *) child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_is_repeated (xmlNodePtr node, rl2PrivLinePlacementPtr place)
+{
+/* parsing TextSymbolizer label IsRepeated */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "IsRepeated") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+			      {
+				  const char *value =
+				      (const char *) (child->content);
+				  if (strcasecmp (value, "true") == 0)
+				      place->is_repeated = 1;
+				  if (atoi (value) != 0)
+				      place->is_repeated = 1;
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_is_aligned (xmlNodePtr node, rl2PrivLinePlacementPtr place)
+{
+/* parsing TextSymbolizer label IsAligned */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "IsAligned") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+			      {
+				  const char *value =
+				      (const char *) (child->content);
+				  if (strcasecmp (value, "true") == 0)
+				      place->is_aligned = 1;
+				  if (atoi (value) != 0)
+				      place->is_aligned = 1;
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_label_generalize_line (xmlNodePtr node, rl2PrivLinePlacementPtr place)
+{
+/* parsing TextSymbolizer label GeneralizeLine */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "GeneralizeLine") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+			      {
+				  const char *value =
+				      (const char *) (child->content);
+				  if (strcasecmp (value, "true") == 0)
+				      place->generalize_line = 1;
+				  if (atoi (value) != 0)
+				      place->generalize_line = 1;
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_line_placement (xmlNodePtr node, rl2PrivLinePlacementPtr place)
+{
+/* parsing Line Placement (TextSymbolizer) */
+    parse_label_perpendicular_offset (node->children, place);
+    parse_label_is_repeated (node->children, place);
+    parse_label_initial_gap (node->children, place);
+    parse_label_gap (node->children, place);
+    parse_label_is_aligned (node->children, place);
+    parse_label_generalize_line (node->children, place);
+}
+
+static void
+parse_text_label_placement (xmlNodePtr node, rl2PrivTextSymbolizerPtr sym)
+{
+/* parsing TextSymbolizer LabelPlacement */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "LabelPlacement") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      if (sym->label_placement_type ==
+			  RL2_LABEL_PLACEMENT_POINT
+			  && sym->label_placement != NULL)
+			  rl2_destroy_point_placement ((rl2PrivPointPlacementPtr) (sym->label_placement));
+		      if (sym->label_placement_type ==
+			  RL2_LABEL_PLACEMENT_LINE
+			  && sym->label_placement != NULL)
+			  rl2_destroy_line_placement ((rl2PrivLinePlacementPtr)
+						      (sym->label_placement));
+		      sym->label_placement_type = RL2_LABEL_PLACEMENT_UNKNOWN;
+		      sym->label_placement = NULL;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "PointPlacement") == 0)
+				    {
+					if (sym->label_placement_type ==
+					    RL2_LABEL_PLACEMENT_POINT
+					    && sym->label_placement != NULL)
+					    rl2_destroy_point_placement ((rl2PrivPointPlacementPtr) (sym->label_placement));
+					if (sym->label_placement_type ==
+					    RL2_LABEL_PLACEMENT_LINE
+					    && sym->label_placement != NULL)
+					    rl2_destroy_line_placement ((rl2PrivLinePlacementPtr) (sym->label_placement));
+					sym->label_placement_type =
+					    RL2_LABEL_PLACEMENT_POINT;
+					sym->label_placement =
+					    rl2_create_default_point_placement
+					    ();
+					parse_point_placement (child,
+							       (rl2PrivPointPlacementPtr)
+							       (sym->label_placement));
+				    }
+				  if (strcmp (name, "LinePlacement") == 0)
+				    {
+					if (sym->label_placement_type ==
+					    RL2_LABEL_PLACEMENT_POINT
+					    && sym->label_placement != NULL)
+					    rl2_destroy_point_placement ((rl2PrivPointPlacementPtr) (sym->label_placement));
+					if (sym->label_placement_type ==
+					    RL2_LABEL_PLACEMENT_LINE
+					    && sym->label_placement != NULL)
+					    rl2_destroy_line_placement ((rl2PrivLinePlacementPtr) (sym->label_placement));
+					sym->label_placement_type =
+					    RL2_LABEL_PLACEMENT_LINE;
+					sym->label_placement =
+					    rl2_create_default_line_placement
+					    ();
+					parse_line_placement (child,
+							      (rl2PrivLinePlacementPtr)
+							      (sym->label_placement));
+				    };
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_halo_fill (xmlNodePtr node, rl2PrivHaloPtr halo)
+{
+/* parsing Halo Fill */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Fill") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      if (halo->fill != NULL)
+			  rl2_destroy_fill (halo->fill);
+		      halo->fill = rl2_create_default_fill ();
+		      halo->fill->red = 0xff;
+		      halo->fill->green = 0xff;
+		      halo->fill->blue = 0xff;
+		      if (halo->fill == NULL)
+			  return;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "fill") == 0)
+					  {
+					      unsigned char red;
+					      unsigned char green;
+					      unsigned char blue;
+					      if (parse_sld_se_color
+						  (svg_value, &red, &green,
+						   &blue))
+						{
+						    halo->fill->red = red;
+						    halo->fill->green = green;
+						    halo->fill->blue = blue;
+						}
+					  }
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_text_halo (xmlNodePtr node, rl2PrivTextSymbolizerPtr sym)
+{
+/* parsing TextSymbolizer Halo */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Halo") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      sym->halo = rl2_create_default_halo ();
+		      if (sym->halo == NULL)
+			  return;
+		      sym->halo->fill = rl2_create_default_fill ();
+		      sym->halo->fill->red = 255;
+		      sym->halo->fill->green = 255;
+		      sym->halo->fill->blue = 255;
+		      sym->halo->fill->opacity = 1.0;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "Radius") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      if (grandchild->type ==
+						  XML_TEXT_NODE
+						  && grandchild->content !=
+						  NULL)
+						{
+						    const char *radius =
+							(const char
+							 *)
+							(grandchild->content);
+						    sym->halo->radius =
+							atof (radius);
+						}
+					      grandchild = grandchild->next;
+					  }
+				    }
+				  if (strcmp (name, "Fill") == 0)
+				      parse_halo_fill (child, sym->halo);
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_text_fill (xmlNodePtr node, rl2PrivTextSymbolizerPtr sym)
+{
+/* parsing TextSymbolizer Fill */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Fill") == 0)
+		  {
+		      xmlNodePtr child = node->children;
+		      sym->fill = rl2_create_default_fill ();
+		      sym->fill->red = 0;
+		      sym->fill->green = 0;
+		      sym->fill->blue = 0;
+		      sym->fill->opacity = 1.0;
+		      if (sym->fill == NULL)
+			  return;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  name = (const char *) (child->name);
+				  if (strcmp (name, "SvgParameter") == 0)
+				    {
+					const char *svg_name;
+					const char *svg_value;
+					if (!svg_parameter_name
+					    (child, &svg_name, &svg_value))
+					  {
+					      child = child->next;
+					      continue;
+					  }
+					if (strcmp (svg_name, "fill") == 0)
+					  {
+					      unsigned char red;
+					      unsigned char green;
+					      unsigned char blue;
+					      if (parse_sld_se_color
+						  (svg_value, &red, &green,
+						   &blue))
+						{
+						    sym->fill->red = red;
+						    sym->fill->green = green;
+						    sym->fill->blue = blue;
+						}
+					  }
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static int
+parse_text_symbolizer (xmlNodePtr node, rl2PrivVectorSymbolizerPtr symbolizer)
+{
+/* attempting to parse an SLD/SE TextSymbolizer */
+    rl2PrivVectorSymbolizerItemPtr item;
+    rl2PrivTextSymbolizerPtr sym;
+    if (symbolizer == NULL)
+	return 0;
+
+/* allocating a default Text Symbolizer */
+    item = rl2_create_default_text_symbolizer ();
+    if (item == NULL)
+	return 0;
+    if (item->symbolizer_type != RL2_TEXT_SYMBOLIZER
+	|| item->symbolizer == NULL)
+      {
+	  rl2_destroy_vector_symbolizer_item (item);
+	  return 0;
+      }
+    sym = (rl2PrivTextSymbolizerPtr) (item->symbolizer);
+    if (symbolizer->first == NULL)
+	symbolizer->first = item;
+    if (symbolizer->last != NULL)
+	symbolizer->last->next = item;
+    symbolizer->last = item;
+
+    parse_text_label (node->children, sym);
+    parse_text_font (node->children, sym);
+    parse_text_label_placement (node->children, sym);
+    parse_text_halo (node->children, sym);
+    parse_text_fill (node->children, sym);
+    return 1;
+}
+
+static void
+parse_sld_se_filter_single (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule Filter single arg */
+    const char *name = NULL;
+    const char *value = NULL;
+    rl2PrivRuleSingleArgPtr arg =
+	(rl2PrivRuleSingleArgPtr) (rule->comparison_args);
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		xmlNodePtr child;
+		const char *nm = (const char *) (node->name);
+		if (strcmp (nm, "PropertyName") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				name = (const char *) (child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (nm, "Literal") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				value = (const char *) (child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    if (name == NULL || value == NULL)
+      {
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  rule->column_name = NULL;
+	  if (arg->value != NULL)
+	      free (arg->value);
+	  arg->value = NULL;
+      }
+    else
+      {
+	  int len;
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  if (arg->value != NULL)
+	      free (arg->value);
+	  len = strlen (name);
+	  rule->column_name = malloc (len + 1);
+	  strcpy (rule->column_name, name);
+	  len = strlen (value);
+	  arg->value = malloc (len + 1);
+	  strcpy (arg->value, value);
+      }
+}
+
+static void
+parse_sld_se_filter_like (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule Filter Like arg */
+    const char *nm;
+    const char *name = NULL;
+    const char *wild_card = NULL;
+    const char *single_char = NULL;
+    const char *escape_char = NULL;
+    const char *value = NULL;
+    rl2PrivRuleLikeArgsPtr args =
+	(rl2PrivRuleLikeArgsPtr) (rule->comparison_args);
+    struct _xmlAttr *attr;
+
+    attr = node->properties;
+    while (attr != NULL)
+      {
+	  /* attributes */
+	  if (attr->type == XML_ATTRIBUTE_NODE)
+	    {
+		xmlNode *text;
+		nm = (const char *) (attr->name);
+		if (strcmp (nm, "wildCard") == 0)
+		  {
+		      text = attr->children;
+		      if (text != NULL)
+			{
+			    if (text->type == XML_TEXT_NODE)
+			      {
+				  wild_card = (const char *) (text->content);
+
+			      }
+			}
+		  }
+		if (strcmp (nm, "singleChar") == 0)
+		  {
+		      text = attr->children;
+		      if (text != NULL)
+			{
+			    if (text->type == XML_TEXT_NODE)
+			      {
+				  single_char = (const char *) (text->content);
+
+			      }
+			}
+		  }
+		if (strcmp (nm, "escapeChar") == 0)
+		  {
+		      text = attr->children;
+		      if (text != NULL)
+			{
+			    if (text->type == XML_TEXT_NODE)
+			      {
+				  escape_char = (const char *) (text->content);
+
+			      }
+			}
+		  }
+	    }
+	  attr = attr->next;
+      }
+
+    node = node->children;
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		xmlNodePtr child;
+		const char *nm = (const char *) (node->name);
+		if (strcmp (nm, "PropertyName") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				name = (const char *) (child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (nm, "Literal") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				value = (const char *) (child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    if (name == NULL || wild_card == NULL || single_char == NULL
+	|| escape_char == NULL || value == NULL)
+      {
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  rule->column_name = NULL;
+	  if (args->wild_card != NULL)
+	      free (args->wild_card);
+	  args->wild_card = NULL;
+	  if (args->single_char != NULL)
+	      free (args->single_char);
+	  args->single_char = NULL;
+	  if (args->escape_char != NULL)
+	      free (args->escape_char);
+	  args->escape_char = NULL;
+	  if (args->value != NULL)
+	      free (args->value);
+	  args->value = NULL;
+      }
+    else
+      {
+	  int len;
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  if (args->wild_card != NULL)
+	      free (args->wild_card);
+	  if (args->single_char != NULL)
+	      free (args->single_char);
+	  if (args->escape_char != NULL)
+	      free (args->escape_char);
+	  if (args->value != NULL)
+	      free (args->value);
+	  if (args->value != NULL)
+	      free (args->value);
+	  len = strlen (name);
+	  rule->column_name = malloc (len + 1);
+	  strcpy (rule->column_name, name);
+	  len = strlen (wild_card);
+	  args->wild_card = malloc (len + 1);
+	  strcpy (args->wild_card, wild_card);
+	  len = strlen (single_char);
+	  args->single_char = malloc (len + 1);
+	  strcpy (args->single_char, single_char);
+	  len = strlen (escape_char);
+	  args->escape_char = malloc (len + 1);
+	  strcpy (args->escape_char, escape_char);
+	  len = strlen (value);
+	  args->value = malloc (len + 1);
+	  strcpy (args->value, value);
+      }
+}
+
+static void
+parse_sld_se_filter_between (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule Filter between args */
+    const char *name = NULL;
+    const char *lower = NULL;
+    const char *upper = NULL;
+    rl2PrivRuleBetweenArgsPtr args =
+	(rl2PrivRuleBetweenArgsPtr) (rule->comparison_args);
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		xmlNodePtr child;
+		const char *nm = (const char *) (node->name);
+		if (strcmp (nm, "PropertyName") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				name = (const char *) (child->content);
+			    child = child->next;
+			}
+		  }
+		if (strcmp (nm, "LowerBoundary") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  nm = (const char *) (child->name);
+				  if (strcmp (nm, "Literal") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      if (grandchild->type ==
+						  XML_TEXT_NODE
+						  && grandchild->content !=
+						  NULL)
+						  lower =
+						      (const char
+						       *) (grandchild->content);
+					      grandchild = grandchild->next;
+					  }
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+		if (strcmp (nm, "UpperBoundary") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_ELEMENT_NODE)
+			      {
+				  nm = (const char *) (child->name);
+				  if (strcmp (nm, "Literal") == 0)
+				    {
+					xmlNodePtr grandchild = child->children;
+					while (grandchild)
+					  {
+					      if (grandchild->type ==
+						  XML_TEXT_NODE
+						  && grandchild->content !=
+						  NULL)
+						  upper =
+						      (const char
+						       *) (grandchild->content);
+					      grandchild = grandchild->next;
+					  }
+				    }
+			      }
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    if (name == NULL || lower == NULL || upper == NULL)
+      {
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  rule->column_name = NULL;
+	  if (args->lower != NULL)
+	      free (args->lower);
+	  args->lower = NULL;
+	  if (args->upper != NULL)
+	      free (args->upper);
+	  args->upper = NULL;
+      }
+    else
+      {
+	  int len;
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  if (args->lower != NULL)
+	      free (args->lower);
+	  if (args->upper != NULL)
+	      free (args->upper);
+	  len = strlen (name);
+	  rule->column_name = malloc (len + 1);
+	  strcpy (rule->column_name, name);
+	  len = strlen (lower);
+	  args->lower = malloc (len + 1);
+	  strcpy (args->lower, lower);
+	  len = strlen (upper);
+	  args->upper = malloc (len + 1);
+	  strcpy (args->upper, upper);
+      }
+}
+
+static void
+parse_sld_se_filter_null (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule Filter NULL */
+    const char *name = NULL;
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		xmlNodePtr child;
+		const char *nm = (const char *) (node->name);
+		if (strcmp (nm, "PropertyName") == 0)
+		  {
+		      child = node->children;
+		      while (child)
+			{
+			    if (child->type == XML_TEXT_NODE
+				&& child->content != NULL)
+				name = (const char *) (child->content);
+			    child = child->next;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    if (name == NULL)
+      {
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  rule->column_name = NULL;
+      }
+    else
+      {
+	  int len;
+	  if (rule->column_name != NULL)
+	      free (rule->column_name);
+	  len = strlen (name);
+	  rule->column_name = malloc (len + 1);
+	  strcpy (rule->column_name, name);
+      }
+}
+
+static void
+parse_sld_se_filter_args (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule Filter args */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "PropertyIsEqualTo") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_single_arg ();
+		      rule->comparison_op = RL2_COMPARISON_EQ;
+		      parse_sld_se_filter_single (node->children, rule);
+		  }
+		if (strcmp (name, "PropertyIsNotEqualTo") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_single_arg ();
+		      rule->comparison_op = RL2_COMPARISON_NE;
+		      parse_sld_se_filter_single (node->children, rule);
+		  }
+		if (strcmp (name, "PropertyIsLessThan") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_single_arg ();
+		      rule->comparison_op = RL2_COMPARISON_LT;
+		      parse_sld_se_filter_single (node->children, rule);
+		  }
+		if (strcmp (name, "PropertyIsGreaterThan") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_single_arg ();
+		      rule->comparison_op = RL2_COMPARISON_GT;
+		      parse_sld_se_filter_single (node->children, rule);
+		  }
+		if (strcmp (name, "PropertyIsLessThanOrEqualTo") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_single_arg ();
+		      rule->comparison_op = RL2_COMPARISON_LE;
+		      parse_sld_se_filter_single (node->children, rule);
+		  }
+		if (strcmp (name, "PropertyIsGreaterThanOrEqualTo") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_single_arg ();
+		      rule->comparison_op = RL2_COMPARISON_GE;
+		      parse_sld_se_filter_single (node->children, rule);
+		  }
+		if (strcmp (name, "PropertyIsLike") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_like_args ();
+		      rule->comparison_op = RL2_COMPARISON_LIKE;
+		      parse_sld_se_filter_like (node, rule);
+		  }
+		if (strcmp (name, "PropertyIsBetween") == 0)
+		  {
+		      rule->comparison_args =
+			  rl2_create_default_rule_between_args ();
+		      rule->comparison_op = RL2_COMPARISON_BETWEEN;
+		      parse_sld_se_filter_between (node->children, rule);
+		  }
+		if (strcmp (name, "PropertyIsNull") == 0)
+		  {
+		      rule->comparison_op = RL2_COMPARISON_NULL;
+		      parse_sld_se_filter_null (node->children, rule);
+		  }
+	    }
+	  node = node->next;
+      }
+}
+
+static void
+parse_sld_se_filter (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* parsing Rule Filter */
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Filter") == 0)
+		    parse_sld_se_filter_args (node->children, rule);
+		if (strcmp (name, "ElseFilter") == 0)
+		    rule->else_rule = 1;
+	    }
+	  node = node->next;
+      }
+}
+
+static int
+parse_vector_style_rule (xmlNodePtr node, rl2PrivStyleRulePtr rule)
+{
+/* attempting to parse an SLD/SE Style Rule (vector type) */
+    int ret;
+    int count = 0;
+    rl2PrivVectorSymbolizerPtr symb = rl2_create_default_vector_symbolizer ();
+    parse_sld_se_filter (node, rule);
+    parse_sld_se_min_scale_denominator (node, rule);
+    parse_sld_se_max_scale_denominator (node, rule);
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "PointSymbolizer") == 0)
+		  {
+		      ret = parse_point_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    count++;
+			}
+		  }
+		if (strcmp (name, "LineSymbolizer") == 0)
+		  {
+		      ret = parse_line_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    count++;
+			}
+		  }
+		if (strcmp (name, "PolygonSymbolizer") == 0)
+		  {
+		      ret = parse_polygon_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    count++;
+			}
+		  }
+		if (strcmp (name, "TextSymbolizer") == 0)
+		  {
+		      ret = parse_text_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    count++;
+			}
+		  }
+	    }
+	  node = node->next;
+      }
+    if (count <= 0)
+      {
+	  rl2_destroy_vector_symbolizer (symb);
+	  return 0;
+      }
+    return 1;
+}
+
+static int
+parse_feature_type_style (xmlNodePtr node, rl2PrivFeatureTypeStylePtr style)
+{
+/* parsing an SLD/SE FeatureType Style */
+    int count = 0;
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "Rule") == 0)
+		  {
+		      rl2PrivStyleRulePtr rule =
+			  rl2_create_default_style_rule ();
+		      int ret = parse_vector_style_rule (node->children, rule);
+		      if (ret)
+			{
+			    if (rule->else_rule)
+			      {
+				  /* special case: ElseRule */
+				  if (style->else_rule != NULL)
+				      rl2_destroy_style_rule (style->else_rule);
+				  style->else_rule = rule;
+			      }
+			    else
+			      {
+				  /* ordinary Rule */
+				  if (style->first_rule == NULL)
+				      style->first_rule = rule;
+				  if (style->last_rule != NULL)
+				      style->last_rule->next = rule;
+				  style->last_rule = rule;
+			      }
+			    count++;
+			}
+		      else
+			  rl2_destroy_style_rule (rule);
+		  }
+	    }
+	  node = node->next;
+      }
+    if (count <= 0)
+	return 0;
+    return 1;
+}
+
+static int
+find_feature_type_style (xmlNodePtr node, rl2PrivFeatureTypeStylePtr style,
+			 int *loop)
+{
+/* recursivly searching an SLD/SE VectorSymbolizer */
+    int ret;
+    while (node)
+      {
+	  if (node->type == XML_ELEMENT_NODE)
+	    {
+		const char *name = (const char *) (node->name);
+		if (strcmp (name, "PointSymbolizer") == 0)
+		  {
+		      rl2PrivVectorSymbolizerPtr symb =
+			  rl2_create_default_vector_symbolizer ();
+		      ret = parse_point_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rl2PrivStyleRulePtr rule =
+				rl2_create_default_style_rule ();
+			    if (rule == NULL)
+			      {
+				  rl2_destroy_vector_symbolizer (symb);
+				  ret = 0;
+			      }
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    style->else_rule = rule;
+			}
+		      else
+			  rl2_destroy_vector_symbolizer (symb);
+		      *loop = 0;
+		      return ret;
+		  }
+		if (strcmp (name, "LineSymbolizer") == 0)
+		  {
+		      rl2PrivVectorSymbolizerPtr symb =
+			  rl2_create_default_vector_symbolizer ();
+		      ret = parse_line_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rl2PrivStyleRulePtr rule =
+				rl2_create_default_style_rule ();
+			    if (rule == NULL)
+			      {
+				  rl2_destroy_vector_symbolizer (symb);
+				  ret = 0;
+			      }
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    style->else_rule = rule;
+			}
+		      else
+			  rl2_destroy_vector_symbolizer (symb);
+		      *loop = 0;
+		      return ret;
+		  }
+		if (strcmp (name, "PolygonSymbolizer") == 0)
+		  {
+		      rl2PrivVectorSymbolizerPtr symb =
+			  rl2_create_default_vector_symbolizer ();
+		      ret = parse_polygon_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rl2PrivStyleRulePtr rule =
+				rl2_create_default_style_rule ();
+			    if (rule == NULL)
+			      {
+				  rl2_destroy_vector_symbolizer (symb);
+				  ret = 0;
+			      }
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    style->else_rule = rule;
+			}
+		      else
+			  rl2_destroy_vector_symbolizer (symb);
+		      *loop = 0;
+		      return ret;
+		  }
+		if (strcmp (name, "TextSymbolizer") == 0)
+		  {
+		      rl2PrivVectorSymbolizerPtr symb =
+			  rl2_create_default_vector_symbolizer ();
+		      ret = parse_text_symbolizer (node, symb);
+		      if (ret)
+			{
+			    rl2PrivStyleRulePtr rule =
+				rl2_create_default_style_rule ();
+			    if (rule == NULL)
+			      {
+				  rl2_destroy_vector_symbolizer (symb);
+				  ret = 0;
+			      }
+			    rule->style_type = RL2_VECTOR_STYLE;
+			    rule->style = symb;
+			    style->else_rule = rule;
+			}
+		      else
+			  rl2_destroy_vector_symbolizer (symb);
+		      *loop = 0;
+		      return ret;
+		  }
+		if (strcmp (name, "FeatureTypeStyle") == 0)
+		  {
+		      ret = parse_feature_type_style (node->children, style);
+		      *loop = 0;
+		      return ret;
+		  }
+	    }
+	  node = node->next;
+      }
+    return 0;
+}
+
+static void
+build_column_names_array (rl2PrivFeatureTypeStylePtr style)
+{
+/* building the column names array - Feature Type Style */
+    char **strings;
+    char *dupl;
+    int len;
+    int count = 0;
+    int count2 = 0;
+    int i;
+    int j;
+    rl2PrivStyleRulePtr pR;
+    rl2PrivVectorSymbolizerPtr pV;
+    rl2PrivVectorSymbolizerItemPtr item;
+    rl2PrivTextSymbolizerPtr text;
+
+    pR = style->first_rule;
+    while (pR != NULL)
+      {
+	  /* counting max column names */
+	  if (pR->column_name != NULL)
+	      count++;
+	  if (pR->style_type == RL2_VECTOR_STYLE && pR->style != NULL)
+	    {
+		pV = (rl2PrivVectorSymbolizerPtr) (pR->style);
+		item = pV->first;
+		while (item != NULL)
+		  {
+		      if (item->symbolizer_type == RL2_TEXT_SYMBOLIZER
+			  && item->symbolizer != NULL)
+			{
+			    text =
+				(rl2PrivTextSymbolizerPtr) (item->symbolizer);
+			    if (text->label != NULL)
+				count++;
+			}
+		      item = item->next;
+		  }
+	    }
+	  pR = pR->next;
+      }
+    pR = style->else_rule;
+    if (pR != NULL)
+      {
+	  if (pR->column_name != NULL)
+	      count++;
+	  if (pR->style_type == RL2_VECTOR_STYLE && pR->style != NULL)
+	    {
+		pV = (rl2PrivVectorSymbolizerPtr) (pR->style);
+		item = pV->first;
+		while (item != NULL)
+		  {
+		      if (item->symbolizer_type == RL2_TEXT_SYMBOLIZER
+			  && item->symbolizer != NULL)
+			{
+			    text =
+				(rl2PrivTextSymbolizerPtr) (item->symbolizer);
+			    if (text->label != NULL)
+				count++;
+			}
+		      item = item->next;
+		  }
+	    }
+      }
+    if (count == 0)
 	return;
 
-    if (stl->name != NULL)
-	free (stl->name);
-    if (stl->title != NULL)
-	free (stl->title);
-    if (stl->abstract != NULL)
-	free (stl->abstract);
-    if (stl->bandSelection != NULL)
-	free (stl->bandSelection);
-    if (stl->categorize != NULL)
+    strings = malloc (sizeof (char *) * count);
+    dupl = malloc (sizeof (char) * count);
+    i = 0;
+    pR = style->first_rule;
+    while (pR != NULL)
       {
-	  pC = stl->categorize->first;
-	  while (pC != NULL)
+	  /* initializing the column names temporary array */
+	  if (pR->column_name != NULL)
 	    {
-		pCn = pC->next;
-		free (pC);
-		pC = pCn;
+		len = strlen (pR->column_name);
+		*(strings + i) = malloc (len + 1);
+		strcpy (*(strings + i), pR->column_name);
+		*(dupl + i) = 'N';
+		i++;
 	    }
-	  free (stl->categorize);
-      }
-    if (stl->interpolate != NULL)
-      {
-	  pC = stl->interpolate->first;
-	  while (pC != NULL)
+	  if (pR->style_type == RL2_VECTOR_STYLE && pR->style != NULL)
 	    {
-		pCn = pC->next;
-		free (pC);
-		pC = pCn;
-	    }
-	  free (stl->interpolate);
-      }
-    free (stl);
-}
-
-RL2_DECLARE const char *
-rl2_get_raster_style_name (rl2RasterStylePtr style)
-{
-/* return the RasterStyle Name */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    return stl->name;
-}
-
-RL2_DECLARE const char *
-rl2_get_raster_style_title (rl2RasterStylePtr style)
-{
-/* return the RasterStyle Title */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    return stl->title;
-}
-
-RL2_DECLARE const char *
-rl2_get_raster_style_abstract (rl2RasterStylePtr style)
-{
-/* return the RasterStyle Abstract */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    return stl->abstract;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_opacity (rl2RasterStylePtr style, double *opacity)
-{
-/* return the RasterStyle Opacity */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    *opacity = stl->opacity;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_is_raster_style_mono_band_selected (rl2RasterStylePtr style, int *selected)
-{
-/* return if the RasterStyle has a MonoBand selection */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->shadedRelief)
-      {
-	  /* Shaded Relief */
-	  *selected = 1;
-	  return RL2_OK;
-      }
-    if (stl->bandSelection == NULL)
-      {
-	  if (stl->categorize != NULL)
-	    {
-		/* Categorize Color Map */
-		*selected = 1;
-		return RL2_OK;
-	    }
-	  if (stl->interpolate != NULL)
-	    {
-		/* Interpolate Color Map */
-		*selected = 1;
-		return RL2_OK;
-	    }
-	  if (stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_NORMALIZE ||
-	      stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_HISTOGRAM ||
-	      stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_GAMMA)
-	    {
-		/* Contrast Enhancement */
-		*selected = 1;
-		return RL2_OK;
-	    }
-      }
-    if (stl->bandSelection == NULL)
-	*selected = 0;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_MONO)
-	*selected = 1;
-    else
-	*selected = 0;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_mono_band_selection (rl2RasterStylePtr style,
-					  unsigned char *gray_band)
-{
-/* return the RasterStyle MonoBand selection */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->bandSelection == NULL)
-      {
-	  if (stl->categorize != NULL)
-	    {
-		/* Categorize Color Map */
-		*gray_band = 0;
-		return RL2_OK;
-	    }
-	  if (stl->interpolate != NULL)
-	    {
-		/* Interpolate Color Map */
-		*gray_band = 0;
-		return RL2_OK;
-	    }
-	  /* Interpolate Color Map */
-	  *gray_band = 0;
-	  return RL2_OK;
-      }
-    if (stl->bandSelection == NULL)
-	return RL2_ERROR;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_MONO)
-      {
-	  *gray_band = stl->bandSelection->grayBand;
-	  return RL2_OK;
-      }
-    else
-	return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_is_raster_style_triple_band_selected (rl2RasterStylePtr style,
-					  int *selected)
-{
-/* return if the RasterStyle has a TripleBand selection */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->bandSelection == NULL)
-      {
-	  if (stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_NORMALIZE ||
-	      stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_HISTOGRAM ||
-	      stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_GAMMA)
-	    {
-		/* Contrast Enhancement */
-		*selected = 1;
-		return RL2_OK;
-	    }
-      }
-    if (stl->bandSelection == NULL)
-	*selected = 0;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_TRIPLE)
-	*selected = 1;
-    else
-	*selected = 0;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_triple_band_selection (rl2RasterStylePtr style,
-					    unsigned char *red_band,
-					    unsigned char *green_band,
-					    unsigned char *blue_band)
-{
-/* return the RasterStyle TripleBand selection */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->bandSelection == NULL)
-      {
-	  if (stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_NORMALIZE ||
-	      stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_HISTOGRAM ||
-	      stl->contrastEnhancement == RL2_CONTRAST_ENHANCEMENT_GAMMA)
-	    {
-		/* Contrast Enhancement */
-		*red_band = 0;
-		*green_band = 1;
-		*blue_band = 2;
-		return RL2_OK;
-	    }
-      }
-    if (stl->bandSelection == NULL)
-	return RL2_ERROR;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_TRIPLE)
-      {
-	  *red_band = stl->bandSelection->redBand;
-	  *green_band = stl->bandSelection->greenBand;
-	  *blue_band = stl->bandSelection->blueBand;
-	  return RL2_OK;
-      }
-    else
-	return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_overall_contrast_enhancement (rl2RasterStylePtr style,
-						   unsigned char
-						   *contrast_enhancement,
-						   double *gamma_value)
-{
-/* return the RasterStyle OverallContrastEnhancement */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    *contrast_enhancement = stl->contrastEnhancement;
-    *gamma_value = stl->gammaValue;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_red_band_contrast_enhancement (rl2RasterStylePtr style,
-						    unsigned char
-						    *contrast_enhancement,
-						    double *gamma_value)
-{
-/* return the RasterStyle RedBand ContrastEnhancement */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->bandSelection == NULL)
-	return RL2_ERROR;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_TRIPLE)
-      {
-	  *contrast_enhancement = stl->bandSelection->redContrast;
-	  *gamma_value = stl->bandSelection->redGamma;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_green_band_contrast_enhancement (rl2RasterStylePtr style,
-						      unsigned char
-						      *contrast_enhancement,
-						      double *gamma_value)
-{
-/* return the RasterStyle GreenBand ContrastEnhancement */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->bandSelection == NULL)
-	return RL2_ERROR;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_TRIPLE)
-      {
-	  *contrast_enhancement = stl->bandSelection->greenContrast;
-	  *gamma_value = stl->bandSelection->greenGamma;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_blue_band_contrast_enhancement (rl2RasterStylePtr style,
-						     unsigned char
-						     *contrast_enhancement,
-						     double *gamma_value)
-{
-/* return the RasterStyle BlueBand ContrastEnhancement */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->bandSelection == NULL)
-	return RL2_ERROR;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_TRIPLE)
-      {
-	  *contrast_enhancement = stl->bandSelection->blueContrast;
-	  *gamma_value = stl->bandSelection->blueGamma;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_gray_band_contrast_enhancement (rl2RasterStylePtr style,
-						     unsigned char
-						     *contrast_enhancement,
-						     double *gamma_value)
-{
-/* return the RasterStyle GrayBand ContrastEnhancement */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->bandSelection == NULL)
-	return RL2_ERROR;
-    else if (stl->bandSelection->selectionType == RL2_BAND_SELECTION_MONO)
-      {
-	  *contrast_enhancement = stl->bandSelection->grayContrast;
-	  *gamma_value = stl->bandSelection->grayGamma;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_has_raster_style_shaded_relief (rl2RasterStylePtr style, int *shaded_relief)
-{
-/* return if the RasterStyle has ShadedRelief */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    *shaded_relief = stl->shadedRelief;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_shaded_relief (rl2RasterStylePtr style,
-				    int *brightness_only, double *relief_factor)
-{
-/* return the RasterStyle ShadedRelief parameters */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->shadedRelief)
-      {
-	  *brightness_only = stl->brightnessOnly;
-	  *relief_factor = stl->reliefFactor;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_has_raster_style_color_map_interpolated (rl2RasterStylePtr style,
-					     int *interpolated)
-{
-/* return if the RasterStyle has an Interpolated ColorMap */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->interpolate != NULL)
-	*interpolated = 1;
-    else
-	*interpolated = 0;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_has_raster_style_color_map_categorized (rl2RasterStylePtr style,
-					    int *categorized)
-{
-/* return if the RasterStyle has a Categorized ColorMap */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->categorize != NULL)
-	*categorized = 1;
-    else
-	*categorized = 0;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_color_map_default (rl2RasterStylePtr style,
-					unsigned char *red,
-					unsigned char *green,
-					unsigned char *blue)
-{
-/* return the RasterStyle ColorMap Default color */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->interpolate != NULL)
-      {
-	  *red = stl->interpolate->dfltRed;
-	  *green = stl->interpolate->dfltGreen;
-	  *blue = stl->interpolate->dfltBlue;
-	  return RL2_OK;
-      }
-    if (stl->categorize != NULL)
-      {
-	  *red = stl->categorize->dfltRed;
-	  *green = stl->categorize->dfltGreen;
-	  *blue = stl->categorize->dfltBlue;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_color_map_category_base (rl2RasterStylePtr style,
-					      unsigned char *red,
-					      unsigned char *green,
-					      unsigned char *blue)
-{
-/* return the RasterStyle ColorMap Category base-color */
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->categorize != NULL)
-      {
-	  *red = stl->categorize->baseRed;
-	  *green = stl->categorize->baseGreen;
-	  *blue = stl->categorize->baseBlue;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_color_map_count (rl2RasterStylePtr style, int *count)
-{
-/* return the RasterStyle ColorMap items count */
-    int cnt;
-    rl2PrivColorMapPointPtr pt;
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->categorize != NULL)
-      {
-	  cnt = 0;
-	  pt = stl->categorize->first;
-	  while (pt != NULL)
-	    {
-		cnt++;
-		pt = pt->next;
-	    }
-	  *count = cnt;
-	  return RL2_OK;
-      }
-    if (stl->interpolate != NULL)
-      {
-	  cnt = 0;
-	  pt = stl->interpolate->first;
-	  while (pt != NULL)
-	    {
-		cnt++;
-		pt = pt->next;
-	    }
-	  *count = cnt;
-	  return RL2_OK;
-      }
-    return RL2_ERROR;
-}
-
-RL2_DECLARE int
-rl2_get_raster_style_color_map_entry (rl2RasterStylePtr style, int index,
-				      double *value, unsigned char *red,
-				      unsigned char *green, unsigned char *blue)
-{
-/* return the RasterStyle ColorMap item values */
-    int cnt;
-    rl2PrivColorMapPointPtr pt;
-    rl2PrivRasterStylePtr stl = (rl2PrivRasterStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (stl->categorize != NULL)
-      {
-	  cnt = 0;
-	  pt = stl->categorize->first;
-	  while (pt != NULL)
-	    {
-		if (index == cnt)
+		pV = (rl2PrivVectorSymbolizerPtr) (pR->style);
+		item = pV->first;
+		while (item != NULL)
 		  {
-		      *value = pt->value;
-		      *red = pt->red;
-		      *green = pt->green;
-		      *blue = pt->blue;
-		      return RL2_OK;
+		      if (item->symbolizer_type == RL2_TEXT_SYMBOLIZER
+			  && item->symbolizer != NULL)
+			{
+			    text =
+				(rl2PrivTextSymbolizerPtr) (item->symbolizer);
+			    if (text->label != NULL)
+			      {
+				  len = strlen (text->label);
+				  *(strings + i) = malloc (len + 1);
+				  strcpy (*(strings + i), text->label);
+				  *(dupl + i) = 'N';
+				  i++;
+			      }
+			}
+		      item = item->next;
 		  }
-		cnt++;
-		pt = pt->next;
 	    }
+	  pR = pR->next;
       }
-    if (stl->interpolate != NULL)
+    pR = style->else_rule;
+    if (pR != NULL)
       {
-	  cnt = 0;
-	  pt = stl->interpolate->first;
-	  while (pt != NULL)
+	  if (pR->column_name != NULL)
 	    {
-		if (index == cnt)
+		len = strlen (pR->column_name);
+		*(strings + i) = malloc (len + 1);
+		strcpy (*(strings + i), pR->column_name);
+		*(dupl + i) = 'N';
+		i++;
+	    }
+	  if (pR->style_type == RL2_VECTOR_STYLE && pR->style != NULL)
+	    {
+		pV = (rl2PrivVectorSymbolizerPtr) (pR->style);
+		item = pV->first;
+		while (item != NULL)
 		  {
-		      *value = pt->value;
-		      *red = pt->red;
-		      *green = pt->green;
-		      *blue = pt->blue;
-		      return RL2_OK;
+		      if (item->symbolizer_type == RL2_TEXT_SYMBOLIZER
+			  && item->symbolizer != NULL)
+			{
+			    text =
+				(rl2PrivTextSymbolizerPtr) (item->symbolizer);
+			    if (text->label != NULL)
+			      {
+				  len = strlen (text->label);
+				  *(strings + i) = malloc (len + 1);
+				  strcpy (*(strings + i), text->label);
+				  *(dupl + i) = 'N';
+				  i++;
+			      }
+			}
+		      item = item->next;
 		  }
-		cnt++;
-		pt = pt->next;
 	    }
       }
-    return RL2_ERROR;
+
+    for (i = 0; i < count; i++)
+      {
+	  /* identifying all duplicates */
+	  if (*(dupl + i) == 'Y')
+	      continue;
+	  for (j = i + 1; j < count; j++)
+	    {
+		if (strcasecmp (*(strings + i), *(strings + j)) == 0)
+		    *(dupl + j) = 'Y';
+	    }
+      }
+
+/* allocating the final array */
+    for (i = 0; i < count; i++)
+      {
+	  if (*(dupl + i) == 'N')
+	      count2++;
+      }
+    style->columns_count = count2;
+    style->column_names = malloc (sizeof (char *) * count2);
+    j = 0;
+    for (i = 0; i < count; i++)
+      {
+	  /* initializing the final array */
+	  if (*(dupl + i) == 'N')
+	    {
+		len = strlen (*(strings + i));
+		*(style->column_names + j) = malloc (len + 1);
+		strcpy (*(style->column_names + j), *(strings + i));
+		j++;
+	    }
+      }
+
+/* final cleanup */
+    for (i = 0; i < count; i++)
+      {
+	  if (*(strings + i) != NULL)
+	      free (*(strings + i));
+      }
+    free (strings);
+    free (dupl);
+}
+
+RL2_PRIVATE rl2FeatureTypeStylePtr
+feature_type_style_from_xml (char *name, unsigned char *xml)
+{
+/* attempting to build a Feature Type Style object from an SLD/SE XML style */
+    rl2PrivFeatureTypeStylePtr style = NULL;
+    xmlDocPtr xml_doc = NULL;
+    xmlNodePtr root;
+    int loop = 1;
+    xmlGenericErrorFunc silentError = (xmlGenericErrorFunc) dummySilentError;
+
+    style = malloc (sizeof (rl2PrivFeatureTypeStyle));
+    if (style == NULL)
+	return NULL;
+    style->name = name;
+    style->first_rule = NULL;
+    style->last_rule = NULL;
+    style->else_rule = NULL;
+    style->columns_count = 0;
+    style->column_names = NULL;
+
+/* parsing the XML document */
+    xmlSetGenericErrorFunc (NULL, silentError);
+    xml_doc =
+	xmlReadMemory ((const char *) xml, strlen ((const char *) xml),
+		       "noname.xml", NULL, 0);
+    if (xml_doc == NULL)
+      {
+	  /* parsing error; not a well-formed XML */
+	  goto error;
+      }
+    root = xmlDocGetRootElement (xml_doc);
+    if (root == NULL)
+	goto error;
+    if (!find_feature_type_style (root, style, &loop))
+	goto error;
+    xmlFreeDoc (xml_doc);
+    free (xml);
+    xml = NULL;
+
+    if (style->name == NULL)
+	goto error;
+    build_column_names_array (style);
+
+    return (rl2FeatureTypeStylePtr) style;
+
+  error:
+    if (xml != NULL)
+	free (xml);
+    if (xml_doc != NULL)
+	xmlFreeDoc (xml_doc);
+    if (style != NULL)
+	rl2_destroy_feature_type_style ((rl2FeatureTypeStylePtr) style);
+    return NULL;
 }
 
 static void
@@ -1715,8 +4349,7 @@ parse_group_style (xmlNodePtr node, rl2PrivGroupStylePtr style)
 }
 
 RL2_PRIVATE rl2GroupStylePtr
-group_style_from_sld_xml (char *name, char *title, char *abstract,
-			  unsigned char *xml)
+group_style_from_sld_xml (char *name, unsigned char *xml)
 {
 /* attempting to build a Layer Group Style object from an SLD XML style */
     rl2PrivGroupStylePtr style = NULL;
@@ -1728,8 +4361,6 @@ group_style_from_sld_xml (char *name, char *title, char *abstract,
     if (style == NULL)
 	return NULL;
     style->name = name;
-    style->title = title;
-    style->abstract = abstract;
     style->first = NULL;
     style->last = NULL;
     style->valid = 0;
@@ -1768,239 +4399,6 @@ group_style_from_sld_xml (char *name, char *title, char *abstract,
     return NULL;
 }
 
-RL2_DECLARE void
-rl2_destroy_group_style (rl2GroupStylePtr style)
-{
-/* destroying a Group Style object */
-    rl2PrivChildStylePtr child;
-    rl2PrivChildStylePtr child_n;
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return;
-
-    if (stl->name != NULL)
-	free (stl->name);
-    if (stl->title != NULL)
-	free (stl->title);
-    if (stl->abstract != NULL)
-	free (stl->abstract);
-    child = stl->first;
-    while (child != NULL)
-      {
-	  child_n = child->next;
-	  if (child->namedLayer != NULL)
-	      free (child->namedLayer);
-	  if (child->namedStyle != NULL)
-	      free (child->namedStyle);
-	  free (child);
-	  child = child_n;
-      }
-    free (stl);
-}
-
-RL2_DECLARE const char *
-rl2_get_group_style_name (rl2GroupStylePtr style)
-{
-/* return the Group Style Name */
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    return stl->name;
-}
-
-RL2_DECLARE const char *
-rl2_get_group_style_title (rl2GroupStylePtr style)
-{
-/* return the Group Style Title */
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    return stl->title;
-}
-
-RL2_DECLARE const char *
-rl2_get_group_style_abstract (rl2GroupStylePtr style)
-{
-/* return the Group Style Abstract */
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    return stl->abstract;
-}
-
-RL2_DECLARE int
-rl2_is_valid_group_style (rl2GroupStylePtr style, int *valid)
-{
-/* testing a Group Style for validity */
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    *valid = stl->valid;
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_get_group_style_count (rl2GroupStylePtr style, int *count)
-{
-/* return the total count of Group Style Items */
-    int cnt = 0;
-    rl2PrivChildStylePtr child;
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  /* counting how many Children */
-	  cnt++;
-	  child = child->next;
-      }
-    *count = cnt;
-    return RL2_OK;
-}
-
-RL2_DECLARE const char *
-rl2_get_group_named_layer (rl2GroupStylePtr style, int index)
-{
-/* return the Nth NamedLayer from a Group Style */
-    int cnt = 0;
-    const char *str;
-    rl2PrivChildStylePtr child;
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    if (index < 0)
-	return NULL;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  /* counting how many Children */
-	  cnt++;
-	  child = child->next;
-      }
-    if (index >= cnt)
-	return NULL;
-    cnt = 0;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  if (cnt == index)
-	    {
-		str = child->namedLayer;
-		break;
-	    }
-	  cnt++;
-	  child = child->next;
-      }
-    return str;
-}
-
-RL2_DECLARE const char *
-rl2_get_group_named_style (rl2GroupStylePtr style, int index)
-{
-/* return the Nth NamedStyle from a Group Style */
-    int cnt = 0;
-    const char *str;
-    rl2PrivChildStylePtr child;
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return NULL;
-    if (index < 0)
-	return NULL;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  /* counting how many Children */
-	  cnt++;
-	  child = child->next;
-      }
-    if (index >= cnt)
-	return NULL;
-    cnt = 0;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  if (cnt == index)
-	    {
-		str = child->namedStyle;
-		break;
-	    }
-	  cnt++;
-	  child = child->next;
-      }
-    return str;
-}
-
-RL2_DECLARE int
-rl2_is_valid_group_named_layer (rl2GroupStylePtr style, int index, int *valid)
-{
-/* testing for validity the Nth NamedLayer from a Group Style */
-    int cnt = 0;
-    rl2PrivChildStylePtr child;
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (index < 0)
-	return RL2_ERROR;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  /* counting how many Children */
-	  cnt++;
-	  child = child->next;
-      }
-    if (index >= cnt)
-	return RL2_ERROR;
-    cnt = 0;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  if (cnt == index)
-	    {
-		*valid = child->validLayer;
-		break;
-	    }
-	  cnt++;
-	  child = child->next;
-      }
-    return RL2_OK;
-}
-
-RL2_DECLARE int
-rl2_is_valid_group_named_style (rl2GroupStylePtr style, int index, int *valid)
-{
-/* testing for validity the Nth NamedStyle from a Group Style */
-    int cnt = 0;
-    rl2PrivChildStylePtr child;
-    rl2PrivGroupStylePtr stl = (rl2PrivGroupStylePtr) style;
-    if (stl == NULL)
-	return RL2_ERROR;
-    if (index < 0)
-	return RL2_ERROR;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  /* counting how many Children */
-	  cnt++;
-	  child = child->next;
-      }
-    if (index >= cnt)
-	return RL2_ERROR;
-    cnt = 0;
-    child = stl->first;
-    while (child != NULL)
-      {
-	  if (cnt == index)
-	    {
-		*valid = child->validStyle;
-		break;
-	    }
-	  cnt++;
-	  child = child->next;
-      }
-    return RL2_OK;
-}
-
 static rl2PrivGroupRendererPtr
 rl2_alloc_group_renderer (int count)
 {
@@ -2025,7 +4423,7 @@ rl2_alloc_group_renderer (int count)
 	  lyr->layer_type = 0;
 	  lyr->layer_name = NULL;
 	  lyr->coverage = NULL;
-	  lyr->style_name = NULL;
+	  lyr->raster_style_id = -1;
 	  lyr->raster_symbolizer = NULL;
 	  lyr->raster_stats = NULL;
       }
@@ -2034,9 +4432,10 @@ rl2_alloc_group_renderer (int count)
 
 static int
 rl2_group_renderer_set_raster (rl2PrivGroupRendererPtr group, int index,
-			       const char *layer_name, rl2CoveragePtr coverage,
-			       const char *style_name,
-			       rl2RasterStylePtr symbolizer,
+			       const char *layer_name,
+			       rl2CoveragePtr coverage,
+			       sqlite3_int64 style_id,
+			       rl2RasterSymbolizerPtr symbolizer,
 			       rl2RasterStatisticsPtr stats)
 {
 /* setting up one of the Layers within the Group */
@@ -2066,19 +4465,10 @@ rl2_group_renderer_set_raster (rl2PrivGroupRendererPtr group, int index,
     if (lyr->coverage != NULL)
 	rl2_destroy_coverage (lyr->coverage);
     lyr->coverage = (rl2CoveragePtr) coverage;
-    if (lyr->style_name != NULL)
-	free (lyr->style_name);
-    if (style_name == NULL)
-	lyr->style_name = NULL;
-    else
-      {
-	  len = strlen (style_name);
-	  lyr->style_name = malloc (len + 1);
-	  strcpy (lyr->style_name, style_name);
-      }
+    lyr->raster_style_id = style_id;
     if (lyr->raster_symbolizer != NULL)
-	rl2_destroy_raster_style ((rl2RasterStylePtr) (lyr->raster_symbolizer));
-    lyr->raster_symbolizer = (rl2PrivRasterStylePtr) symbolizer;
+	rl2_destroy_raster_symbolizer (lyr->raster_symbolizer);
+    lyr->raster_symbolizer = (rl2PrivRasterSymbolizerPtr) symbolizer;
     if (lyr->raster_stats != NULL)
 	rl2_destroy_raster_statistics ((rl2RasterStatisticsPtr)
 				       (lyr->raster_stats));
@@ -2113,7 +4503,7 @@ rl2_is_valid_group_renderer (rl2PrivGroupRendererPtr ptr, int *valid)
 		    && lyr->raster_symbolizer == NULL)
 		    error = 1;
 	    }
-	  if (lyr->style_name == NULL)
+	  if (lyr->raster_style_id <= 0)
 	      error = 1;
 	  if (lyr->raster_stats == NULL)
 	      error = 1;
@@ -2146,10 +4536,12 @@ rl2_create_group_renderer (sqlite3 * sqlite, rl2GroupStylePtr group_style)
     for (i = 0; i < count; i++)
       {
 	  /* testing individual layers/styles */
-	  rl2RasterStylePtr symbolizer = NULL;
+	  rl2CoverageStylePtr cvg_stl = NULL;
 	  rl2RasterStatisticsPtr stats = NULL;
 	  const char *layer_name = rl2_get_group_named_layer (group_style, i);
-	  const char *layer_style = rl2_get_group_named_style (group_style, i);
+	  const char *layer_style_name =
+	      rl2_get_group_named_style (group_style, i);
+	  sqlite3_int64 layer_style_id = -1;
 	  rl2CoveragePtr coverage =
 	      rl2_create_coverage_from_dbms (sqlite, layer_name);
 	  rl2PrivCoveragePtr cvg = (rl2PrivCoveragePtr) coverage;
@@ -2158,17 +4550,15 @@ rl2_create_group_renderer (sqlite3 * sqlite, rl2GroupStylePtr group_style)
 		if (valid)
 		  {
 		      /* validating the style */
-		      if (layer_style == NULL)
-			  layer_style = "default";
-		      if (strcasecmp (layer_style, "default") == 0)
-			  ;
-		      else
+		      if (layer_style_id > 0)
 			{
-			    /* attempting to get a RasterSymbolizer style */
-			    symbolizer =
-				rl2_create_raster_style_from_dbms (sqlite,
-								   layer_name,
-								   layer_style);
+			    /* attempting to get a Coverage Style */
+			    /*
+			       cvg_stl =
+			       rl2_create_coverage_style_from_dbms (sqlite,
+			       layer_name,
+			       layer_style_id);
+			     */
 			}
 		      stats =
 			  rl2_create_raster_statistics_from_dbms (sqlite,
@@ -2176,32 +4566,34 @@ rl2_create_group_renderer (sqlite3 * sqlite, rl2GroupStylePtr group_style)
 		  }
 		if ((cvg->pixelType == RL2_PIXEL_DATAGRID
 		     || cvg->pixelType == RL2_PIXEL_MULTIBAND)
-		    && symbolizer == NULL)
+		    && cvg_stl == NULL)
 		  {
 		      /* creating a default RasterStyle */
-		      rl2PrivRasterStylePtr symb =
-			  malloc (sizeof (rl2PrivRasterStyle));
-		      symbolizer = (rl2RasterStylePtr) symb;
-		      symb->name = malloc (8);
-		      strcpy (symb->name, "default");
-		      symb->title = NULL;
-		      symb->abstract = NULL;
-		      symb->opacity = 1.0;
-		      symb->contrastEnhancement = RL2_CONTRAST_ENHANCEMENT_NONE;
-		      symb->bandSelection =
-			  malloc (sizeof (rl2PrivBandSelection));
-		      symb->bandSelection->selectionType =
-			  RL2_BAND_SELECTION_MONO;
-		      symb->bandSelection->grayBand = 0;
-		      symb->bandSelection->grayContrast =
-			  RL2_CONTRAST_ENHANCEMENT_NONE;
-		      symb->categorize = NULL;
-		      symb->interpolate = NULL;
-		      symb->shadedRelief = 0;
+		      /*
+		         rl2PrivRasterSymbolizerPtr symb =
+		         malloc (sizeof (rl2PrivRasterSymbolizer));
+		         symbolizer = (rl2RasterSymbolizerPtr) symb;
+		         symb->name = malloc (8);
+		         strcpy (symb->name, "default");
+		         symb->title = NULL;
+		         symb->abstract = NULL;
+		         symb->opacity = 1.0;
+		         symb->contrastEnhancement = RL2_CONTRAST_ENHANCEMENT_NONE;
+		         symb->bandSelection =
+		         malloc (sizeof (rl2PrivBandSelection));
+		         symb->bandSelection->selectionType =
+		         RL2_BAND_SELECTION_MONO;
+		         symb->bandSelection->grayBand = 0;
+		         symb->bandSelection->grayContrast =
+		         RL2_CONTRAST_ENHANCEMENT_NONE;
+		         symb->categorize = NULL;
+		         symb->interpolate = NULL;
+		         symb->shadedRelief = 0;
+		       */
 		  }
 	    }
 	  rl2_group_renderer_set_raster (group, i, layer_name, coverage,
-					 layer_style, symbolizer, stats);
+					 layer_style_id, NULL, stats);
       }
     if (rl2_is_valid_group_renderer (group, &valid) != RL2_OK)
 	goto error;
@@ -2213,32 +4605,4 @@ rl2_create_group_renderer (sqlite3 * sqlite, rl2GroupStylePtr group_style)
     if (group != NULL)
 	rl2_destroy_group_renderer ((rl2GroupRendererPtr) group);
     return NULL;
-}
-
-RL2_DECLARE void
-rl2_destroy_group_renderer (rl2GroupRendererPtr group)
-{
-/* memory cleanup - destroying a GroupRenderer object */
-    int i;
-    rl2PrivGroupRendererPtr ptr = (rl2PrivGroupRendererPtr) group;
-    if (ptr == NULL)
-	return;
-    for (i = 0; i < ptr->count; i++)
-      {
-	  rl2PrivGroupRendererLayerPtr lyr = ptr->layers + i;
-	  if (lyr->layer_name != NULL)
-	      free (lyr->layer_name);
-	  if (lyr->coverage != NULL)
-	      rl2_destroy_coverage (lyr->coverage);
-	  if (lyr->style_name != NULL)
-	      free (lyr->style_name);
-	  if (lyr->raster_symbolizer != NULL)
-	      rl2_destroy_raster_style ((rl2RasterStylePtr)
-					(lyr->raster_symbolizer));
-	  if (lyr->raster_stats != NULL)
-	      rl2_destroy_raster_statistics ((rl2RasterStatisticsPtr)
-					     (lyr->raster_stats));
-      }
-    free (ptr->layers);
-    free (ptr);
 }

@@ -18,7 +18,7 @@ WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
 for the specific language governing rights and limitations under the
 License.
 
-The Original Code is the SpatiaLite library
+The Original Code is the RasterLite2 library
 
 The Initial Developer of the Original Code is Alessandro Furieri
  
@@ -43,7 +43,11 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <unistd.h>
 #include <stdio.h>
 
+#include "config.h"
+
 #include "rasterlite2/rasterlite2.h"
+
+#include "spatialite.h"
 
 static int
 test_rgb_jpeg (const char *path)
@@ -641,6 +645,7 @@ test_rgb_jpeg (const char *path)
     rl2_destroy_pixel (pxl);
     unlink ("./from_rgb_jpeg.png");
 
+#ifndef OMIT_WEBP		/* only if WebP is enabled */
     if (rl2_section_to_lossy_webp (img, "./from_rgb_jpeg_10.webp", 10) !=
 	RL2_OK)
       {
@@ -655,6 +660,24 @@ test_rgb_jpeg (const char *path)
 	  return 0;
       }
     unlink ("./from_rgb_jpeg.webp");
+#endif /* end WebP conditional */
+
+#ifndef OMIT_OPENJPEG		/* only if OpenJpeg is enabled */
+    if (rl2_section_to_lossy_jpeg2000 (img, "./from_rgb_jpeg_10.jp2", 10) !=
+	RL2_OK)
+      {
+	  fprintf (stderr, "Unable to write: from_rgb_jpeg_10.jp2\n");
+	  return 0;
+      }
+    unlink ("./from_rgb_jpeg_10.jp2");
+
+    if (rl2_section_to_lossless_jpeg2000 (img, "./from_rgb_jpeg.jp2") != RL2_OK)
+      {
+	  fprintf (stderr, "Unable to write: from_rgb_jpeg.jp2\n");
+	  return 0;
+      }
+    unlink ("./from_rgb_jpeg.jp2");
+#endif /* end OpenJpeg conditional */
 
     rl2_destroy_section (img);
     return 1;
@@ -909,6 +932,7 @@ test_gray_jpeg (const char *path)
     rl2_destroy_pixel (pxl);
     unlink ("./from_gray_jpeg.png");
 
+#ifndef OMIT_WEBP		/* only if WebP is enabled */
     if (rl2_section_to_lossy_webp (img, "./from_gray_jpeg_10.webp", 10) !=
 	RL2_OK)
       {
@@ -923,6 +947,7 @@ test_gray_jpeg (const char *path)
 	  return 0;
       }
     unlink ("./from_gray_jpeg.webp");
+#endif /* end WebP conditional */
 
     rl2_destroy_section (img);
     return 1;
@@ -951,7 +976,6 @@ test_palette_png (const char *path)
     double minY;
     double maxX;
     double maxY;
-    gaiaGeomCollPtr geom;
     rl2PixelPtr pxl;
     rl2RasterPtr rst;
     rl2SectionPtr img = rl2_section_from_png (path);
@@ -1095,13 +1119,6 @@ test_palette_png (const char *path)
     if (maxY != 408.0)
       {
 	  fprintf (stderr, "\"%s\" invalid image MaxX\n", path);
-	  return 0;
-      }
-
-    geom = rl2_get_raster_bbox (rst);
-    if (geom != NULL)
-      {
-	  fprintf (stderr, "\"%s\" unexpected image BBOX\n", path);
 	  return 0;
       }
 
@@ -1314,6 +1331,7 @@ test_palette_png (const char *path)
       }
     unlink ("./from_palette_png.gif");
 
+#ifndef OMIT_WEBP		/* only if WebP is enabled */
     if (rl2_section_to_lossy_webp (img, "./from_palette_png_10.webp", 10) !=
 	RL2_OK)
       {
@@ -1328,6 +1346,7 @@ test_palette_png (const char *path)
 	  return 0;
       }
     unlink ("./from_palette_png.webp");
+#endif /* end WebP conditional */
 
     rl2_destroy_section (img);
     return 1;

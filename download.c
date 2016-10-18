@@ -58,6 +58,69 @@ static bool determine_56day_subscription_date(struct tm* t) {
     return true;
 }
 
+// Find the current AIRAC cycle number (ie, 1611) as an integer.
+static int determine_airac_cycle() {
+    // We know Jan 7, 2016 as a valid start (1601).
+    const int start_year = 2016;
+    const int start_month = 1;
+    const int start_day = 7;
+    const int start_airac_index = 1;
+
+    // Length on one AIRAC cycle
+    const int airac_length_days = 28;
+
+    time_t now;
+    time(&now);
+    /*struct tm future;
+    future.tm_year = 2020 - 1900;
+    future.tm_mon = 8 - 1;
+    future.tm_mday = 14;
+    future.tm_hour = 0;
+    future.tm_min = 0;
+    future.tm_sec = 0;
+    future.tm_isdst = -1;
+    now = mktime(&future);*/
+
+    struct tm t;
+
+    t.tm_year = start_year - 1900;
+    t.tm_mon = start_month - 1;
+    t.tm_mday = start_day;
+    t.tm_hour = 0;
+    t.tm_min = 0;
+    t.tm_sec = 0;
+    t.tm_isdst = -1;
+
+    int airac_index = start_airac_index - 1;
+    int last_year = t.tm_year;
+    int last_airac_index = airac_index;
+
+    // Difftime is a double containing the number of seconds, hence the comparison against -1.
+    while(difftime(now, mktime(&t)) > -1.0f) {
+        // If we've rolled over to the next year, snapshot the previous year's last index
+        // just in case we need to roll back to it.
+        if(t.tm_year > last_year) {
+            last_year = t.tm_year;
+            last_airac_index = airac_index;
+            airac_index = 0;
+        }
+
+        t.tm_mday += airac_length_days;
+        airac_index++;
+    }
+
+    // We need to roll back one subscription interval.
+    t.tm_mday -= airac_length_days;
+    mktime(&t);
+
+    // If we crossed back over the year boundary, use the cycle number from last year.
+    if(t.tm_year < last_year) {
+        airac_index = last_airac_index;
+    }
+
+    return ((t.tm_year - 100) * 100) + airac_index;
+}
+
 // https://github.com/libarchive/libarchive/wiki/Examples#Constructing_Objects_On_Disk
 static int copy_data(struct archive *ar, struct archive *aw) {
     int r;
@@ -175,7 +238,9 @@ void download_updates(const char* product) {
     char temp_filepath[1024];
     char current_working_dir[256];
 
-    fprintf(stdout, "Working on updating the following product: %s\n", product);
+    // Figure out where we are.  TODO: Update this to the path of the binary, not the pwd.
+    getcwd(&current_working_dir[0], sizeof(current_working_dir));
+
     if(strncmp("airspaces", product, strlen("airspaces")) == 0) {
         struct tm t;
 
@@ -188,18 +253,15 @@ void download_updates(const char* product) {
             "class_e5",
         };
 
-        // Figure out where we are.
-        getcwd(&current_working_dir[0], sizeof(current_working_dir));
-
         // Assemble the correct URL by determining the current cycle date.
         determine_56day_subscription_date(&t);
         strftime(&temp_url[0], sizeof(temp_url), "https://nfdc.faa.gov/webContent/56DaySub/%F/class_airspace_shape_files.zip", &t);
         snprintf(&download_filepath[0], sizeof(download_filepath), "%s/download/%s", &current_working_dir[0], filename_from_url(&temp_url[0]));
 
-        //download_file(&temp_url[0], &download_filepath[0]);
+        download_file(&temp_url[0], &download_filepath[0]);
         fprintf(stdout, "Downloaded '%s'\n", download_filepath);
 
-        //extract_archive(download_filepath, "download");
+        extract_archive(download_filepath, "download");
         fprintf(stdout, "Extracted '%s'\n", download_filepath);
 
 
@@ -207,12 +269,24 @@ void download_updates(const char* product) {
         // Hacky. TODO: Make the filepath handling more elegant and not so hardcoded.
         for(size_t i = 0; i < (sizeof(expected_airspace_files) / sizeof(expected_airspace_files[0])); i++) {
             snprintf(&temp_filepath[0], sizeof(temp_filepath), "%s/download/Shape_Files/%s", &current_working_dir[0], expected_airspace_files[i]);
-            if(database_load_airspace_shapefile(temp_filepath, expected_airspace_files[i]) == true) {
+            if(database_load_airspace_shapefile(temp_filepath, (char*)expected_airspace_files[i]) == true) {
                 fprintf(stdout, "Successfully added '%s' shapefile.\n", expected_airspace_files[i]);
             } else {
                 fprintf(stdout, "Failed creating '%s' shapefile!\n", expected_airspace_files[i]);
             }
         }
+    } else if(strncmp("charts", product, strlen("charts")) == 0) {
+        int airac_cycle = determine_airac_cycle();
+        fprintf(stdout, "Current AIRAC cycle: %d\n", airac_cycle);
+
+        char* temp_url = "http://aeronav.faa.gov/content/aeronav/sectional_files/San_Francisco_97.zip";
+        char download_filepath[1024];
+        snprintf(&download_filepath[0], sizeof(download_filepath), "%s/download/%s", &current_working_dir[0], filename_from_url(&temp_url[0]));
+        //download_file(&temp_url[0], &download_filepath[0]);
+        //extract_archive(download_filepath, "download");
+
+    } else {
+        fprintf(stdout, "Unknown product specified: %s\n", product);
     }
 }
 

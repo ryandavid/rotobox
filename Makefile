@@ -591,7 +591,7 @@ $(LIBRASTERLITE2_MAKEFILE):
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --enable-openjpeg=no --enable-charls=no
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR) --enable-charls=no
 
 librasterlite2-clean:
 ifneq ("$(wildcard $(LIBRASTERLITE2_MAKEFILE))","")
@@ -737,19 +737,20 @@ endif
 ########################################
 freetype: $(FREETYPE_LIB)
 
-$(FREETYPE_LIB): $(FREETYPE_MAKEFILE)
-	$(MAKE) -C $(FREETYPE_SUBDIR) install
-
-$(FREETYPE_MAKEFILE):
+$(FREETYPE_LIB):
 	cd $(FREETYPE_SUBDIR) && \
 	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
 	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
 	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
-	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
+	./configure --prefix=$(ROTOBOX_3RD_PARTY_BUILD_DIR) --with-zlib=no
+
+	cd $(FREETYPE_SUBDIR) && \
+	$(MAKE) -C $(FREETYPE_SUBDIR) all && \
+	$(MAKE) -C $(FREETYPE_SUBDIR) install
 
 freetype-clean:
 ifneq ("$(wildcard $(FREETYPE_MAKEFILE))","")
-	$(MAKE) -C $(FREETYPE_SUBDIR) clean
+	$(MAKE) -C $(FREETYPE_SUBDIR) distclean
 endif
 
 freetype-reset: freetype-clean

@@ -71,3 +71,11 @@ kal -s GSM850
 kal -c 130
 ```
 Where 130 is a strong channel shown by the first command.
+
+## Loading raster files
+SELECT SE_UpdateRasterCoverageExtent(1);
+
+rl2tool CREATE -db rotobox.sqlite -cov SFO_TAC2 -smp UINT8 -pxl RGB -cpr LZMA -srid 4269 -xres 42.336600677923 -yres 42.337168148839
+rl2tool IMPORT -db rotobox.sqlite -cov SFO_TAC2 -src download/SanFranciscoSEC97.tif -pyr
+
+

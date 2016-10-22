@@ -10,6 +10,7 @@
 static sqlite3 *db;
 static sqlite3_stmt *stmt;
 void *spatialite_cache;
+void *rasterlite_cache;
 
 static void database_trace(void *arg1, const char* string) {
     //fprintf(stdout, "[SQL] %s\n", string);
@@ -29,10 +30,14 @@ bool database_init() {
     spatialite_initialize();
     spatialite_cache = spatialite_alloc_connection();
     spatialite_init_ex(db, spatialite_cache, 0);
+    rasterlite_cache = rl2_alloc_private();
+    rl2_init(db, rasterlite_cache, false);
 
     // We must make sure to call this at least once for new DBs.  Subsequent calling is harmless.
     fprintf(stdout, "Setting up table metadata. This may take a minute...\n");
     database_execute_query("SELECT InitSpatialMetaData(1);");
+    database_execute_query("SELECT CreateRasterCoveragesTable();");
+    database_execute_query("SELECT CreateStylingTables();");
 
     // Verify all the rotobox tables are present.
     database_maintenance(true);
@@ -49,6 +54,7 @@ bool database_init() {
 
 bool database_close() {
     spatialite_cleanup_ex(spatialite_cache);
+    rl2_free(rasterlite_cache);
     sqlite3_close(db);
     return true;
 }

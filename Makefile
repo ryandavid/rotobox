@@ -12,7 +12,7 @@ ROTOBOX_PKG_CONFIG_PATH=$(ROTOBOX_3RD_PARTY_LIB)/pkgconfig
 CFLAGS+=-O2 -g -Wall -Ifec
 LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB)
 LIBS=-lm -lpthread -ldl -lgeos_c -lusb-1.0 -lspatialite -lrasterlite2 -lsqlite3 \
-	 -lrtlsdr -lproj -lgps -lmetar -lcurl -larchive
+	 -lrtlsdr -lproj -lgps -lmetar -lcurl -larchive -lgdal
 CC=gcc
 MAKE=make
 CMAKE=cmake
@@ -119,6 +119,10 @@ FREETYPE_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/freetype
 FREETYPE_MAKEFILE=$(FREETYPE_SUBDIR)/Makefile
 FREETYPE_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libfreetype.a
 
+GDAL_SUBDIR=$(ROTOBOX_3RD_PARTY_DIR)/gdal/gdal
+GDAL_MAKEFILE=$(GDAL_SUBDIR)/Makefile
+GDAL_LIB=$(ROTOBOX_3RD_PARTY_LIB)/libgdal.a
+
 ########################################
 # TODO: Convert these to libs          #
 ########################################
@@ -150,7 +154,7 @@ rotobox: rotobox.o gdl90.o database.o database_maintenance.o api.o download.o \
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-rotobox-deps: libgeos librtlsdr libusb sqlite proj4 gpsd libmetar spatialite librasterlite2 libarchive
+rotobox-deps: libgeos librtlsdr libusb sqlite proj4 gpsd libmetar spatialite librasterlite2 libarchive gdal
 
 clean:
 	rm -rf *.o
@@ -757,5 +761,33 @@ freetype-reset: freetype-clean
 #ifneq ("$(wildcard $(FREETYPE_MAKEFILE))","")
 #	rm $(FREETYPE_MAKEFILE)
 #endif
+
+
+########################################
+# gdal                                 #
+########################################
+gdal: $(GDAL_LIB)
+
+$(GDAL_LIB): $(GDAL_MAKEFILE)
+	$(MAKE) -C $(GDAL_SUBDIR)
+	$(MAKE) -C $(GDAL_SUBDIR) install
+
+$(GDAL_MAKEFILE):
+	cd $(GDAL_SUBDIR) && \
+	PKG_CONFIG_LIBDIR=$(ROTOBOX_PKG_CONFIG_PATH) \
+	CPPFLAGS=-I$(ROTOBOX_3RD_PARTY_INCLUDE) \
+	LDFLAGS=-L$(ROTOBOX_3RD_PARTY_LIB) \
+	./configure --prefix $(ROTOBOX_3RD_PARTY_BUILD_DIR)
+
+gdal-clean:
+ifneq ("$(wildcard $(GDAL_MAKEFILE))","")
+	$(MAKE) -C $(GDAL_SUBDIR) clean
+endif
+
+gdal-reset: gdal-clean
+ifneq ("$(wildcard $(GDAL_MAKEFILE))","")
+	rm $(GDAL_MAKEFILE)
+endif
+
 
 

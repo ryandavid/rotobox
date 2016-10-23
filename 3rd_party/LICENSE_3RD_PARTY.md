@@ -5,6 +5,7 @@ All libraries under the '3rd_party' are licensed as shown in the table below.  M
 |curl|https://curl.haxx.se|MIT/X||
 |dump1090 (fork)|https://github.com/mutability/dump1090|GPLv2|Added 'MAKE_DUMP_1090_LIB' flag to allow use as a lib|
 |dump978 (fork)|https://github.com/mutability/dump978|GPLv2|Added 'MAKE_DUMP_978_LIB' flag to allow use as a lib|
+|gdal|http://www.gdal.org|MIT||
 |giflib|http://giflib.sourceforge.net|MIT||
 |gpsd|http://catb.org/gpsd/|BSD|Comment out device reset on disconnect|
 |freetype|https://www.freetype.org|BSD-like||

@@ -7,6 +7,9 @@
 
 #include "archive.h"
 #include "archive_entry.h"
+#include "cpl_conv.h"
+#include "gdal.h"
+#include "gdal_utils.h"
 
 #include "database.h"
 #include "download.h"
@@ -21,6 +24,7 @@ int r;
 void download_init() {
     fprintf(stdout, "Curl Version: %s\n", curl_version());
     fprintf(stdout, "Libarchive Version: %s\n", archive_version_details());
+    fprintf(stdout, "GDAL Version: %s\n", GDALVersionInfo("RELEASE_NAME"));
     curl = curl_easy_init();
 }
 
@@ -285,6 +289,55 @@ void download_updates(const char* product) {
         //download_file(&temp_url[0], &download_filepath[0]);
         //extract_archive(download_filepath, "download");
 
+    } else if(strncmp("test", product, strlen("test")) == 0) {
+        const char* sourceTif = "/Users/ryan/src/rotobox/download/SanFranciscoSEC97.tif";
+        const char* shapeFile = "/Users/ryan/src/rotobox/chart_clipping_layers/sectional/San_Francisco_SEC.shp";
+        const char* outFile = "/Users/ryan/Desktop/out.tif";
+        GDALAllRegister();
+
+        GDALDatasetH srcDataset = GDALOpen(sourceTif, GA_ReadOnly);
+        GDALDatasetH destDataset;
+        int error = 0;
+
+        char* args[] = {
+            "-multi",
+            "-dstnodata",
+            "0",
+            "-crop_to_cutline",
+            "-overwrite",
+            "-cutline",
+            shapeFile,
+            NULL
+        };
+
+        GDALWarpAppOptions* options = GDALWarpAppOptionsNew(&args[0], NULL);
+
+        fprintf(stdout, "Running! \n");
+        destDataset = GDALWarp(outFile, NULL, 1, &srcDataset, options, &error);
+
+        /*GDALDriverH hDriver;
+        double adfGeoTransform[6];
+
+        srcDataset = GDALOpen(sourceTif, GA_ReadOnly);
+        hDriver = GDALGetDatasetDriver(srcDataset);
+        fprintf(stdout, "Driver: %s/%s\n", GDALGetDriverShortName(hDriver), GDALGetDriverLongName(hDriver) );
+        fprintf(stdout, "Size is %dx%dx%d\n",
+                GDALGetRasterXSize(srcDataset),
+                GDALGetRasterYSize(srcDataset),
+                GDALGetRasterCount(srcDataset));
+        if(GDALGetProjectionRef(srcDataset) != NULL ) {
+            fprintf(stdout, "Projection is `%s'\n", GDALGetProjectionRef(srcDataset));
+        }
+        if(GDALGetGeoTransform(srcDataset, adfGeoTransform) == CE_None) {
+            fprintf(stdout, "Origin = (%.6f,%.6f)\n", adfGeoTransform[0], adfGeoTransform[3]);
+            fprintf(stdout, "Pixel Size = (%.6f,%.6f)\n", adfGeoTransform[1], adfGeoTransform[5]);
+        }*/
+
+        fprintf(stdout, "GDALWarp returned %d\n", error);
+
+        GDALWarpAppOptionsFree(options);
+        GDALClose(srcDataset);
+        GDALClose(destDataset);
     } else {
         fprintf(stdout, "Unknown product specified: %s\n", product);
     }
